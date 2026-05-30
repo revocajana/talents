@@ -1,5 +1,5 @@
 Django>=4.2,<5.0
 djangorestframework>=3.14,<4.0
 djangorestframework-simplejwt>=5.2,<6.0
-mysqlclient>=2.2,<3.0
+pymysql>=1.0,<2.0
 # React and other frontend packages are managed via package.json in the frontend directory.
