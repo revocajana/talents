@@ -3,7 +3,15 @@
 ## 1. Introduction
 
 ### 1.1 Purpose
-This document describes the requirements and actual implementation of the "Talent in School" Management System, a PHP-based web platform for managing student talents, results, clubs, and administrative activities in Tanzanian schools. The system supports multiple user roles and provides tools for talent tracking, result management, and communication across schools, districts, and wards.
+This document describes the requirements and actual implementation of the "Talent in School" Management System, a web platform for managing student talents, results, clubs, and administrative activities in Tanzanian schools.
+
+### 1.1.1 Technology Stack
+Tech Stack (from README.md):
+- Backend: Django (djangorestframework, djangorestframework-simplejwt)
+- Database: MySQL/MariaDB
+- Frontend: React
+
+
 
 ### 1.2 Scope
 The system provides:
