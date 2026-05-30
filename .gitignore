@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+.env
+vee/
+# Django migrations (if any)
+*/migrations/
+# Backend virtual environment
+backend/venv/
+# Backend cache
+backend/__pycache__/
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+frontend/build/
+# Frontend env files
+frontend/.env
+# IDE / editor files
+.vscode/
+.idea/
+# OS files
+.DS_Store
+Thumbs.db
+# Logs
+*.log
+# Test artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
