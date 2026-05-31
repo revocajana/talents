@@ -80,8 +80,8 @@ class School(models.Model):
 class User(AbstractUser):
     """Custom user extending Django's ``AbstractUser`` with role and optional school link."""
     ROLE_CHOICES = [
-        ("super_admin", "Super Admin"),
-        ("admin", "Admin"),
+        ("region_manager", "Region Manager"),
+        ("zone_manager", "Zone Manager"),
         ("district_manager", "District Manager"),
         ("ward_manager", "Ward Manager"),
         ("head_teacher", "Head Teacher"),
