@@ -40,6 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'core',
+    'students',
+    'competitions',
+    'results'
 ]
 
 AUTH_USER_MODEL = 'core.User'
