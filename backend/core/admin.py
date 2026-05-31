@@ -10,7 +10,7 @@ from .models import (
     Parent,
 )
 
--m 
+
 @admin.register(Country)
 class CountryAdmin(admin.ModelAdmin):
     list_display = ("name", "code")
