@@ -2,11 +2,30 @@
 
 This directory contains the React frontend for the Talent in School Management System.
 
-- `package.json` – npm/Yarn package manifest (manage dependencies such as React, React‑DOM, Vite, etc.).
+- `package.json` – npm package manifest for React, Vite, and required dependencies.
 - `src/` – Source code for the React application.
-- `public/` – Static assets.
+- `index.html` – Frontend app entrypoint.
+- `vite.config.js` – Vite configuration.
 
-Initialize the project with `npm init` or `npm create vite@latest` inside this folder.
+## Run the frontend
+
+From the `frontend/` folder:
+
+```bash
+npm install && npm start
+```
+
+## Style guide
+
+The frontend uses a simple official style:
+
+- Background: `#FFFFFF` (white)
+- Text: `#000000` (black)
+- Muted text: `#6B7280` or `#4B5563`
+- Primary accent: `#111827`
+- Secondary accent: `#2563EB`
+
+The app is designed to be clean, professional, and easy to extend.
 
 ## Frontend Style Guide
 
