@@ -51,7 +51,7 @@ ZONE_REGION_DATA = [
     },
     {
         'zone': 'Tanganyika Mashariki',
-        'regions': ['Dar-es-salaam', 'Pwani', 'Morogoro'],
+        'regions': ['Dar es Salaam', 'Pwani', 'Morogoro'],
     },
     {
         'zone': 'Nyasa & Mchuchuma',
