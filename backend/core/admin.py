@@ -20,6 +20,14 @@ class RegionInline(admin.TabularInline):
     show_change_link = True
 
 
+class SchoolInline(admin.TabularInline):
+    model = School
+    extra = 0
+    fields = ('name', 'registry_number', 'ownership_type')
+    readonly_fields = ('name', 'registry_number', 'ownership_type')
+    show_change_link = True
+
+
 @admin.register(Country)
 class CountryAdmin(admin.ModelAdmin):
     list_display = ("name", "code")
@@ -67,9 +75,10 @@ class WardAdmin(admin.ModelAdmin):
     list_display = ("name", "district", "school_count")
     list_filter = ("district",)
     search_fields = ("name",)
+    inlines = [SchoolInline]
 
     def school_count(self, obj):
-        return obj.school_set.count()
+        return obj.schools.count()
     school_count.short_description = "# Schools"
 
 
