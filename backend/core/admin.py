@@ -11,6 +11,15 @@ from .models import (
 )
 
 
+class RegionInline(admin.TabularInline):
+    model = Region
+    fk_name = 'zone'
+    extra = 0
+    fields = ('name',)
+    readonly_fields = ('name',)
+    show_change_link = True
+
+
 @admin.register(Country)
 class CountryAdmin(admin.ModelAdmin):
     list_display = ("name", "code")
@@ -19,14 +28,14 @@ class CountryAdmin(admin.ModelAdmin):
 
 @admin.register(Zone)
 class ZoneAdmin(admin.ModelAdmin):
-    list_display = ("name", "country", "region_count")
+    list_display = ("name", "country", "region_list")
     list_filter = ("country",)
     search_fields = ("name",)
+    inlines = [RegionInline]
 
-    def region_count(self, obj):
-        # Zone -> Region uses related_name='regions'
-        return obj.regions.count()
-    region_count.short_description = "# Regions"
+    def region_list(self, obj):
+        return ", ".join(obj.regions.values_list('name', flat=True))
+    region_list.short_description = "Regions"
 
 
 @admin.register(Region)
