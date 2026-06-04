@@ -21,12 +21,14 @@ A comprehensive management platform designed to track, manage, and promote stude
 ## 📂 Project Structure
 
 ```text
-├── Backend/          # Django application
+|── api/          # rest API
+├── backend/          # Django application
 ├── frontend/         # React application
 ├── docs/             # Documentation
-├── schema.sql        # quidance to django models.py
-├── README.md          
-└── SRS.md              # Software Requirements Specification
+├── populate/        # populating scripts
+├── .gitignore
+|── vee/              # The virtual env      
+└── README.md            
 ```
 
 
