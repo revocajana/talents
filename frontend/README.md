@@ -17,31 +17,20 @@ npm install && npm start
 
 ## Style guide
 
-The frontend uses a simple official style:
+The frontend uses the same visual tone as the logo:
 
 - Background: `#FFFFFF` (white)
 - Text: `#000000` (black)
+- Accent: blue tones for buttons and minor components
 - Muted text: `#6B7280` or `#4B5563`
-- Primary accent: `#111827`
-- Secondary accent: `#2563EB`
-
-The app is designed to be clean, professional, and easy to extend.
-
-## Frontend Style Guide
-
-The frontend should use a clean, simple official look:
-
-- **Background**: `#FFFFFF` (white)
-- **Text**: `#000000` (black)
-- **Muted text**: `#6B7280` or `#4B5563` (soft gray)
-- **Primary accent**: `#111827` or very dark charcoal
-- **Secondary accent**: `#2563EB` or `#1F2937` for subtle emphasis
 
 ### UI approach
 
-- White page background with strong black headings
-- Muted gray labels and helper text
-- Minimal light gray borders or separators
+- White page background and strong black headings, matching the logo text style
+- Blue accents for buttons, links, and subtle highlights
+- Muted gray labels and helper text for secondary information
 - Clean spacing and simple form styling
-- Simple line icons using muted gray strokes, with dark hover/active states
-- Slightly rounded corners for buttons/cards, but overall minimal and professional
+- Simple line icons with muted gray strokes and dark hover states
+- Slightly rounded corners on buttons and cards for a modern but official look
+
+The app should feel simple, official, and easy to use.
