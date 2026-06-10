@@ -1,5 +1,6 @@
-Django>=4.2,<5.0
+Django>=6.0,<7.0
 djangorestframework>=3.14,<4.0
 djangorestframework-simplejwt>=5.2,<6.0
 pymysql>=1.0,<2.0
-# React and other frontend packages are managed via package.json in the frontend directory.
+python-dotenv>=1.0,<2.0
+# Frontend dependencies are managed in frontend/package.json.
