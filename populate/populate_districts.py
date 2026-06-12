@@ -1,4 +1,5 @@
 import ast
+import json
 import os
 import re
 import sys
@@ -35,9 +36,25 @@ def normalize_name(value):
 
 
 def load_district_data():
-    path = os.path.join(PROJECT_ROOT, 'populate', 'districts.js')
+    candidate_paths = [
+        os.path.join(PROJECT_ROOT, 'populate', 'districts.js'),
+        os.path.join(PROJECT_ROOT, 'populate', 'districts.json'),
+    ]
+
+    path = next((p for p in candidate_paths if os.path.exists(p)), None)
+    if path is None:
+        raise FileNotFoundError(
+            'No district data file found. Create one of the following files in the populate/ directory:\n'
+            '- districts.js (JavaScript-style object)\n'
+            '- districts.json (JSON object)\n'
+            'Example format: {"Region Name": {"District Name": ["Ward 1", "Ward 2"]}}'
+        )
+
     with open(path, encoding='utf-8') as input_file:
         content = input_file.read()
+
+    if path.endswith('.json'):
+        return json.loads(content)
 
     content = re.sub(r'<script[^>]*>', '', content)
     content = re.sub(r'</script>', '', content)
@@ -47,7 +64,7 @@ def load_district_data():
     start = content.find('{')
     end = content.rfind('}')
     if start == -1 or end == -1:
-        raise ValueError('Unable to locate JSON object in districts.js')
+        raise ValueError(f'Unable to locate JSON object in {os.path.basename(path)}')
 
     content = content[start:end + 1]
     return ast.literal_eval(content)
