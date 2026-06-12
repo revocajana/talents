@@ -67,7 +67,7 @@ ZONE_REGION_DATA = [
     },
     {
         'zone': 'Bluu Visiwani',
-        'regions': ['Zanzibar'],
+        'regions': ['Mjini Magharibi', 'Pemba North', 'Pemba South', 'Unguja North', 'Unguja South'],
     },
 ]
 
