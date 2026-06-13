@@ -4,42 +4,40 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: #ffffff;
+  background: var(--color-background);
 }
 
 .auth-card {
   width: min(520px, 100%);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 22px;
   padding: 32px;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-  background: #ffffff;
+  background: var(--color-background);
 }
 
 .auth-header {
   display: grid;
   gap: 18px;
   margin-bottom: 32px;
+  text-align: center;
 }
 
-.auth-eyebrow {
-  margin: 0;
-  font-size: 0.85rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #4b5563;
+.auth-system-name {
+  margin: 0 0 16px 0;
+  color: var(--color-text);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
-.auth-card h1 {
-  margin: 0;
-  font-size: 2rem;
-  color: #000000;
-}
-
-.auth-copy {
-  margin: 0;
-  color: #4b5563;
-  line-height: 1.7;
+.auth-logo {
+  max-width: 140px;
+  height: auto;
+  border-radius: 12px;
+  border: 2px solid var(--color-border);
+  display: block;
+  margin: 0 auto;
 }
 
 .auth-form {
@@ -51,24 +49,24 @@
   display: block;
   margin-bottom: 8px;
   font-size: 0.95rem;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .auth-input {
   width: 100%;
   min-height: 48px;
   padding: 12px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background: #ffffff;
-  color: #111827;
+  background: var(--color-background);
+  color: var(--color-text);
   font-size: 1rem;
 }
 
 .auth-input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.12);
 }
 
 .auth-row {
@@ -80,13 +78,14 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: #4b5563;
+  color: var(--color-text-light);
   font-size: 0.95rem;
 }
 
 .auth-checkbox input {
   width: 18px;
   height: 18px;
+  accent-color: var(--color-primary);
 }
 
 .auth-submit {
@@ -94,15 +93,20 @@
   min-height: 48px;
   border: none;
   border-radius: 12px;
-  background: #111827;
+  background: var(--color-primary);
   color: #ffffff;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .auth-submit:hover {
-  background: #000000;
+  background: var(--color-hover);
+}
+
+.auth-submit:active {
+  opacity: 0.9;
 }
 
 .auth-footer {
@@ -111,7 +115,7 @@
 
 .auth-note {
   margin: 0;
-  color: #6b7280;
+  color: var(--color-text-light);
   font-size: 0.95rem;
   line-height: 1.75;
 }

@@ -1,4 +1,5 @@
 import './auth.css';
+import logo from '../assets/images/logo.jpg';
 
 export default function AuthPage() {
   return (
@@ -6,11 +7,8 @@ export default function AuthPage() {
       <div className="auth-card">
         <div className="auth-header">
           <div>
-            <p className="auth-eyebrow">Sign in</p>
-            <h1>Welcome back</h1>
-            <p className="auth-copy">
-              Access your school management dashboard with a secure login.
-            </p>
+            <p className="auth-system-name">Talent management system</p>
+            <img src={logo} alt="Conture Talent Management Logo" className="auth-logo" />
           </div>
         </div>
 
