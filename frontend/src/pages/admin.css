@@ -1,0 +1,126 @@
+.admin-shell {
+  min-height: 100vh;
+  padding: 32px;
+  background: var(--color-background);
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.admin-welcome {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  color: var(--color-text-light);
+}
+
+.admin-title {
+  margin: 0;
+  font-size: 2rem;
+  color: var(--color-text);
+}
+
+.admin-description {
+  margin: 8px 0 0;
+  color: var(--color-text-light);
+  max-width: 480px;
+  line-height: 1.6;
+}
+
+.admin-logout {
+  min-width: 140px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 12px;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.admin-card {
+  grid-column: span 4;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.admin-card-large {
+  grid-column: span 8;
+}
+
+.admin-card-label {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-metrics {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-metric {
+  background: #fafafa;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.admin-metric-value {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.admin-metric-label {
+  display: block;
+  margin-top: 8px;
+  color: var(--color-text-light);
+  font-size: 0.95rem;
+}
+
+.admin-actions,
+.admin-activity {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.admin-actions li,
+.admin-activity li {
+  background: #f9fbff;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 16px;
+  color: var(--color-text);
+}
+
+@media (max-width: 960px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-card-large {
+    grid-column: span 12;
+  }
+}

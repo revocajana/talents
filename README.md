@@ -21,7 +21,7 @@ A comprehensive management platform designed to track, manage, and promote stude
 ## 📂 Project Structure
 
 ```text
-|── api/          # rest API
+|── api/          # frontend/backend API connector package
 ├── backend/          # Django application
 ├── frontend/         # React application
 ├── docs/             # Documentation

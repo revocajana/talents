@@ -45,17 +45,25 @@
   gap: 18px;
 }
 
+.auth-field {
+  position: relative;
+}
+
 .auth-label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 0.95rem;
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  background: var(--color-background);
+  padding: 0 8px;
+  font-size: 0.85rem;
   color: var(--color-text);
+  z-index: 1;
 }
 
 .auth-input {
   width: 100%;
   min-height: 48px;
-  padding: 12px 14px;
+  padding: 18px 14px 12px;
   border: 1px solid var(--color-border);
   border-radius: 12px;
   background: var(--color-background);
@@ -70,8 +78,10 @@
 }
 
 .auth-row {
-  display: grid;
-  gap: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .auth-checkbox {
@@ -80,6 +90,7 @@
   gap: 10px;
   color: var(--color-text-light);
   font-size: 0.95rem;
+  flex: 1;
 }
 
 .auth-checkbox input {
@@ -89,13 +100,15 @@
 }
 
 .auth-submit {
-  width: 100%;
-  min-height: 48px;
+  width: auto;
+  min-width: 120px;
+  min-height: 42px;
+  padding: 0 18px;
   border: none;
   border-radius: 12px;
   background: var(--color-primary);
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s ease;
