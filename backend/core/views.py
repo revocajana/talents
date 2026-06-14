@@ -2,6 +2,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db.models import Q
 
 from .models import Country, Zone, Region, District, Ward, School, User
 from .serializers import (
@@ -54,3 +55,15 @@ class UserViewSet(viewsets.ModelViewSet):
     def current(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def stats(self, request):
+        """Return counts of schools and users by role."""
+        return Response({
+            'schools': School.objects.count(),
+            'sport_teachers': User.objects.filter(role='sport_teacher').count(),
+            'district_managers': User.objects.filter(role='district_manager').count(),
+            'head_teachers': User.objects.filter(role='head_teacher').count(),
+            'ward_managers': User.objects.filter(role='ward_manager').count(),
+            'admins': User.objects.filter(is_staff=True, is_superuser=True).count(),
+        })

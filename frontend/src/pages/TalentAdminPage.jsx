@@ -1,7 +1,38 @@
+import { useEffect, useState } from 'react';
 import AppBar from '../components/AppBar';
 import './admin.css';
 
 export default function TalentAdminPage({ onLogout }) {
+  const [stats, setStats] = useState({
+    schools: 0,
+    sport_teachers: 0,
+    district_managers: 0,
+    head_teachers: 0,
+    ward_managers: 0,
+    admins: 0,
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const auth = JSON.parse(localStorage.getItem('talents_auth') || '{}');
+        const res = await fetch('/api/users/stats/', {
+          headers: {
+            Authorization: `Bearer ${auth.accessToken}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch stats:', err);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <div className="admin-shell">
       <AppBar
@@ -20,27 +51,27 @@ export default function TalentAdminPage({ onLogout }) {
           <h2>Overview</h2>
           <div className="admin-metrics">
             <div className="admin-metric">
-              <span className="admin-metric-value">4</span>
+              <span className="admin-metric-value">{stats.schools}</span>
               <span className="admin-metric-label">Schools</span>
             </div>
             <div className="admin-metric">
-              <span className="admin-metric-value">4</span>
+              <span className="admin-metric-value">{stats.sport_teachers}</span>
               <span className="admin-metric-label">Sport Teachers</span>
             </div>
             <div className="admin-metric">
-              <span className="admin-metric-value">1</span>
+              <span className="admin-metric-value">{stats.district_managers}</span>
               <span className="admin-metric-label">District Managers</span>
             </div>
             <div className="admin-metric">
-              <span className="admin-metric-value">1</span>
+              <span className="admin-metric-value">{stats.head_teachers}</span>
               <span className="admin-metric-label">Head Teachers</span>
             </div>
             <div className="admin-metric">
-              <span className="admin-metric-value">4</span>
+              <span className="admin-metric-value">{stats.ward_managers}</span>
               <span className="admin-metric-label">Ward Managers</span>
             </div>
             <div className="admin-metric">
-              <span className="admin-metric-value">1</span>
+              <span className="admin-metric-value">{stats.admins}</span>
               <span className="admin-metric-label">Admins</span>
             </div>
           </div>
