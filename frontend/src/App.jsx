@@ -132,7 +132,7 @@ function App() {
     case 'admin':
       return <AdminPage onLogout={handleLogout} />;
     case 'talent_admin':
-      return <TalentAdminPage onLogout={handleLogout} />;
+      return <TalentAdminPage onLogout={handleLogout} username={auth.username} />;
     case 'region_manager':
       return <RegionManagerPage onLogout={handleLogout} />;
     case 'zone_manager':
