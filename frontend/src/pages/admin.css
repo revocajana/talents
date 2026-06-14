@@ -124,3 +124,45 @@
     grid-column: span 12;
   }
 }
+
+@media (max-width: 768px) {
+  .admin-shell {
+    padding: calc(var(--appbar-height) + 12px) 16px 16px;
+  }
+
+  .admin-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .admin-logout {
+    align-self: flex-start;
+    width: 100%;
+  }
+
+  .admin-card {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-metric {
+    padding: 12px;
+  }
+
+  .admin-metric-value {
+    font-size: 1.3rem;
+  }
+
+  .admin-metric-label {
+    font-size: 0.8rem;
+    margin-top: 6px;
+  }
+}

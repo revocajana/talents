@@ -146,3 +146,15 @@
     gap: 12px;
   }
 }
+
+@media (max-width: 480px) {
+  .auth-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .auth-submit {
+    width: 100%;
+  }
+}

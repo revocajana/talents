@@ -192,17 +192,30 @@
   background: #f3f4f6;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  :root {
+    --appbar-height: 60px;
+  }
+  
   .appbar {
-    flex-wrap: wrap;
-    padding: 16px;
+    padding: 0 16px;
   }
 
   .appbar-title {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
   }
 
-  .appbar-user-name {
-    display: none;
+  .appbar-hamburger-button,
+  .appbar-user-button {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+@media (max-width: 480px) {
+  .appbar-title {
+    font-size: 0.7rem;
+    text-align: center;
+    line-height: 1.25;
   }
 }

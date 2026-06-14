@@ -69,6 +69,12 @@ a:hover {
   padding: 32px 24px;
 }
 
+@media (max-width: 640px) {
+  .page-shell {
+    padding: 20px 16px;
+  }
+}
+
 .hero {
   display: grid;
   gap: 32px;
