@@ -1,8 +1,20 @@
+import AppBar from '../components/AppBar';
 import './admin.css';
 
 export default function AdminPage({ onLogout }) {
   return (
     <div className="admin-shell">
+      <AppBar
+        userName="Administrator"
+        onLogout={onLogout}
+        onProfile={() => {
+          window.alert('Profile action not implemented yet.');
+        }}
+        onChangePassword={() => {
+          window.alert('Change password action not implemented yet.');
+        }}
+      />
+
       <div className="admin-header">
         <div>
           <p className="admin-welcome">Welcome back, Administrator</p>
@@ -11,9 +23,6 @@ export default function AdminPage({ onLogout }) {
             Manage users, schools, competitions, and review the latest activity from here.
           </p>
         </div>
-        <button className="admin-logout" type="button" onClick={onLogout}>
-          Sign out
-        </button>
       </div>
 
       <div className="admin-grid">

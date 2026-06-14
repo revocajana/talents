@@ -1,8 +1,20 @@
+import AppBar from '../components/AppBar';
 import './admin.css';
 
 export default function TalentAdminPage({ onLogout }) {
   return (
     <div className="admin-shell">
+      <AppBar
+        userName="Talent Admin"
+        onLogout={onLogout}
+        onProfile={() => {
+          window.alert('Profile action not implemented yet.');
+        }}
+        onChangePassword={() => {
+          window.alert('Change password action not implemented yet.');
+        }}
+      />
+
       <div className="admin-header">
         <div>
           <p className="admin-welcome">Welcome, Talent Administrator</p>
@@ -11,9 +23,6 @@ export default function TalentAdminPage({ onLogout }) {
             Oversee talent management, competitions, and user activity across all regions.
           </p>
         </div>
-        <button className="admin-logout" type="button" onClick={onLogout}>
-          Sign out
-        </button>
       </div>
 
       <div className="admin-grid">

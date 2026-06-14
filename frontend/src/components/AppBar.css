@@ -1,0 +1,132 @@
+.appbar {
+  --appbar-height: 80px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: stretch; /* allow children to fill the header height */
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 24px; /* no vertical padding so children can use full height */
+  height: var(--appbar-height);
+  background: var(--color-primary);
+  color: #ffffff;
+  border-radius: 0;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  z-index: 1000;
+  box-sizing: border-box;
+  line-height: 0; /* avoid descender extra space affecting img */
+}
+
+/* logo should be a square y x y where y == appbar height */
+.appbar-logo {
+  display: block;
+  width: var(--appbar-height);
+  height: 100%;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  object-fit: cover;
+  border: none;
+}
+
+.appbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.appbar-title-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center; /* vertically center title */
+  justify-content: center; /* horizontally center title */
+  pointer-events: none;
+}
+
+.appbar-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.appbar-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.appbar-user-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.appbar-user-button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.appbar-user-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.appbar-user-name {
+  font-size: 0.95rem;
+}
+
+.appbar-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+  min-width: 180px;
+  padding: 12px 0;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 20px 42px rgba(15, 23, 42, 0.14);
+  z-index: 10;
+}
+
+.appbar-menu-item {
+  width: 100%;
+  display: block;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: #111827;
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.appbar-menu-item:hover {
+  background: #f3f4f6;
+}
+
+@media (max-width: 640px) {
+  .appbar {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+
+  .appbar-title {
+    font-size: 0.95rem;
+  }
+
+  .appbar-user-name {
+    display: none;
+  }
+}
