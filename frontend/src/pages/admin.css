@@ -1,6 +1,6 @@
 .admin-shell {
   min-height: 100vh;
-  padding: 32px;
+  padding: calc(var(--appbar-height) + 12px) 32px 32px;
   background: var(--color-background);
 }
 

@@ -1,5 +1,4 @@
 .appbar {
-  --appbar-height: 80px;
   position: fixed;
   top: 0;
   left: 0;
@@ -155,6 +154,11 @@
 .appbar-drawer-link:hover {
   background: rgba(15, 23, 42, 0.04);
 }
+
+:root {
+  --appbar-height: 80px;
+}
+
 
 .appbar-user-name {
   font-size: 0.95rem;

@@ -15,16 +15,6 @@ export default function TalentAdminPage({ onLogout }) {
         }}
       />
 
-      <div className="admin-header">
-        <div>
-          <p className="admin-welcome">Welcome, Talent Administrator</p>
-          <h1 className="admin-title">Talent Admin Dashboard</h1>
-          <p className="admin-description">
-            Oversee talent management, competitions, and user activity across all regions.
-          </p>
-        </div>
-      </div>
-
       <div className="admin-grid">
         <section className="admin-card admin-card-large">
           <p className="admin-card-label">Talent Overview</p>
