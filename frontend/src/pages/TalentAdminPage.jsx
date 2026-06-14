@@ -17,24 +17,31 @@ export default function TalentAdminPage({ onLogout }) {
 
       <div className="admin-grid">
         <section className="admin-card admin-card-large">
-          <p className="admin-card-label">Talent Overview</p>
-          <h2>System activity</h2>
+          <h2>Overview</h2>
           <div className="admin-metrics">
             <div className="admin-metric">
-              <span className="admin-metric-value">256</span>
-              <span className="admin-metric-label">Registered talents</span>
+              <span className="admin-metric-value">4</span>
+              <span className="admin-metric-label">Schools</span>
             </div>
             <div className="admin-metric">
-              <span className="admin-metric-value">45</span>
-              <span className="admin-metric-label">Active competitions</span>
+              <span className="admin-metric-value">4</span>
+              <span className="admin-metric-label">Sport Teachers</span>
             </div>
             <div className="admin-metric">
-              <span className="admin-metric-value">89</span>
-              <span className="admin-metric-label">Pending reviews</span>
+              <span className="admin-metric-value">1</span>
+              <span className="admin-metric-label">District Managers</span>
             </div>
             <div className="admin-metric">
-              <span className="admin-metric-value">12</span>
-              <span className="admin-metric-label">Alerts</span>
+              <span className="admin-metric-value">1</span>
+              <span className="admin-metric-label">Head Teachers</span>
+            </div>
+            <div className="admin-metric">
+              <span className="admin-metric-value">4</span>
+              <span className="admin-metric-label">Ward Managers</span>
+            </div>
+            <div className="admin-metric">
+              <span className="admin-metric-value">1</span>
+              <span className="admin-metric-label">Admins</span>
             </div>
           </div>
         </section>
