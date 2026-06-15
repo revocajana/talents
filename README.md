@@ -21,15 +21,15 @@ A comprehensive management platform designed to track, manage, and promote stude
 ## 📂 Project Structure
 
 ```text
-|── api/          # frontend/backend API connector package
-├── backend/          # Django application
+├── backend/          # Django application and API implementation
 ├── frontend/         # React application
 ├── docs/             # Documentation
 ├── populate/        # populating scripts
 ├── .gitignore
-|── vee/              # The virtual env      
-└── README.md            
+└── vee/              # The virtual env
 ```
+
+> Note: The Django backend implements the API routes, viewsets, and serializers in `backend/`; the previous top-level `api/` package was only a small shared connector placeholder and has been removed.
 
 
 ## 👥 User Roles
