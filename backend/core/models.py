@@ -107,3 +107,85 @@ class Parent(models.Model):
     def __str__(self):
         return self.full_name
 
+
+class Talent(models.Model):
+    """Represents a talent category (e.g., Music, Sports, Technology)."""
+    CATEGORY_CHOICES = [
+        ('music', 'Music'),
+        ('sports', 'Sports'),
+        ('technology', 'Technology'),
+        ('arts', 'Arts'),
+        ('academics', 'Academics'),
+        ('other', 'Other'),
+    ]
+
+    name = models.CharField(max_length=100, unique=True)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.get_category_display()})"
+
+    class Meta:
+        ordering = ['category', 'name']
+
+
+class StudentTalent(models.Model):
+    """Link a Student to one or more Talents with proficiency level."""
+    from students.models import Student
+
+    PROFICIENCY_CHOICES = [
+        (1, 'Beginner'),
+        (2, 'Intermediate'),
+        (3, 'Advanced'),
+        (4, 'Expert'),
+    ]
+
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='talents')
+    talent = models.ForeignKey(Talent, on_delete=models.CASCADE, related_name='students')
+    proficiency_level = models.IntegerField(choices=PROFICIENCY_CHOICES, default=1)
+    notes = models.TextField(blank=True)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('student', 'talent')
+        ordering = ['-added_at']
+
+    def __str__(self):
+        return f"{self.student} – {self.talent} ({self.get_proficiency_level_display()})"
+
+
+class Announcement(models.Model):
+    """System announcements with geographic scope."""
+    SCOPE_CHOICES = [
+        ('national', 'National'),
+        ('zone', 'Zone'),
+        ('region', 'Region'),
+        ('district', 'District'),
+        ('school', 'School'),
+    ]
+
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES, default='national')
+    
+    # Geographic scoping (optional; for zone/region/district/school scope)
+    country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True, related_name='announcements')
+    zone = models.ForeignKey(Zone, on_delete=models.SET_NULL, null=True, blank=True, related_name='announcements')
+    region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, related_name='announcements')
+    district = models.ForeignKey(District, on_delete=models.SET_NULL, null=True, blank=True, related_name='announcements')
+    school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name='announcements')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.get_scope_display()})"
+
+    class Meta:
+        ordering = ['-created_at']
+
