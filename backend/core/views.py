@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
 
-from .models import Country, Zone, Region, District, Ward, School, User
+from .models import Country, Zone, Region, District, Ward, School, User, Talent, StudentTalent, Announcement
 from .serializers import (
     CountrySerializer,
     ZoneSerializer,
@@ -13,6 +13,9 @@ from .serializers import (
     WardSerializer,
     SchoolSerializer,
     UserSerializer,
+    TalentSerializer,
+    StudentTalentSerializer,
+    AnnouncementSerializer,
 )
 
 
@@ -67,3 +70,27 @@ class UserViewSet(viewsets.ModelViewSet):
             'ward_managers': User.objects.filter(role='ward_manager').count(),
             'admins': User.objects.filter(is_staff=True, is_superuser=True).count(),
         })
+
+
+class TalentViewSet(viewsets.ModelViewSet):
+    queryset = Talent.objects.all()
+    serializer_class = TalentSerializer
+    filterset_fields = ['category']
+    search_fields = ['name', 'description']
+
+
+class StudentTalentViewSet(viewsets.ModelViewSet):
+    queryset = StudentTalent.objects.select_related('student', 'talent').all()
+    serializer_class = StudentTalentSerializer
+    filterset_fields = ['talent__category', 'proficiency_level', 'student']
+    search_fields = ['student__first_name', 'student__last_name', 'talent__name']
+
+
+class AnnouncementViewSet(viewsets.ModelViewSet):
+    queryset = Announcement.objects.all()
+    serializer_class = AnnouncementSerializer
+    filterset_fields = ['scope', 'is_active']
+    search_fields = ['title', 'content']
+    ordering_fields = ['created_at', 'published_at']
+    ordering = ['-created_at']
+
