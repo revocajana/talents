@@ -27,9 +27,13 @@ from core.views import (
     WardViewSet,
     SchoolViewSet,
     UserViewSet,
+    TalentViewSet,
+    StudentTalentViewSet,
+    AnnouncementViewSet,
 )
 from students.views import StudentViewSet, ParentViewSet
 from competitions.views import CompetitionViewSet, CompetitionParticipationViewSet
+from results.views import ResultViewSet, ResultDetailViewSet
 
 router = DefaultRouter()
 router.register('countries', CountryViewSet)
@@ -41,8 +45,13 @@ router.register('schools', SchoolViewSet)
 router.register('users', UserViewSet)
 router.register('students', StudentViewSet)
 router.register('parents', ParentViewSet)
+router.register('talents', TalentViewSet)
+router.register('student-talents', StudentTalentViewSet)
+router.register('announcements', AnnouncementViewSet)
 router.register('competitions', CompetitionViewSet)
 router.register('participations', CompetitionParticipationViewSet)
+router.register('results', ResultViewSet)
+router.register('result-details', ResultDetailViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
