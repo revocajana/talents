@@ -12,6 +12,9 @@ from .models import (
     School,
     User,
     Parent,
+    Talent,
+    StudentTalent,
+    Announcement,
 )
 
 
@@ -275,3 +278,46 @@ class UserAdmin(admin.ModelAdmin):
 class ParentAdmin(admin.ModelAdmin):
     list_display = ("full_name", "username", "phone", "email")
     search_fields = ("full_name", "username")
+
+
+@admin.register(Talent)
+class TalentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'student_count')
+    list_filter = ('category',)
+    search_fields = ('name', 'description')
+
+    def student_count(self, obj):
+        return obj.students.count()
+    student_count.short_description = '# Students'
+
+
+@admin.register(StudentTalent)
+class StudentTalentAdmin(admin.ModelAdmin):
+    list_display = ('student', 'talent', 'proficiency_level', 'added_at')
+    list_filter = ('talent__category', 'proficiency_level', 'added_at')
+    search_fields = ('student__first_name', 'student__last_name', 'talent__name')
+    readonly_fields = ('added_at',)
+
+
+@admin.register(Announcement)
+class AnnouncementAdmin(admin.ModelAdmin):
+    list_display = ('title', 'scope', 'is_active', 'created_at', 'expires_at')
+    list_filter = ('scope', 'is_active', 'created_at')
+    search_fields = ('title', 'content')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Content', {
+            'fields': ('title', 'content')
+        }),
+        ('Scope & Targeting', {
+            'fields': ('scope', 'country', 'zone', 'region', 'district', 'school')
+        }),
+        ('Publishing', {
+            'fields': ('is_active', 'published_at', 'expires_at')
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
