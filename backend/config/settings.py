@@ -13,15 +13,12 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 import pymysql
 from pathlib import Path
-from dotenv import load_dotenv
 
 pymysql.install_as_MySQLdb()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
-
-load_dotenv(ROOT_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -98,12 +95,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.mysql'),
-        'NAME': os.getenv('DB_NAME', 'talents'),
-        'USER': os.getenv('DB_USER', 't_user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'talents'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '3306'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'talents',
+        'USER': 'root',
+        'PASSWORD': '2324',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
