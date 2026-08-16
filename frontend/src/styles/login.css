@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 35%, #e0f2fe 100%);
+  background: linear-gradient(135deg, #f0f4ff 0%, #e6ecff 35%, #e0e8ff 100%);
 }
 
 .login-card {
@@ -24,7 +24,7 @@
   width: 72px;
   height: 72px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #0E1DB6 0%, #0A1589 100%);
   display: grid;
   place-items: center;
   font-size: 2rem;
@@ -33,7 +33,7 @@
 
 .welcome-label {
   margin: 0 0 10px;
-  color: #2563eb;
+  color: #0E1DB6;
   font-weight: 700;
   font-size: 0.76rem;
   letter-spacing: 0.08em;
@@ -74,22 +74,22 @@
 }
 
 .field-group input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  border-color: #0E1DB6;
+  box-shadow: 0 0 0 4px rgba(14, 29, 182, 0.12);
   background: #ffffff;
 }
 
 .primary-btn {
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #0E1DB6 0%, #0A1589 100%);
   color: #fff;
   font-size: 1rem;
   font-weight: 700;
   padding: 1rem 1.2rem;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 12px 25px rgba(37, 99, 235, 0.24);
+  box-shadow: 0 12px 25px rgba(14, 29, 182, 0.24);
 }
 
 .primary-btn:hover {

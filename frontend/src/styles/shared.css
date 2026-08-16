@@ -1,8 +1,8 @@
 /* Shared Responsive Styles */
 
 :root {
-  --color-primary: #2563eb;
-  --color-secondary: #1e40af;
+  --color-primary: #0E1DB6;
+  --color-secondary: #0E1DB6;
   --color-success: #16a34a;
   --color-danger: #dc2626;
   --color-warning: #ea580c;
@@ -359,7 +359,7 @@ body {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(14, 29, 182, 0.1);
 }
 
 /* Buttons */
