@@ -2,6 +2,8 @@ from django.contrib import admin
 from django import forms
 from django.http import JsonResponse, Http404
 from django.urls import path
+from django.contrib.auth.forms import UserChangeForm
+from django.core.exceptions import ValidationError
 
 from .models import (
     Country,
@@ -267,11 +269,78 @@ class SchoolAdmin(admin.ModelAdmin):
     student_count.short_description = '# Students'
 
 
+class UserChangeFormWithPassword(UserChangeForm):
+    """Custom form for user admin with password reset functionality."""
+    password_new = forms.CharField(
+        label="New Password",
+        widget=forms.PasswordInput,
+        required=False,
+        help_text="Leave blank if not changing password."
+    )
+    password_confirm = forms.CharField(
+        label="Confirm New Password",
+        widget=forms.PasswordInput,
+        required=False,
+        help_text="Must match the new password above."
+    )
+
+    class Meta:
+        model = User
+        fields = ('username', 'first_name', 'last_name', 'email', 'role', 'school', 'is_active', 'is_staff', 'is_superuser')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password_new = cleaned_data.get('password_new')
+        password_confirm = cleaned_data.get('password_confirm')
+
+        if password_new or password_confirm:
+            if not password_new:
+                raise ValidationError("Please enter the new password.")
+            if not password_confirm:
+                raise ValidationError("Please confirm the new password.")
+            if password_new != password_confirm:
+                raise ValidationError("The passwords do not match.")
+            if len(password_new) < 8:
+                raise ValidationError("Password must be at least 8 characters long.")
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        password_new = self.cleaned_data.get('password_new')
+        if password_new:
+            user.set_password(password_new)
+        if commit:
+            user.save()
+        return user
+
+
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ("username", "email", "role", "school")
-    list_filter = ("role", "school")
-    search_fields = ("username", "email")
+    form = UserChangeFormWithPassword
+    list_display = ("username", "email", "role", "school", "is_staff")
+    list_filter = ("role", "school", "is_staff", "is_active")
+    search_fields = ("username", "email", "first_name", "last_name")
+    readonly_fields = ("date_joined", "last_login")
+    
+    fieldsets = (
+        ("Account Information", {
+            "fields": ("username", "first_name", "last_name", "email")
+        }),
+        ("Role & Access", {
+            "fields": ("role", "school", "is_staff", "is_superuser", "is_active")
+        }),
+        ("Change Password", {
+            "fields": ("password_new", "password_confirm"),
+            "classes": ("collapse",),
+            "description": "Leave both fields blank to keep the current password unchanged."
+        }),
+        ("Timestamps", {
+            "fields": ("date_joined", "last_login"),
+            "classes": ("collapse",)
+        }),
+    )
+
 
 
 @admin.register(Parent)
