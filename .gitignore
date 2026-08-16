@@ -10,6 +10,7 @@ vee/
 */migrations/
 # Backend virtual environment
 backend/venv/
+venv/
 # Backend cache
 backend/__pycache__/
 # Frontend
