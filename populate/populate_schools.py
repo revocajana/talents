@@ -16,7 +16,7 @@ import django
 
 django.setup()
 
-from core.models import Country, School, Ward
+from core.models import Country, School, Ward # type: ignore
 
 
 def sanitize_slug(value):
@@ -45,7 +45,7 @@ def populate_sengerema_real_schools():
         district = country.schools.none().__class__
         break
 
-    from core.models import District, Region, Zone
+    from core.models import District, Region, Zone # type: ignore
     district_obj = District.objects.select_related('region__zone').filter(name='Sengerema').first()
     if not district_obj:
         print('Sengerema district not found. Populate the district/ward data first.')
@@ -53,7 +53,7 @@ def populate_sengerema_real_schools():
 
     real_schools = [
         {'name': 'AICT KATUNGURU CHRISTIAN SEMINARY SS', 'ward': 'KATUNGURU', 'registry_number': 's5191'},
-        {'name': 'BUSISI SECONDARY SCHOOL', 'ward': 'BUSISI', 'registry_number': 'busisi-secondary'},
+        {'name': 'BUSISI SECONDARY SCHOOL', 'ward': 'BUSISI', 'registry_number': '2047'},
         {'name': 'CHRIST THE KING NYANTAKUBWA (GIRLS) SS', 'ward': 'KASUNGAMILE', 'registry_number': 's4965'},
         {'name': 'EXPERANCIA SS', 'ward': 'TABARUKA', 'registry_number': 's5628'},
         {'name': 'JUVENARY BUZINZA SS', 'ward': 'CHIFUNFU', 'registry_number': 's1823'},

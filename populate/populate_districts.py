@@ -20,7 +20,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.config.settings')
 import django
 django.setup()
 
-from core.models import Country, Zone, Region, District, Ward
+from core.models import Country, Zone, Region, District, Ward # type: ignore
 
 
 def create_country():

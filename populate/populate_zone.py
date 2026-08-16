@@ -17,7 +17,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.config.settings')
 import django
 django.setup()
 
-from core.models import Country, Zone, Region
+from core.models import Country, Zone, Region # type: ignore
 
 
 def create_country():
