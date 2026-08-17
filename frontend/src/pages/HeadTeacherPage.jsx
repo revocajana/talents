@@ -1,28 +1,65 @@
+import { useState, useEffect } from 'react';
 import { Header } from '../components/shared';
+import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
 export default function HeadTeacherPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [studentData, setStudentData] = useState([]);
+  const [staffData, setStaffData] = useState([]);
+  const [competitionData, setCompetitionData] = useState([]);
+  const [talentsData, setTalentsData] = useState([]);
+  const [statsData, setStatsData] = useState([
+    { label: 'Total Students', value: '0' },
+    { label: 'Staff Members', value: '0' },
+    { label: 'Talented Students', value: '0' },
+    { label: 'Active Competitions', value: '0' },
+  ]);
 
-  const studentData = [
-    { name: 'John Doe', class: 'Form 4', talents: 2, competitions: 1 },
-    { name: 'Jane Smith', class: 'Form 3', talents: 1, competitions: 2 },
-    { name: 'Michael Kato', class: 'Form 4', talents: 3, competitions: 2 },
-  ];
-
-  const staffData = [
-    { name: 'Mr. Mwambi', role: 'Sport Teacher', tenure: '5 years' },
-    { name: 'Ms. Amina', role: 'Music Teacher', tenure: '3 years' },
-    { name: 'Mr. Khan', role: 'Tech Teacher', tenure: '2 years' },
-  ];
-
-  const competitionData = [
-    { name: 'District Sports', date: '2026-09-15', participants: 45, results: 'Pending' },
-    { name: 'Regional Music', date: '2026-10-01', participants: 12, results: '2nd Place' },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const userRes = await apiService.getCurrentUser();
+        setCurrentUser(userRes.data);
+        const schoolId = userRes.data.school?.id;
+        const [studentsRes, usersRes, competitionsRes, talentsRes] = await Promise.all([
+          apiService.getStudents({ school: schoolId }),
+          apiService.getUsers({ school: schoolId }),
+          apiService.getCompetitions(),
+          apiService.getStudentTalents(),
+        ]);
+        setStudentData((studentsRes.data.results || []).slice(0, 10));
+        setStaffData((usersRes.data.results || []).filter(u => u.role === 'sport_teacher').slice(0, 5));
+        setCompetitionData((competitionsRes.data.results || []).slice(0, 5));
+        setTalentsData(talentsRes.data.results || []);
+        const stats = [
+          { label: 'Total Students', value: (studentsRes.data?.count || 0).toString() },
+          { label: 'Staff Members', value: (usersRes.data?.count || 0).toString() },
+          { label: 'Talented Students', value: (talentsRes.data?.count || 0).toString() },
+          { label: 'Active Competitions', value: (competitionsRes.data?.count || 0).toString() },
+        ];
+        setStatsData(stats);
+      } catch (err) {
+        console.error('Error fetching school dashboard data:', err);
+        setError(err.response?.data?.detail || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
 
   return (
     <div className="page-container">
       <Header title="Head Teacher Dashboard" />
+      {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
+      ) : (
       <main className="admin-content">
         <div className="cards-container">
           {/* School Overview Card */}
@@ -32,22 +69,12 @@ export default function HeadTeacherPage() {
               <p>Key statistics for your school</p>
             </div>
             <div className="stats-overview">
-              <div className="stat-card">
-                <p className="stat-label">Total Students</p>
-                <h3 className="stat-value">680</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Staff Members</p>
-                <h3 className="stat-value">24</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Talented Students</p>
-                <h3 className="stat-value">145</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Active Competitions</p>
-                <h3 className="stat-value">5</h3>
-              </div>
+              {statsData.map((stat, idx) => (
+                <div key={idx} className="stat-card">
+                  <p className="stat-label">{stat.label}</p>
+                  <h3 className="stat-value">{stat.value}</h3>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -88,21 +115,25 @@ export default function HeadTeacherPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Class</th>
-                    <th>Talents</th>
-                    <th>Competitions</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Student ID</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {studentData.map((student, idx) => (
-                    <tr key={idx}>
-                      <td>{student.name}</td>
-                      <td>{student.class}</td>
-                      <td>{student.talents}</td>
-                      <td>{student.competitions}</td>
-                    </tr>
-                  ))}
+                  {studentData.length > 0 ? (
+                    studentData.map((student) => (
+                      <tr key={student.id}>
+                        <td>{student.first_name || 'N/A'}</td>
+                        <td>{student.last_name || 'N/A'}</td>
+                        <td>{student.student_id || 'N/A'}</td>
+                        <td><button className="btn-action">View</button></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No students found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -120,17 +151,23 @@ export default function HeadTeacherPage() {
                   <tr>
                     <th>Name</th>
                     <th>Role</th>
-                    <th>Tenure</th>
+                    <th>Email</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {staffData.map((staff, idx) => (
-                    <tr key={idx}>
-                      <td>{staff.name}</td>
-                      <td>{staff.role}</td>
-                      <td>{staff.tenure}</td>
-                    </tr>
-                  ))}
+                  {staffData.length > 0 ? (
+                    staffData.map((staff) => (
+                      <tr key={staff.id}>
+                        <td>{staff.first_name} {staff.last_name}</td>
+                        <td>{staff.role}</td>
+                        <td>{staff.email}</td>
+                        <td><button className="btn-action">View</button></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No staff found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -175,20 +212,24 @@ export default function HeadTeacherPage() {
                 <thead>
                   <tr>
                     <th>Competition</th>
-                    <th>Date</th>
-                    <th>Participants</th>
-                    <th>Results</th>
+                    <th>Level</th>
+                    <th>Start Date</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {competitionData.map((comp, idx) => (
-                    <tr key={idx}>
-                      <td>{comp.name}</td>
-                      <td>{comp.date}</td>
-                      <td>{comp.participants}</td>
-                      <td>{comp.results}</td>
-                    </tr>
-                  ))}
+                  {competitionData.length > 0 ? (
+                    competitionData.map((comp) => (
+                      <tr key={comp.id}>
+                        <td>{comp.name}</td>
+                        <td><span className="badge">{comp.get_level_display || comp.level}</span></td>
+                        <td>{comp.start_date ? new Date(comp.start_date).toLocaleDateString() : 'N/A'}</td>
+                        <td><button className="btn-action">View</button></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No competitions found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -221,6 +262,7 @@ export default function HeadTeacherPage() {
           </section>
         </div>
       </main>
+      )}
     </div>
   );
 }

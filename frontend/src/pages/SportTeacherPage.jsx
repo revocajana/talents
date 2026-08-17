@@ -1,22 +1,62 @@
+import { useState, useEffect } from 'react';
 import { Header } from '../components/shared';
+import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
 export default function SportTeacherPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [studentTalentData, setStudentTalentData] = useState([]);
+  const [trainingData, setTrainingData] = useState([]);
+  const [competitionsData, setCompetitionsData] = useState([]);
+  const [statsData, setStatsData] = useState([
+    { label: 'Students Trained', value: '0' },
+    { label: 'Training Programs', value: '0' },
+    { label: 'Competitions', value: '0' },
+    { label: 'Medals Won', value: '0' },
+  ]);
 
-  const studentTalentData = [
-    { name: 'John Doe', talent: 'Football', level: 'Advanced', trained: 'Yes' },
-    { name: 'Jane Smith', talent: 'Volleyball', level: 'Intermediate', trained: 'Yes' },
-    { name: 'Michael Kato', talent: 'Basketball', level: 'Beginner', trained: 'No' },
-  ];
-
-  const trainingData = [
-    { program: 'Football Basics', schedule: 'Mon & Wed 4pm', students: 24, next: '2026-08-20' },
-    { program: 'Volleyball Skills', schedule: 'Tue & Thu 4pm', students: 16, next: '2026-08-21' },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const userRes = await apiService.getCurrentUser();
+        setCurrentUser(userRes.data);
+        const schoolId = userRes.data.school?.id;
+        const [talentsRes, competitionsRes, studentsRes] = await Promise.all([
+          apiService.getStudentTalents({ student__school: schoolId }),
+          apiService.getCompetitions(),
+          apiService.getStudents({ school: schoolId }),
+        ]);
+        setStudentTalentData((talentsRes.data.results || []).slice(0, 10));
+        setCompetitionsData((competitionsRes.data.results || []).slice(0, 10));
+        setTrainingData((studentsRes.data.results || []).slice(0, 5));
+        const stats = [
+          { label: 'Students Trained', value: (talentsRes.data?.count || 0).toString() },
+          { label: 'Training Programs', value: '0' },
+          { label: 'Competitions', value: (competitionsRes.data?.count || 0).toString() },
+          { label: 'Medals Won', value: '0' },
+        ];
+        setStatsData(stats);
+      } catch (err) {
+        console.error('Error fetching sport teacher dashboard data:', err);
+        setError(err.response?.data?.detail || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
 
   return (
     <div className="page-container">
       <Header title="Sport Teacher Dashboard" />
+      {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
+      ) : (
       <main className="admin-content">
         <div className="cards-container">
           {/* Teaching Overview Card */}
@@ -26,22 +66,12 @@ export default function SportTeacherPage() {
               <p>Your teaching statistics</p>
             </div>
             <div className="stats-overview">
-              <div className="stat-card">
-                <p className="stat-label">Students Trained</p>
-                <h3 className="stat-value">87</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Training Programs</p>
-                <h3 className="stat-value">6</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Competitions</p>
-                <h3 className="stat-value">8</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Medals Won</p>
-                <h3 className="stat-value">23</h3>
-              </div>
+              {statsData.map((stat, idx) => (
+                <div key={idx} className="stat-card">
+                  <p className="stat-label">{stat.label}</p>
+                  <h3 className="stat-value">{stat.value}</h3>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -83,21 +113,25 @@ export default function SportTeacherPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Sport/Talent</th>
-                    <th>Level</th>
-                    <th>Trained</th>
+                    <th>Student Name</th>
+                    <th>Talent</th>
+                    <th>Proficiency Level</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {studentTalentData.map((student, idx) => (
-                    <tr key={idx}>
-                      <td>{student.name}</td>
-                      <td>{student.talent}</td>
-                      <td>{student.level}</td>
-                      <td>{student.trained}</td>
-                    </tr>
-                  ))}
+                  {studentTalentData.length > 0 ? (
+                    studentTalentData.map((student) => (
+                      <tr key={student.id}>
+                        <td>{student.student_name || 'N/A'}</td>
+                        <td>{student.talent_name || 'N/A'}</td>
+                        <td>{student.proficiency_level || 'N/A'}</td>
+                        <td><button className="btn-action">Update</button></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No trained students yet</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -142,18 +176,22 @@ export default function SportTeacherPage() {
                     <th>Program</th>
                     <th>Schedule</th>
                     <th>Students</th>
-                    <th>Next Session</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {trainingData.map((program, idx) => (
-                    <tr key={idx}>
-                      <td>{program.program}</td>
-                      <td>{program.schedule}</td>
-                      <td>{program.students}</td>
-                      <td>{program.next}</td>
-                    </tr>
-                  ))}
+                  {trainingData.length > 0 ? (
+                    trainingData.map((program, idx) => (
+                      <tr key={idx}>
+                        <td>{program.first_name} {program.last_name}</td>
+                        <td>Assigned</td>
+                        <td>1</td>
+                        <td><button className="btn-action">View</button></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No training programs active</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -212,6 +250,7 @@ export default function SportTeacherPage() {
           </section>
         </div>
       </main>
+      )}
     </div>
   );
 }

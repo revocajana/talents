@@ -1,23 +1,102 @@
+import { useState, useEffect } from 'react';
 import { Header } from '../components/shared';
+import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
 export default function DistrictManagerPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [allDistricts, setAllDistricts] = useState([]);
+  const [schoolsData, setSchoolsData] = useState([]);
+  const [wardData, setWardData] = useState([]);
+  const [competitionsData, setCompetitionsData] = useState([]);
+  const [statsData, setStatsData] = useState([
+    { label: 'Schools', value: '0' },
+    { label: 'Students', value: '0' },
+    { label: 'Talents Registered', value: '0' },
+    { label: 'Active Competitions', value: '0' },
+  ]);
 
-  const schoolsData = [
-    { name: 'Central Secondary', ward: 'Ward A', students: 680, talents: 145 },
-    { name: 'District Academy', ward: 'Ward B', students: 520, talents: 98 },
-    { name: 'Tech School', ward: 'Ward C', students: 450, talents: 76 },
-  ];
-
-  const wardData = [
-    { ward: 'Ward A', schools: 8, students: 2340, managers: 2 },
-    { ward: 'Ward B', schools: 6, students: 1890, managers: 1 },
-    { ward: 'Ward C', schools: 5, students: 1560, managers: 1 },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const userRes = await apiService.getCurrentUser();
+        setCurrentUser(userRes.data);
+        const districtId = userRes.data.school?.district;
+        setSelectedDistrict(districtId);
+        
+        // Fetch all districts for the dropdown
+        const districtsRes = await apiService.getDistricts();
+        setAllDistricts(districtsRes.data.results || []);
+        
+        const [schoolsRes, wardsRes, competitionsRes, talentsRes] = await Promise.all([
+          apiService.getSchools({ district: districtId }),
+          apiService.getWards({ district: districtId }),
+          apiService.getCompetitions({ level: 'district' }),
+          apiService.getStudentTalents(),
+        ]);
+        setSchoolsData((schoolsRes.data.results || []).slice(0, 10));
+        setWardData((wardsRes.data.results || []).slice(0, 10));
+        setCompetitionsData((competitionsRes.data.results || []).slice(0, 10));
+        const stats = [
+          { label: 'Schools', value: (schoolsRes.data?.count || 0).toString() },
+          { label: 'Students', value: '0' },
+          { label: 'Talents Registered', value: (talentsRes.data?.count || 0).toString() },
+          { label: 'Active Competitions', value: (competitionsRes.data?.count || 0).toString() },
+        ];
+        setStatsData(stats);
+      } catch (err) {
+        console.error('Error fetching district dashboard:', err);
+        setError(err.response?.data?.detail || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
 
   return (
     <div className="page-container">
       <Header title="District Manager Dashboard" />
+      {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+      
+      {/* District Selector */}
+      {!loading && (
+        <div style={{ padding: '1.5rem 2rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', maxWidth: '100%' }}>
+            <label htmlFor="district-select" style={{ fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Select District:</label>
+            <select
+              id="district-select"
+              value={selectedDistrict || ''}
+              onChange={(e) => setSelectedDistrict(parseInt(e.target.value))}
+              style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px',
+                fontSize: '0.95rem',
+                backgroundColor: '#fff',
+                cursor: 'pointer',
+                minWidth: '200px',
+              }}
+            >
+              <option value="">-- Select a District --</option>
+              {allDistricts.map((district) => (
+                <option key={district.id} value={district.id}>
+                  {district.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+      
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
+      ) : (
       <main className="admin-content">
         <div className="cards-container">
           {/* District Overview Card */}
@@ -27,22 +106,12 @@ export default function DistrictManagerPage() {
               <p>Key statistics for your district</p>
             </div>
             <div className="stats-overview">
-              <div className="stat-card">
-                <p className="stat-label">Schools</p>
-                <h3 className="stat-value">19</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Students</p>
-                <h3 className="stat-value">5,790</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Talents Registered</p>
-                <h3 className="stat-value">1,240</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Active Competitions</p>
-                <h3 className="stat-value">12</h3>
-              </div>
+              {statsData.map((stat, idx) => (
+                <div key={idx} className="stat-card">
+                  <p className="stat-label">{stat.label}</p>
+                  <h3 className="stat-value">{stat.value}</h3>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -89,14 +158,18 @@ export default function DistrictManagerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {schoolsData.map((school, idx) => (
-                    <tr key={idx}>
-                      <td>{school.name}</td>
-                      <td>{school.ward}</td>
-                      <td>{school.students}</td>
-                      <td>{school.talents}</td>
-                    </tr>
-                  ))}
+                  {schoolsData.length > 0 ? (
+                    schoolsData.map((school) => (
+                      <tr key={school.id}>
+                        <td>{school.name}</td>
+                        <td>{school.ward_name || 'N/A'}</td>
+                        <td>{school.students_count || '0'}</td>
+                        <td>{school.talents_count || '0'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No schools found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -119,14 +192,18 @@ export default function DistrictManagerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {wardData.map((ward, idx) => (
-                    <tr key={idx}>
-                      <td>{ward.ward}</td>
-                      <td>{ward.schools}</td>
-                      <td>{ward.students}</td>
-                      <td>{ward.managers}</td>
-                    </tr>
-                  ))}
+                  {wardData.length > 0 ? (
+                    wardData.map((ward) => (
+                      <tr key={ward.id}>
+                        <td>{ward.name}</td>
+                        <td>{ward.schools_count || '0'}</td>
+                        <td>{ward.students_count || '0'}</td>
+                        <td>{'0'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No wards found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -181,6 +258,7 @@ export default function DistrictManagerPage() {
           </section>
         </div>
       </main>
+      )}
     </div>
   );
 }

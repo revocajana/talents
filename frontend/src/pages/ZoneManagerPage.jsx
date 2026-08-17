@@ -1,17 +1,100 @@
+import { useState, useEffect } from 'react';
 import { Header } from '../components/shared';
+import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
 export default function ZoneManagerPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [selectedZone, setSelectedZone] = useState(null);
+  const [allZones, setAllZones] = useState([]);
+  const [regionsData, setRegionsData] = useState([]);
+  const [competitionsData, setCompetitionsData] = useState([]);
+  const [statsData, setStatsData] = useState([
+    { label: 'Regions in Zone', value: '0' },
+    { label: 'Total Schools', value: '0' },
+    { label: 'Total Students', value: '0' },
+    { label: 'Zone Competitions', value: '0' },
+  ]);
 
-  const regionsData = [
-    { name: 'Coastal Region', schools: 48, students: 12456, talents: 3240 },
-    { name: 'Lake Region', schools: 36, students: 9876, talents: 2450 },
-    { name: 'Mountain Region', schools: 28, students: 8234, talents: 1890 },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const userRes = await apiService.getCurrentUser();
+        setCurrentUser(userRes.data);
+        const zoneId = userRes.data.school?.zone;
+        setSelectedZone(zoneId);
+        
+        // Fetch all zones for the dropdown
+        const zonesRes = await apiService.getZones();
+        setAllZones(zonesRes.data.results || []);
+        
+        const [regionsRes, competitionsRes, schoolsRes, studentsRes] = await Promise.all([
+          apiService.getRegions({ zone: zoneId }),
+          apiService.getCompetitions({ level: 'zone' }),
+          apiService.getSchools({ zone: zoneId }),
+          apiService.getStudents(),
+        ]);
+        setRegionsData((regionsRes.data.results || []).slice(0, 10));
+        setCompetitionsData((competitionsRes.data.results || []).slice(0, 10));
+        const stats = [
+          { label: 'Regions in Zone', value: (regionsRes.data?.count || 0).toString() },
+          { label: 'Total Schools', value: (schoolsRes.data?.count || 0).toString() },
+          { label: 'Total Students', value: (studentsRes.data?.count || 0).toString() },
+          { label: 'Zone Competitions', value: (competitionsRes.data?.count || 0).toString() },
+        ];
+        setStatsData(stats);
+      } catch (err) {
+        console.error('Error fetching zone dashboard:', err);
+        setError(err.response?.data?.detail || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
 
   return (
     <div className="page-container">
       <Header title="Zone Manager Dashboard" />
+      {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+      
+      {/* Zone Selector */}
+      {!loading && (
+        <div style={{ padding: '1.5rem 2rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', maxWidth: '100%' }}>
+            <label htmlFor="zone-select" style={{ fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Select Zone:</label>
+            <select
+              id="zone-select"
+              value={selectedZone || ''}
+              onChange={(e) => setSelectedZone(parseInt(e.target.value))}
+              style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px',
+                fontSize: '0.95rem',
+                backgroundColor: '#fff',
+                cursor: 'pointer',
+                minWidth: '200px',
+              }}
+            >
+              <option value="">-- Select a Zone --</option>
+              {allZones.map((zone) => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+      
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
+      ) : (
       <main className="admin-content">
         <div className="cards-container">
           {/* Zone Overview Card */}
@@ -21,22 +104,12 @@ export default function ZoneManagerPage() {
               <p>Key statistics for your zone</p>
             </div>
             <div className="stats-overview">
-              <div className="stat-card">
-                <p className="stat-label">Regions in Zone</p>
-                <h3 className="stat-value">5</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Total Schools</p>
-                <h3 className="stat-value">112</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Total Students</p>
-                <h3 className="stat-value">31,200</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Zone Competitions</p>
-                <h3 className="stat-value">42</h3>
-              </div>
+              {statsData.map((stat, idx) => (
+                <div key={idx} className="stat-card">
+                  <p className="stat-label">{stat.label}</p>
+                  <h3 className="stat-value">{stat.value}</h3>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -83,14 +156,18 @@ export default function ZoneManagerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {regionsData.map((region, idx) => (
-                    <tr key={idx}>
-                      <td>{region.name}</td>
-                      <td>{region.schools}</td>
-                      <td>{region.students}</td>
-                      <td>{region.talents}</td>
-                    </tr>
-                  ))}
+                  {regionsData.length > 0 ? (
+                    regionsData.map((region) => (
+                      <tr key={region.id}>
+                        <td>{region.name}</td>
+                        <td>{region.schools_count || '0'}</td>
+                        <td>{region.students_count || '0'}</td>
+                        <td>{region.talents_count || '0'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No regions found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -168,6 +245,7 @@ export default function ZoneManagerPage() {
           </section>
         </div>
       </main>
+      )}
     </div>
   );
 }

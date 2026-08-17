@@ -1,27 +1,101 @@
+import { useState, useEffect } from 'react';
 import { Header } from '../components/shared';
+import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
 export default function RegionManagerPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [selectedRegion, setSelectedRegion] = useState(null);
+  const [allRegions, setAllRegions] = useState([]);
+  const [schoolsData, setSchoolsData] = useState([]);
+  const [competitionsData, setCompetitionsData] = useState([]);
+  const [resultsSummary, setResultsSummary] = useState([]);
+  const [statsData, setStatsData] = useState([
+    { label: 'Schools in Region', value: '0' },
+    { label: 'Students', value: '0' },
+    { label: 'Active Talents', value: '0' },
+    { label: 'Competitions', value: '0' },
+  ]);
 
-  const schoolsData = [
-    { name: 'Dar Es Salaam Secondary', district: 'Ilala', students: 1245, talents: 89 },
-    { name: 'Coast Region School', district: 'Kinondoni', students: 987, talents: 64 },
-    { name: 'Regional Academy', district: 'Temeke', students: 856, talents: 52 },
-  ];
-
-  const competitionsData = [
-    { name: 'Regional Sports', date: '2026-09-15', schools: 24, participants: 450 },
-    { name: 'Music Festival', date: '2026-10-01', schools: 18, participants: 280 },
-  ];
-
-  const resultsSummary = [
-    { school: 'Dar Es Salaam Secondary', awards: 12, medals: 45, rank: 1 },
-    { school: 'Coast Region School', awards: 8, medals: 32, rank: 2 },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const userRes = await apiService.getCurrentUser();
+        setCurrentUser(userRes.data);
+        const regionId = userRes.data.school?.region;
+        setSelectedRegion(regionId);
+        
+        // Fetch all regions for the dropdown
+        const regionsRes = await apiService.getRegions();
+        setAllRegions(regionsRes.data.results || []);
+        
+        const [schoolsRes, competitionsRes, studentsRes] = await Promise.all([
+          apiService.getSchools({ region: regionId }),
+          apiService.getCompetitions({ level: 'region' }),
+          apiService.getStudents(),
+        ]);
+        setSchoolsData((schoolsRes.data.results || []).slice(0, 10));
+        setCompetitionsData((competitionsRes.data.results || []).slice(0, 5));
+        setResultsSummary((schoolsRes.data.results || []).slice(0, 5));
+        const stats = [
+          { label: 'Schools in Region', value: (schoolsRes.data?.count || 0).toString() },
+          { label: 'Students', value: (studentsRes.data?.count || 0).toString() },
+          { label: 'Active Talents', value: '0' },
+          { label: 'Competitions', value: (competitionsRes.data?.count || 0).toString() },
+        ];
+        setStatsData(stats);
+      } catch (err) {
+        console.error('Error fetching region dashboard:', err);
+        setError(err.response?.data?.detail || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
 
   return (
     <div className="page-container">
       <Header title="Region Manager Dashboard" />
+      {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+      
+      {/* Region Selector */}
+      {!loading && (
+        <div style={{ padding: '1.5rem 2rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', maxWidth: '100%' }}>
+            <label htmlFor="region-select" style={{ fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Select Region:</label>
+            <select
+              id="region-select"
+              value={selectedRegion || ''}
+              onChange={(e) => setSelectedRegion(parseInt(e.target.value))}
+              style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px',
+                fontSize: '0.95rem',
+                backgroundColor: '#fff',
+                cursor: 'pointer',
+                minWidth: '200px',
+              }}
+            >
+              <option value="">-- Select a Region --</option>
+              {allRegions.map((region) => (
+                <option key={region.id} value={region.id}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+      
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
+      ) : (
       <main className="admin-content">
         <div className="cards-container">
           {/* Overview Card */}
@@ -31,22 +105,12 @@ export default function RegionManagerPage() {
               <p>Key statistics for your region</p>
             </div>
             <div className="stats-overview">
-              <div className="stat-card">
-                <p className="stat-label">Schools in Region</p>
-                <h3 className="stat-value">48</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Students</p>
-                <h3 className="stat-value">12,456</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Active Talents</p>
-                <h3 className="stat-value">3,240</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Competitions</p>
-                <h3 className="stat-value">18</h3>
-              </div>
+              {statsData.map((stat, idx) => (
+                <div key={idx} className="stat-card">
+                  <p className="stat-label">{stat.label}</p>
+                  <h3 className="stat-value">{stat.value}</h3>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -94,14 +158,18 @@ export default function RegionManagerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {schoolsData.map((school, idx) => (
-                    <tr key={idx}>
-                      <td>{school.name}</td>
-                      <td>{school.district}</td>
-                      <td>{school.students}</td>
-                      <td>{school.talents}</td>
-                    </tr>
-                  ))}
+                  {schoolsData.length > 0 ? (
+                    schoolsData.map((school) => (
+                      <tr key={school.id}>
+                        <td>{school.name}</td>
+                        <td>{school.district_name || 'N/A'}</td>
+                        <td>{school.students_count || '0'}</td>
+                        <td>{school.talents_count || '0'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No schools found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -124,14 +192,18 @@ export default function RegionManagerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {competitionsData.map((comp, idx) => (
-                    <tr key={idx}>
-                      <td>{comp.name}</td>
-                      <td>{comp.date}</td>
-                      <td>{comp.schools}</td>
-                      <td>{comp.participants}</td>
-                    </tr>
-                  ))}
+                  {competitionsData.length > 0 ? (
+                    competitionsData.map((comp) => (
+                      <tr key={comp.id}>
+                        <td>{comp.name}</td>
+                        <td>{comp.start_date ? new Date(comp.start_date).toLocaleDateString() : 'N/A'}</td>
+                        <td>{comp.schools_count || '0'}</td>
+                        <td>{comp.participants_count || '0'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No competitions found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -154,20 +226,25 @@ export default function RegionManagerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {resultsSummary.map((result, idx) => (
-                    <tr key={idx}>
-                      <td>{result.school}</td>
-                      <td>{result.awards}</td>
-                      <td>{result.medals}</td>
-                      <td>#{result.rank}</td>
-                    </tr>
-                  ))}
+                  {resultsSummary.length > 0 ? (
+                    resultsSummary.map((result, idx) => (
+                      <tr key={idx}>
+                        <td>{result.name}</td>
+                        <td>{'0'}</td>
+                        <td>{'0'}</td>
+                        <td>#{idx + 1}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No results found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </section>
         </div>
       </main>
+      )}
     </div>
   );
 }

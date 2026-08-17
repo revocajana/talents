@@ -1,17 +1,99 @@
+import { useState, useEffect } from 'react';
 import { Header } from '../components/shared';
+import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
 export default function WardManagerPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [selectedWard, setSelectedWard] = useState(null);
+  const [allWards, setAllWards] = useState([]);
+  const [schoolsData, setSchoolsData] = useState([]);
+  const [studentTalentData, setStudentTalentData] = useState([]);
+  const [statsData, setStatsData] = useState([
+    { label: 'Schools', value: '0' },
+    { label: 'Students', value: '0' },
+    { label: 'Talents', value: '0' },
+    { label: 'Ward Events', value: '0' },
+  ]);
 
-  const schoolsData = [
-    { name: 'Primary School A', type: 'Primary', students: 450, teachers: 12 },
-    { name: 'Secondary School B', type: 'Secondary', students: 680, teachers: 18 },
-    { name: 'Vocational Center', type: 'Vocational', students: 240, teachers: 8 },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const userRes = await apiService.getCurrentUser();
+        setCurrentUser(userRes.data);
+        const wardId = userRes.data.school?.ward;
+        setSelectedWard(wardId);
+        
+        // Fetch all wards for the dropdown
+        const wardsRes = await apiService.getWards();
+        setAllWards(wardsRes.data.results || []);
+        
+        const [schoolsRes, studentTalentsRes, studentsRes] = await Promise.all([
+          apiService.getSchools({ ward: wardId }),
+          apiService.getStudentTalents(),
+          apiService.getStudents(),
+        ]);
+        setSchoolsData((schoolsRes.data.results || []).slice(0, 10));
+        setStudentTalentData((studentTalentsRes.data.results || []).slice(0, 10));
+        const stats = [
+          { label: 'Schools', value: (schoolsRes.data?.count || 0).toString() },
+          { label: 'Students', value: (studentsRes.data?.count || 0).toString() },
+          { label: 'Talents', value: (studentTalentsRes.data?.count || 0).toString() },
+          { label: 'Ward Events', value: '0' },
+        ];
+        setStatsData(stats);
+      } catch (err) {
+        console.error('Error fetching ward dashboard:', err);
+        setError(err.response?.data?.detail || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
 
   return (
     <div className="page-container">
       <Header title="Ward Manager Dashboard" />
+      {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+      
+      {/* Ward Selector */}
+      {!loading && (
+        <div style={{ padding: '1.5rem 2rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', maxWidth: '100%' }}>
+            <label htmlFor="ward-select" style={{ fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Select Ward:</label>
+            <select
+              id="ward-select"
+              value={selectedWard || ''}
+              onChange={(e) => setSelectedWard(parseInt(e.target.value))}
+              style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px',
+                fontSize: '0.95rem',
+                backgroundColor: '#fff',
+                cursor: 'pointer',
+                minWidth: '200px',
+              }}
+            >
+              <option value="">-- Select a Ward --</option>
+              {allWards.map((ward) => (
+                <option key={ward.id} value={ward.id}>
+                  {ward.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+      
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
+      ) : (
       <main className="admin-content">
         <div className="cards-container">
           {/* Ward Overview Card */}
@@ -21,22 +103,12 @@ export default function WardManagerPage() {
               <p>Key statistics for your ward</p>
             </div>
             <div className="stats-overview">
-              <div className="stat-card">
-                <p className="stat-label">Schools</p>
-                <h3 className="stat-value">8</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Students</p>
-                <h3 className="stat-value">2,340</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Talents</p>
-                <h3 className="stat-value">480</h3>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Ward Events</p>
-                <h3 className="stat-value">6</h3>
-              </div>
+              {statsData.map((stat, idx) => (
+                <div key={idx} className="stat-card">
+                  <p className="stat-label">{stat.label}</p>
+                  <h3 className="stat-value">{stat.value}</h3>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -84,14 +156,18 @@ export default function WardManagerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {schoolsData.map((school, idx) => (
-                    <tr key={idx}>
-                      <td>{school.name}</td>
-                      <td>{school.type}</td>
-                      <td>{school.students}</td>
-                      <td>{school.teachers}</td>
-                    </tr>
-                  ))}
+                  {schoolsData.length > 0 ? (
+                    schoolsData.map((school) => (
+                      <tr key={school.id}>
+                        <td>{school.name}</td>
+                        <td>{school.school_type || 'N/A'}</td>
+                        <td>{school.students_count || '0'}</td>
+                        <td>{school.teachers_count || '0'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No schools found</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -177,6 +253,7 @@ export default function WardManagerPage() {
           </section>
         </div>
       </main>
+      )}
     </div>
   );
 }
