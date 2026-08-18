@@ -9,6 +9,7 @@ export default function TalentAdminPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showAddTalentModal, setShowAddTalentModal] = useState(false);
+  const [showTalentListModal, setShowTalentListModal] = useState(false);
   const [editingTalentId, setEditingTalentId] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -25,6 +26,8 @@ export default function TalentAdminPage() {
     { label: 'Active Competitions', value: '0' },
     { label: 'Registered Talents', value: '0' },
   ]);
+
+  const displayedTalents = talentsData.slice(0, 3);
 
   // Fetch all dashboard data on mount
   useEffect(() => {
@@ -128,6 +131,31 @@ export default function TalentAdminPage() {
     }
   };
 
+  const handleDeleteTalent = async (talentId) => {
+    const talentToDelete = talentsData.find((talent) => talent.id === talentId);
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${talentToDelete?.name || 'this talent'}"?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await apiService.deleteTalent(talentId);
+      setTalentsData((currentTalents) => currentTalents.filter((talent) => talent.id !== talentId));
+
+      if (editingTalentId === talentId) {
+        closeTalentModal();
+      }
+
+      if (showTalentListModal && talentsData.length <= 1) {
+        setShowTalentListModal(false);
+      }
+    } catch (err) {
+      console.error('Error deleting talent:', err);
+      alert('Failed to delete talent.');
+    }
+  };
+
   return (
     <div className="page-container">
       <Header title="Talent Management" />
@@ -194,16 +222,25 @@ export default function TalentAdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {talentsData.length > 0 ? (
-                    talentsData.map((talent) => (
+                  {displayedTalents.length > 0 ? (
+                    displayedTalents.map((talent) => (
                       <tr key={talent.id}>
                         <td>{talent.name || 'N/A'}</td>
                         <td>{talent.category || 'N/A'}</td>
                         <td>{talent.description || 'N/A'}</td>
                         <td>
-                          <button className="btn-action" onClick={() => openEditTalentModal(talent)}>
-                            Edit
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <button className="btn-action" onClick={() => openEditTalentModal(talent)}>
+                              Edit
+                            </button>
+                            <button
+                              className="btn-action"
+                              onClick={() => handleDeleteTalent(talent.id)}
+                              style={{ background: '#fee2e2', color: '#991b1b' }}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -212,6 +249,18 @@ export default function TalentAdminPage() {
                   )}
                 </tbody>
               </table>
+              {talentsData.length > 3 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowTalentListModal(true)}
+                    className="btn-action"
+                    style={{ background: '#eef2ff', color: '#1e3a8a', fontSize: '0.8rem' }}
+                  >
+                    View more
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -319,7 +368,7 @@ export default function TalentAdminPage() {
 
       {showAddTalentModal && (
         <div
-          onClick={() => setShowAddTalentModal(false)}
+          onClick={closeTalentModal}
           style={{
             position: 'fixed',
             inset: 0,
@@ -346,7 +395,7 @@ export default function TalentAdminPage() {
               <h3 style={{ margin: 0, color: '#111827' }}>{editingTalentId ? 'Edit Talent' : 'Add New Talent'}</h3>
               <button
                 type="button"
-                onClick={() => setShowAddTalentModal(false)}
+                onClick={closeTalentModal}
                 style={{
                   border: 'none',
                   background: '#f3f4f6',
@@ -362,7 +411,6 @@ export default function TalentAdminPage() {
                 ×
               </button>
             </div>
-
             <div style={{ display: 'grid', gap: '1rem' }}>
               <input
                 type="text"
@@ -416,6 +464,103 @@ export default function TalentAdminPage() {
                   {submitting ? (editingTalentId ? 'Saving...' : 'Adding...') : (editingTalentId ? 'Save Changes' : 'Add Talent')}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTalentListModal && (
+        <div
+          onClick={() => setShowTalentListModal(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '1rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '90vw',
+              maxWidth: '90vw',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              background: '#fff',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px rgba(15, 23, 42, 0.25)',
+              padding: '1.5rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#111827' }}>All Registered Talents</h3>
+              <button
+                type="button"
+                onClick={() => setShowTalentListModal(false)}
+                style={{
+                  border: 'none',
+                  background: '#f3f4f6',
+                  color: '#111827',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                }}
+                aria-label="Close talent list modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Talent Name</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {talentsData.length > 0 ? (
+                    talentsData.map((talent) => (
+                      <tr key={talent.id}>
+                        <td>{talent.name || 'N/A'}</td>
+                        <td>{talent.category || 'N/A'}</td>
+                        <td>{talent.description || 'N/A'}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <button
+                              className="btn-action"
+                              onClick={() => {
+                                setShowTalentListModal(false);
+                                openEditTalentModal(talent);
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="btn-action"
+                              onClick={() => handleDeleteTalent(talent.id)}
+                              style={{ background: '#fee2e2', color: '#991b1b' }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4">No talents found</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
