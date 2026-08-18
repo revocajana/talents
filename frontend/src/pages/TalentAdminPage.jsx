@@ -248,19 +248,19 @@ export default function TalentAdminPage() {
                   )}
                 </tbody>
               </table>
-              {talentsData.length > 3 && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowTalentListModal(true)}
-                    className="btn-action"
-                    style={{ background: '#eef2ff', color: '#1e3a8a', fontSize: '0.8rem' }}
-                  >
-                    View more
-                  </button>
-                </div>
-              )}
             </div>
+            {talentsData.length > 3 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowTalentListModal(true)}
+                  className="btn-action"
+                  style={{ background: '#eef2ff', color: '#1e3a8a', fontSize: '0.8rem' }}
+                >
+                  View more
+                </button>
+              </div>
+            )}
           </section>
 
           {/* Competitions Card */}
