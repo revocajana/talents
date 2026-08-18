@@ -185,8 +185,7 @@ export default function TalentAdminPage() {
           <section className="admin-section" id="talents-list">
             <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
               <div>
-                <h2>Registered Talents</h2>
-                <p>{talentsData.length} talents registered</p>
+                <h2>Registered Talents ({talentsData.length})</h2>
               </div>
               <button
                 type="button"
