@@ -8,6 +8,7 @@ export default function TalentAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showAddTalentModal, setShowAddTalentModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -71,15 +72,26 @@ export default function TalentAdminPage() {
       return;
     }
 
+    const payload = {
+      ...formData,
+      name: formData.name.trim(),
+      category: formData.category.toLowerCase(),
+    };
+
     setSubmitting(true);
     try {
-      const response = await apiService.createTalent(formData);
-      setTalentsData([...talentsData, response.data]);
+      const response = await apiService.createTalent(payload);
+      setTalentsData((currentTalents) => [...currentTalents, response.data]);
       setFormData({ name: '', category: '', description: '' });
+      setShowAddTalentModal(false);
       alert('Talent added successfully');
     } catch (err) {
       console.error('Error adding talent:', err);
-      alert('Failed to add talent: ' + (err.response?.data?.detail || err.message));
+      const backendError = err.response?.data;
+      const errorMessage = backendError
+        ? (backendError.detail || backendError.non_field_errors?.[0] || JSON.stringify(backendError))
+        : err.message;
+      alert('Failed to add talent: ' + errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -110,56 +122,35 @@ export default function TalentAdminPage() {
             </div>
           </section>
 
-          {/* Talents Management Card */}
-          <section className="admin-section" id="talents">
-            <div className="section-header">
-              <h2>Talents Management</h2>
-              <p>Add and manage talents</p>
-            </div>
-            <div className="form-container">
-              <h3>Add New Talent</h3>
-              <div className="form-grid">
-                <input
-                  type="text"
-                  placeholder="Talent Name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleFormChange}
-                  className="form-input"
-                  disabled={submitting}
-                />
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleFormChange}
-                  className="form-input"
-                  disabled={submitting}
-                >
-                  <option value="">Select Category</option>
-                  <option value="Sports">Sports</option>
-                  <option value="Arts">Arts</option>
-                  <option value="Technology">Technology</option>
-                  <option value="Academics">Academics</option>
-                  <option value="Music">Music</option>
-                </select>
-                <textarea
-                  placeholder="Description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleFormChange}
-                  className="form-input"
-                  disabled={submitting}
-                ></textarea>
-                <button onClick={handleAddTalent} className="btn-primary" style={{ gridColumn: '1 / -1' }} disabled={submitting}>{submitting ? 'Adding...' : 'Add Talent'}</button>
-              </div>
-            </div>
-          </section>
-
           {/* Registered Talents Card */}
           <section className="admin-section" id="talents-list">
-            <div className="section-header">
-              <h2>Registered Talents</h2>
-              <p>{talentsData.length} talents registered</p>
+            <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <div>
+                <h2>Registered Talents</h2>
+                <p>{talentsData.length} talents registered</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddTalentModal(true)}
+                style={{
+                  border: 'none',
+                  background: '#0E1DB6',
+                  color: '#fff',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  fontSize: '1.8rem',
+                  lineHeight: '1',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 6px 18px rgba(14, 29, 182, 0.25)',
+                }}
+                aria-label="Add talent"
+              >
+                +
+              </button>
             </div>
             <div className="table-container">
               <table className="data-table">
@@ -289,6 +280,110 @@ export default function TalentAdminPage() {
           </section>
         </div>
       </main>
+      )}
+
+      {showAddTalentModal && (
+        <div
+          onClick={() => setShowAddTalentModal(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '520px',
+              background: '#fff',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px rgba(15, 23, 42, 0.25)',
+              padding: '1.5rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#111827' }}>Add New Talent</h3>
+              <button
+                type="button"
+                onClick={() => setShowAddTalentModal(false)}
+                style={{
+                  border: 'none',
+                  background: '#f3f4f6',
+                  color: '#111827',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                }}
+                aria-label="Close add talent modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <input
+                type="text"
+                placeholder="Talent Name"
+                name="name"
+                value={formData.name}
+                onChange={handleFormChange}
+                className="form-input"
+                disabled={submitting}
+              />
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleFormChange}
+                className="form-input"
+                disabled={submitting}
+              >
+                <option value="">Select Category</option>
+                <option value="music">Music</option>
+                <option value="sports">Sports</option>
+                <option value="technology">Technology</option>
+                <option value="arts">Arts</option>
+                <option value="academics">Academics</option>
+                <option value="other">Other</option>
+              </select>
+              <textarea
+                placeholder="Description"
+                name="description"
+                value={formData.description}
+                onChange={handleFormChange}
+                className="form-input"
+                disabled={submitting}
+                rows="4"
+              ></textarea>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddTalentModal(false)}
+                  className="btn-action"
+                  style={{ background: '#e5e7eb', color: '#111827' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddTalent}
+                  className="btn-primary"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Adding...' : 'Add Talent'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
