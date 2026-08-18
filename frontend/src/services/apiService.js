@@ -21,7 +21,31 @@ api.interceptors.request.use(
 
 // Handle token refresh on 401
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const data = response?.data;
+
+    if (Array.isArray(data)) {
+      return {
+        ...response,
+        data: {
+          count: data.length,
+          results: data,
+        },
+      };
+    }
+
+    if (data && Array.isArray(data.results) && typeof data.count !== 'number') {
+      return {
+        ...response,
+        data: {
+          ...data,
+          count: data.results.length,
+        },
+      };
+    }
+
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 

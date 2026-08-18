@@ -6,7 +6,9 @@ const API_BASE_URL = 'http://localhost:8000';
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [token, setToken] = useState(
+    localStorage.getItem('access_token') || localStorage.getItem('token') || null
+  );
 
   const resolveRole = (role, isSuperuser) => {
     if (role && role.trim()) return role;
@@ -34,7 +36,14 @@ export const AuthProvider = ({ children }) => {
 
       const tokenData = await tokenResponse.json();
       const accessToken = tokenData.access;
+      const refreshToken = tokenData.refresh;
       console.log('Token received successfully');
+
+      localStorage.setItem('access_token', accessToken);
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
+      localStorage.setItem('token', accessToken);
 
       const profileResponse = await fetch(`${API_BASE_URL}/api/users/current/`, {
         headers: {
@@ -89,11 +98,13 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
   };
 
   const checkAuth = () => {
     const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('access_token') || localStorage.getItem('token');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
