@@ -9,6 +9,7 @@ export default function TalentAdminPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showAddTalentModal, setShowAddTalentModal] = useState(false);
+  const [editingTalentId, setEditingTalentId] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -66,6 +67,28 @@ export default function TalentAdminPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const openAddTalentModal = () => {
+    setEditingTalentId(null);
+    setFormData({ name: '', category: '', description: '' });
+    setShowAddTalentModal(true);
+  };
+
+  const openEditTalentModal = (talent) => {
+    setEditingTalentId(talent.id);
+    setFormData({
+      name: talent.name || '',
+      category: (talent.category || '').toLowerCase(),
+      description: talent.description || '',
+    });
+    setShowAddTalentModal(true);
+  };
+
+  const closeTalentModal = () => {
+    setShowAddTalentModal(false);
+    setEditingTalentId(null);
+    setFormData({ name: '', category: '', description: '' });
+  };
+
   const handleAddTalent = async () => {
     if (!formData.name || !formData.category) {
       alert('Please fill in talent name and category');
@@ -80,18 +103,26 @@ export default function TalentAdminPage() {
 
     setSubmitting(true);
     try {
-      const response = await apiService.createTalent(payload);
-      setTalentsData((currentTalents) => [...currentTalents, response.data]);
-      setFormData({ name: '', category: '', description: '' });
-      setShowAddTalentModal(false);
-      alert('Talent added successfully');
+      if (editingTalentId) {
+        const response = await apiService.updateTalent(editingTalentId, payload);
+        setTalentsData((currentTalents) =>
+          currentTalents.map((talent) => (talent.id === editingTalentId ? response.data : talent))
+        );
+        alert('Talent updated successfully');
+      } else {
+        const response = await apiService.createTalent(payload);
+        setTalentsData((currentTalents) => [...currentTalents, response.data]);
+        alert('Talent added successfully');
+      }
+
+      closeTalentModal();
     } catch (err) {
-      console.error('Error adding talent:', err);
+      console.error('Error saving talent:', err);
       const backendError = err.response?.data;
       const errorMessage = backendError
         ? (backendError.detail || backendError.non_field_errors?.[0] || JSON.stringify(backendError))
         : err.message;
-      alert('Failed to add talent: ' + errorMessage);
+      alert('Failed to save talent: ' + errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -131,7 +162,7 @@ export default function TalentAdminPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddTalentModal(true)}
+                onClick={openAddTalentModal}
                 style={{
                   border: 'none',
                   background: '#0E1DB6',
@@ -169,7 +200,11 @@ export default function TalentAdminPage() {
                         <td>{talent.name || 'N/A'}</td>
                         <td>{talent.category || 'N/A'}</td>
                         <td>{talent.description || 'N/A'}</td>
-                        <td><button className="btn-action">Edit</button></td>
+                        <td>
+                          <button className="btn-action" onClick={() => openEditTalentModal(talent)}>
+                            Edit
+                          </button>
+                        </td>
                       </tr>
                     ))
                   ) : (
@@ -308,7 +343,7 @@ export default function TalentAdminPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, color: '#111827' }}>Add New Talent</h3>
+              <h3 style={{ margin: 0, color: '#111827' }}>{editingTalentId ? 'Edit Talent' : 'Add New Talent'}</h3>
               <button
                 type="button"
                 onClick={() => setShowAddTalentModal(false)}
@@ -366,7 +401,7 @@ export default function TalentAdminPage() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
                   type="button"
-                  onClick={() => setShowAddTalentModal(false)}
+                  onClick={closeTalentModal}
                   className="btn-action"
                   style={{ background: '#e5e7eb', color: '#111827' }}
                 >
@@ -378,7 +413,7 @@ export default function TalentAdminPage() {
                   className="btn-primary"
                   disabled={submitting}
                 >
-                  {submitting ? 'Adding...' : 'Add Talent'}
+                  {submitting ? (editingTalentId ? 'Saving...' : 'Adding...') : (editingTalentId ? 'Save Changes' : 'Add Talent')}
                 </button>
               </div>
             </div>
