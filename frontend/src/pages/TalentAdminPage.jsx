@@ -33,6 +33,7 @@ export default function TalentAdminPage() {
     region_managers: 0,
     zone_managers: 0,
     district_managers: 0,
+    ward_managers: 0,
     head_teachers: 0,
     sport_teachers: 0,
     countries: 0,
@@ -545,9 +546,10 @@ export default function TalentAdminPage() {
               <div className="report-card">
                 <h4>Users by Role</h4>
                 <ul className="report-list">
-                  <li onClick={() => openUserRoleModal('region_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('region_manager')} role="button" tabIndex={0}><span>Region Managers:</span> {reportStats.region_managers}</li>
                   <li onClick={() => openUserRoleModal('zone_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('zone_manager')} role="button" tabIndex={0}><span>Zone Managers:</span> {reportStats.zone_managers}</li>
+                  <li onClick={() => openUserRoleModal('region_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('region_manager')} role="button" tabIndex={0}><span>Region Managers:</span> {reportStats.region_managers}</li>
                   <li onClick={() => openUserRoleModal('district_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('district_manager')} role="button" tabIndex={0}><span>District Managers:</span> {reportStats.district_managers}</li>
+                  <li onClick={() => openUserRoleModal('ward_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('ward_manager')} role="button" tabIndex={0}><span>Ward Managers:</span> {reportStats.ward_managers}</li>
                   <li onClick={() => openUserRoleModal('head_teacher')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('head_teacher')} role="button" tabIndex={0}><span>Head Teachers:</span> {reportStats.head_teachers}</li>
                   <li onClick={() => openUserRoleModal('sport_teacher')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('sport_teacher')} role="button" tabIndex={0}><span>Sport Teachers:</span> {reportStats.sport_teachers}</li>
                 </ul>

@@ -68,6 +68,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'zone_managers': User.objects.filter(role='zone_manager').count(),
             'sport_teachers': User.objects.filter(role='sport_teacher').count(),
             'district_managers': User.objects.filter(role='district_manager').count(),
+            'ward_managers': User.objects.filter(role='ward_manager').count(),
             'head_teachers': User.objects.filter(role='head_teacher').count(),
             'ward_managers': User.objects.filter(role='ward_manager').count(),
             'admins': User.objects.filter(is_staff=True, is_superuser=True).count(),
