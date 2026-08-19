@@ -14,7 +14,7 @@ export default function TalentAdminPage() {
   const [showUserListModal, setShowUserListModal] = useState(false);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
-  const [userForm, setUserForm] = useState({ username: '', first_name: '', last_name: '', email: '', role: '', school: null });
+  const [userForm, setUserForm] = useState({ username: '', password: '', first_name: '', last_name: '', email: '', role: '', school: null });
   const [selectedUserRole, setSelectedUserRole] = useState(null);
   const [showDemographicModal, setShowDemographicModal] = useState(false);
   const [showDemographicForm, setShowDemographicForm] = useState(false);
@@ -168,15 +168,16 @@ export default function TalentAdminPage() {
     setSelectedUserRole(null);
   };
 
-  const openUserEditModal = (user) => {
-    setEditingUserId(user.id);
+  const openUserEditModal = (user = null) => {
+    setEditingUserId(user?.id || null);
     setUserForm({
-      username: user.username || '',
-      first_name: user.first_name || '',
-      last_name: user.last_name || '',
-      email: user.email || '',
-      role: user.role || '',
-      school: user.school || null,
+      username: user?.username || '',
+      password: '',
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
+      email: user?.email || '',
+      role: user?.role || selectedUserRole || '',
+      school: user?.school || null,
     });
     setShowUserEditModal(true);
   };
@@ -186,14 +187,27 @@ export default function TalentAdminPage() {
   };
 
   const handleSaveUser = async () => {
+    if (!editingUserId && (!userForm.username || !userForm.password || !userForm.role)) {
+      alert('Username, password, and role are required.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const response = await apiService.updateUser(editingUserId, userForm);
-      setUsersData((currentUsers) => currentUsers.map((user) => user.id === editingUserId ? response.data : user));
+      const response = editingUserId
+        ? await apiService.updateUser(editingUserId, userForm)
+        : await apiService.createUser(userForm);
+      setUsersData((currentUsers) => editingUserId
+        ? currentUsers.map((user) => user.id === editingUserId ? response.data : user)
+        : [...currentUsers, response.data]);
       setShowUserEditModal(false);
     } catch (err) {
       console.error('Error updating user:', err);
-      alert('Failed to update user.');
+      const backendError = err.response?.data;
+      const errorMessage = backendError
+        ? (backendError.detail || Object.values(backendError).flat().join(' ') || JSON.stringify(backendError))
+        : err.message;
+      alert(`Failed to save user: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
@@ -650,14 +664,26 @@ export default function TalentAdminPage() {
                   ? `${editingDemographicId ? 'Edit' : 'Add'} ${demographicConfigs[demographicType].singular}`
                   : `${demographicConfigs[demographicType].label} (${demographicData[demographicType].length})`}
               </h3>
-              <button
-                type="button"
-                onClick={closeDemographicModal}
-                className="btn-action"
-                aria-label="Close demographic modal"
-              >
-                ×
-              </button>
+              <div className="popup-header-actions">
+                {!showDemographicForm && (
+                  <button
+                    type="button"
+                    onClick={openAddDemographicForm}
+                    className="modal-add-action"
+                    aria-label={`Add ${demographicConfigs[demographicType].singular}`}
+                  >
+                    +
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={closeDemographicModal}
+                  className="modal-close-action"
+                  aria-label="Close demographic modal"
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
             {!showDemographicForm ? (
@@ -673,9 +699,6 @@ export default function TalentAdminPage() {
                       style={{ flex: '1 1 220px' }}
                     />
                   )}
-                  <button type="button" className="btn-primary" onClick={openAddDemographicForm}>
-                    + Add {demographicConfigs[demographicType].singular}
-                  </button>
                 </div>
                 <div className="table-container">
                   <table className="data-table">
@@ -798,16 +821,7 @@ export default function TalentAdminPage() {
               <button
                 type="button"
                 onClick={closeTalentModal}
-                style={{
-                  border: 'none',
-                  background: '#f3f4f6',
-                  color: '#111827',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  fontSize: '1.25rem',
-                }}
+                className="modal-close-action"
                 aria-label="Close add talent modal"
               >
                 ×
@@ -904,16 +918,7 @@ export default function TalentAdminPage() {
               <button
                 type="button"
                 onClick={() => setShowTalentListModal(false)}
-                style={{
-                  border: 'none',
-                  background: '#f3f4f6',
-                  color: '#111827',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  fontSize: '1.25rem',
-                }}
+                className="modal-close-action"
                 aria-label="Close talent list modal"
               >
                 ×
@@ -1002,7 +1007,7 @@ export default function TalentAdminPage() {
               <button
                 type="button"
                 onClick={() => setShowCompetitionListModal(false)}
-                className="btn-action"
+                className="modal-close-action"
                 aria-label="Close competitions modal"
               >
                 ×
@@ -1066,21 +1071,30 @@ export default function TalentAdminPage() {
               <h3 style={{ margin: 0, color: '#111827' }}>
                 {selectedUserRole ? `${selectedUserRole.replace('_', ' ')} users` : 'All Users & Staff'} ({usersForModal.length})
               </h3>
-              <button
-                type="button"
-                onClick={closeUserListModal}
-                className="btn-action"
-                aria-label="Close users modal"
-              >
-                ×
-              </button>
+              <div className="popup-header-actions">
+                <button
+                  type="button"
+                  onClick={() => openUserEditModal()}
+                  className="modal-add-action user-add-action"
+                  aria-label="Add user"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={closeUserListModal}
+                  className="modal-close-action"
+                  aria-label="Close users modal"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             <div className="table-container">
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>Name</th>
-                    <th>Role</th>
                     <th>Email</th>
                     <th>Actions</th>
                   </tr>
@@ -1089,7 +1103,6 @@ export default function TalentAdminPage() {
                   {usersForModal.map((user) => (
                     <tr key={user.id}>
                       <td>{user.first_name} {user.last_name}</td>
-                      <td>{user.role || 'N/A'}</td>
                       <td>{user.email || 'N/A'}</td>
                       <td>
                         <div className="report-popup-actions">
@@ -1126,11 +1139,12 @@ export default function TalentAdminPage() {
         >
           <div className="compact-modal" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: '420px', background: '#fff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, color: '#111827' }}>Edit User</h3>
-              <button type="button" className="report-text-action" onClick={() => setShowUserEditModal(false)} aria-label="Close edit user modal">×</button>
+              <h3 style={{ margin: 0, color: '#111827' }}>{editingUserId ? 'Edit User' : 'Add User'}</h3>
+              <button type="button" className="modal-close-action" onClick={() => setShowUserEditModal(false)} aria-label="Close edit user modal">×</button>
             </div>
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <input className="form-input" name="username" value={userForm.username} onChange={handleUserFormChange} placeholder="Username" disabled={submitting} />
+              <input className="form-input" type="password" name="password" value={userForm.password} onChange={handleUserFormChange} placeholder={editingUserId ? 'New password (optional)' : 'Password'} disabled={submitting} />
               <input className="form-input" name="first_name" value={userForm.first_name} onChange={handleUserFormChange} placeholder="First name" disabled={submitting} />
               <input className="form-input" name="last_name" value={userForm.last_name} onChange={handleUserFormChange} placeholder="Last name" disabled={submitting} />
               <input className="form-input" type="email" name="email" value={userForm.email} onChange={handleUserFormChange} placeholder="Email" disabled={submitting} />
@@ -1145,7 +1159,7 @@ export default function TalentAdminPage() {
               </select>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button type="button" className="report-text-action" onClick={() => setShowUserEditModal(false)} disabled={submitting}>Cancel</button>
-                <button type="button" className="btn-primary" onClick={handleSaveUser} disabled={submitting}>{submitting ? 'Saving...' : 'Save'}</button>
+                <button type="button" className="btn-primary" onClick={handleSaveUser} disabled={submitting}>{submitting ? 'Saving...' : editingUserId ? 'Save' : 'Add User'}</button>
               </div>
             </div>
           </div>

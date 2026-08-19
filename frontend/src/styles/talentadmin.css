@@ -200,6 +200,43 @@
   font-size: 0.8rem;
 }
 
+.popup-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.modal-add-action,
+.modal-close-action {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-add-action {
+  color: #111827;
+}
+
+.modal-add-action.user-add-action {
+  color: #2563eb;
+}
+
+.modal-close-action {
+  color: #b45353;
+}
+
+.modal-add-action:hover,
+.modal-close-action:hover {
+  background: #f3f4f6;
+}
+
 .section-header {
   margin-bottom: 1.5rem;
 }
