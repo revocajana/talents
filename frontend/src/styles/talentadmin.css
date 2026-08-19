@@ -165,6 +165,31 @@
   background-color: #f3f4f6;
 }
 
+.talent-summary {
+  margin-top: 0.25rem;
+}
+
+.talent-summary-list li {
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.talent-summary-info {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.talent-summary-info strong {
+  color: #111827;
+  font-size: 0.9rem;
+}
+
+.talent-summary-info span {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
 .simple-list-empty {
   padding: 1rem 0;
   color: #6b7280;

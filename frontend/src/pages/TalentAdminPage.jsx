@@ -453,39 +453,30 @@ export default function TalentAdminPage() {
                 +
               </button>
             </div>
-            <div className="table-container">
+            <div className="report-card talent-summary">
               {displayedTalents.length > 0 ? (
-                <table className="data-table talent-table">
-                  <thead>
-                    <tr>
-                      <th>Talent</th>
-                      <th>Category</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedTalents.map((talent) => (
-                      <tr key={talent.id}>
-                        <td>{talent.name || 'N/A'}</td>
-                        <td>{talent.category || 'N/A'}</td>
-                        <td>
-                          <div className="simple-list-actions">
-                            <button className="btn-action btn-edit" onClick={() => openEditTalentModal(talent)}>
-                              Edit
-                            </button>
-                            <button
-                              className="btn-action"
-                              onClick={() => handleDeleteTalent(talent.id)}
-                              style={{ background: '#fff', color: '#b45353' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <ul className="report-list talent-summary-list">
+                  {displayedTalents.map((talent) => (
+                    <li key={talent.id}>
+                      <div className="talent-summary-info">
+                        <strong>{talent.name || 'N/A'}</strong>
+                        <span>{talent.category || 'N/A'}</span>
+                      </div>
+                      <div className="simple-list-actions">
+                        <button className="btn-action btn-edit" onClick={() => openEditTalentModal(talent)}>
+                          Edit
+                        </button>
+                        <button
+                          className="btn-action"
+                          onClick={() => handleDeleteTalent(talent.id)}
+                          style={{ background: '#fff', color: '#b45353' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <div className="simple-list-empty">No talents found</div>
               )}
@@ -669,7 +660,7 @@ export default function TalentAdminPage() {
                   <button
                     type="button"
                     onClick={openAddDemographicForm}
-                    className="modal-add-action"
+                    className="modal-add-action user-add-action"
                     aria-label={`Add ${demographicConfigs[demographicType].singular}`}
                   >
                     +
@@ -725,14 +716,13 @@ export default function TalentAdminPage() {
                           {demographicType === 'schools' && <td>{item.ownership_type || 'N/A'}</td>}
                           <td>
                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                              <button type="button" className="btn-action btn-edit" onClick={() => openDemographicModal(demographicType, item)}>
+                              <button type="button" className="report-text-action report-edit-action" onClick={() => openDemographicModal(demographicType, item)}>
                                 Edit
                               </button>
                               <button
                                 type="button"
-                                className="btn-action"
+                                className="report-text-action report-delete-action"
                                 onClick={() => handleDeleteDemographic(demographicType, item.id)}
-                                style={{ background: '#fff', color: '#b45353' }}
                               >
                                 Delete
                               </button>
