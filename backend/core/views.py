@@ -64,6 +64,8 @@ class UserViewSet(viewsets.ModelViewSet):
         """Return counts of schools and users by role."""
         return Response({
             'schools': School.objects.count(),
+            'region_managers': User.objects.filter(role='region_manager').count(),
+            'zone_managers': User.objects.filter(role='zone_manager').count(),
             'sport_teachers': User.objects.filter(role='sport_teacher').count(),
             'district_managers': User.objects.filter(role='district_manager').count(),
             'head_teachers': User.objects.filter(role='head_teacher').count(),

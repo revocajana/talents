@@ -12,6 +12,7 @@ export default function TalentAdminPage() {
   const [showTalentListModal, setShowTalentListModal] = useState(false);
   const [showCompetitionListModal, setShowCompetitionListModal] = useState(false);
   const [showUserListModal, setShowUserListModal] = useState(false);
+  const [selectedUserRole, setSelectedUserRole] = useState(null);
   const [showDemographicModal, setShowDemographicModal] = useState(false);
   const [showDemographicForm, setShowDemographicForm] = useState(false);
   const [demographicType, setDemographicType] = useState('zones');
@@ -28,6 +29,19 @@ export default function TalentAdminPage() {
   const [talentsData, setTalentsData] = useState([]);
   const [competitionsData, setCompetitionsData] = useState([]);
   const [usersData, setUsersData] = useState([]);
+  const [reportStats, setReportStats] = useState({
+    region_managers: 0,
+    zone_managers: 0,
+    district_managers: 0,
+    head_teachers: 0,
+    sport_teachers: 0,
+    countries: 0,
+    zones: 0,
+    regions: 0,
+    districts: 0,
+    wards: 0,
+    schools: 0,
+  });
   const [demographicData, setDemographicData] = useState({
     countries: [],
     zones: [],
@@ -40,6 +54,9 @@ export default function TalentAdminPage() {
   const displayedTalents = talentsData.slice(0, 3);
   const displayedCompetitions = competitionsData.slice(0, 3);
   const displayedUsers = usersData.slice(0, 3);
+  const usersForModal = selectedUserRole
+    ? usersData.filter((user) => user.role === selectedUserRole)
+    : usersData;
 
   const demographicConfigs = {
     countries: { label: 'Countries', singular: 'Country', collection: 'countries' },
@@ -65,10 +82,11 @@ export default function TalentAdminPage() {
         setLoading(true);
         setError(null);
 
-        const [talentsRes, competitionsRes, usersRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, schoolsRes] = await Promise.all([
+        const [talentsRes, competitionsRes, usersRes, userStatsRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, schoolsRes] = await Promise.all([
           apiService.getTalents(),
           apiService.getCompetitions(),
           apiService.getUsers(),
+          apiService.getUserStats(),
           apiService.getCountries(),
           apiService.getZones(),
           apiService.getRegions(),
@@ -80,6 +98,15 @@ export default function TalentAdminPage() {
         setTalentsData(talentsRes.data.results || []);
         setCompetitionsData(competitionsRes.data.results || []);
         setUsersData(usersRes.data.results || []);
+        setReportStats({
+          ...userStatsRes.data,
+          countries: countriesRes.data.count ?? (countriesRes.data.results || []).length,
+          zones: zonesRes.data.count ?? (zonesRes.data.results || []).length,
+          regions: regionsRes.data.count ?? (regionsRes.data.results || []).length,
+          districts: districtsRes.data.count ?? (districtsRes.data.results || []).length,
+          wards: wardsRes.data.count ?? (wardsRes.data.results || []).length,
+          schools: schoolsRes.data.count ?? (schoolsRes.data.results || []).length,
+        });
         setDemographicData({
           countries: countriesRes.data.results || [],
           zones: zonesRes.data.results || [],
@@ -125,6 +152,16 @@ export default function TalentAdminPage() {
   const openAddDemographicForm = (type = demographicType) => {
     openDemographicModal(type);
     setShowDemographicForm(true);
+  };
+
+  const openUserRoleModal = (role) => {
+    setSelectedUserRole(role);
+    setShowUserListModal(true);
+  };
+
+  const closeUserListModal = () => {
+    setShowUserListModal(false);
+    setSelectedUserRole(null);
   };
 
   const closeDemographicModal = () => {
@@ -326,52 +363,6 @@ export default function TalentAdminPage() {
       ) : (
       <main className="admin-content">
         <div className="cards-container">
-          {/* Demographic Management Card */}
-          <section className="admin-section demographic-section">
-            <div className="section-header">
-              <h2>Demographic Management</h2>
-              <p>Manage the geographic hierarchy</p>
-            </div>
-            <div className="stats-overview">
-              {Object.entries(demographicConfigs).map(([type, config]) => (
-                <div
-                  key={type}
-                  className="stat-card demographic-card"
-                  onClick={() => openDemographicModal(type)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && openDemographicModal(type)}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                    <p className="stat-label">{config.label}</p>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAddDemographicForm(type);
-                      }}
-                      aria-label={`Add ${config.singular}`}
-                      style={{
-                        border: 'none',
-                        background: '#111827',
-                        color: '#fff',
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        fontSize: '1.25rem',
-                        lineHeight: '1',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      +
-                    </button>
-                  </div>
-                  <h3 className="stat-value">{config.label} ({demographicData[type].length})</h3>
-                </div>
-              ))}
-            </div>
-          </section>
-
           {/* Registered Talents Card */}
           <section className="admin-section" id="talents-list">
             <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
@@ -554,22 +545,23 @@ export default function TalentAdminPage() {
               <div className="report-card">
                 <h4>Users by Role</h4>
                 <ul className="report-list">
-                  <li><span>Region Managers:</span> 5</li>
-                  <li><span>Zone Managers:</span> 8</li>
-                  <li><span>District Managers:</span> 24</li>
-                  <li><span>Head Teachers:</span> 145</li>
-                  <li><span>Sport Teachers:</span> 289</li>
+                  <li onClick={() => openUserRoleModal('region_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('region_manager')} role="button" tabIndex={0}><span>Region Managers:</span> {reportStats.region_managers}</li>
+                  <li onClick={() => openUserRoleModal('zone_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('zone_manager')} role="button" tabIndex={0}><span>Zone Managers:</span> {reportStats.zone_managers}</li>
+                  <li onClick={() => openUserRoleModal('district_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('district_manager')} role="button" tabIndex={0}><span>District Managers:</span> {reportStats.district_managers}</li>
+                  <li onClick={() => openUserRoleModal('head_teacher')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('head_teacher')} role="button" tabIndex={0}><span>Head Teachers:</span> {reportStats.head_teachers}</li>
+                  <li onClick={() => openUserRoleModal('sport_teacher')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('sport_teacher')} role="button" tabIndex={0}><span>Sport Teachers:</span> {reportStats.sport_teachers}</li>
                 </ul>
               </div>
               
               <div className="report-card">
                 <h4>Geographic Coverage</h4>
                 <ul className="report-list">
-                  <li><span>Zones:</span> 5</li>
-                  <li><span>Regions:</span> 18</li>
-                  <li><span>Districts:</span> 89</li>
-                  <li><span>Wards:</span> 320</li>
-                  <li><span>Schools:</span> 145</li>
+                  <li onClick={() => openDemographicModal('countries')} onKeyDown={(e) => e.key === 'Enter' && openDemographicModal('countries')} role="button" tabIndex={0}><span>Countries:</span> {reportStats.countries}</li>
+                  <li onClick={() => openDemographicModal('zones')} onKeyDown={(e) => e.key === 'Enter' && openDemographicModal('zones')} role="button" tabIndex={0}><span>Zones:</span> {reportStats.zones}</li>
+                  <li onClick={() => openDemographicModal('regions')} onKeyDown={(e) => e.key === 'Enter' && openDemographicModal('regions')} role="button" tabIndex={0}><span>Regions:</span> {reportStats.regions}</li>
+                  <li onClick={() => openDemographicModal('districts')} onKeyDown={(e) => e.key === 'Enter' && openDemographicModal('districts')} role="button" tabIndex={0}><span>Districts:</span> {reportStats.districts}</li>
+                  <li onClick={() => openDemographicModal('wards')} onKeyDown={(e) => e.key === 'Enter' && openDemographicModal('wards')} role="button" tabIndex={0}><span>Wards:</span> {reportStats.wards}</li>
+                  <li onClick={() => openDemographicModal('schools')} onKeyDown={(e) => e.key === 'Enter' && openDemographicModal('schools')} role="button" tabIndex={0}><span>Schools:</span> {reportStats.schools}</li>
                 </ul>
               </div>
             </div>
@@ -994,7 +986,7 @@ export default function TalentAdminPage() {
 
       {showUserListModal && (
         <div
-          onClick={() => setShowUserListModal(false)}
+          onClick={closeUserListModal}
           style={{
             position: 'fixed',
             inset: 0,
@@ -1020,10 +1012,12 @@ export default function TalentAdminPage() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, color: '#111827' }}>All Users &amp; Staff ({usersData.length})</h3>
+              <h3 style={{ margin: 0, color: '#111827' }}>
+                {selectedUserRole ? `${selectedUserRole.replace('_', ' ')} users` : 'All Users & Staff'} ({usersForModal.length})
+              </h3>
               <button
                 type="button"
-                onClick={() => setShowUserListModal(false)}
+                onClick={closeUserListModal}
                 className="btn-action"
                 aria-label="Close users modal"
               >
@@ -1041,7 +1035,7 @@ export default function TalentAdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {usersData.map((user) => (
+                  {usersForModal.map((user) => (
                     <tr key={user.id}>
                       <td>{user.first_name} {user.last_name}</td>
                       <td>{user.role || 'N/A'}</td>
