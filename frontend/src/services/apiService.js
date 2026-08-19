@@ -103,6 +103,8 @@ export const deleteSchool = (id) => api.delete(`/schools/${id}/`);
 export const getCurrentUser = () => api.get('/users/current/');
 export const getUserStats = () => api.get('/users/stats/');
 export const getUsers = (params = {}) => api.get('/users/', { params });
+export const updateUser = (id, data) => api.put(`/users/${id}/`, data);
+export const deleteUser = (id) => api.delete(`/users/${id}/`);
 
 // ==================== TALENT SYSTEM ====================
 

@@ -12,6 +12,9 @@ export default function TalentAdminPage() {
   const [showTalentListModal, setShowTalentListModal] = useState(false);
   const [showCompetitionListModal, setShowCompetitionListModal] = useState(false);
   const [showUserListModal, setShowUserListModal] = useState(false);
+  const [showUserEditModal, setShowUserEditModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [userForm, setUserForm] = useState({ username: '', first_name: '', last_name: '', email: '', role: '', school: null });
   const [selectedUserRole, setSelectedUserRole] = useState(null);
   const [showDemographicModal, setShowDemographicModal] = useState(false);
   const [showDemographicForm, setShowDemographicForm] = useState(false);
@@ -163,6 +166,49 @@ export default function TalentAdminPage() {
   const closeUserListModal = () => {
     setShowUserListModal(false);
     setSelectedUserRole(null);
+  };
+
+  const openUserEditModal = (user) => {
+    setEditingUserId(user.id);
+    setUserForm({
+      username: user.username || '',
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      email: user.email || '',
+      role: user.role || '',
+      school: user.school || null,
+    });
+    setShowUserEditModal(true);
+  };
+
+  const handleUserFormChange = (e) => {
+    setUserForm({ ...userForm, [e.target.name]: e.target.value });
+  };
+
+  const handleSaveUser = async () => {
+    setSubmitting(true);
+    try {
+      const response = await apiService.updateUser(editingUserId, userForm);
+      setUsersData((currentUsers) => currentUsers.map((user) => user.id === editingUserId ? response.data : user));
+      setShowUserEditModal(false);
+    } catch (err) {
+      console.error('Error updating user:', err);
+      alert('Failed to update user.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Delete this user?')) return;
+
+    try {
+      await apiService.deleteUser(userId);
+      setUsersData((currentUsers) => currentUsers.filter((user) => user.id !== userId));
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      alert('Failed to delete user.');
+    }
   };
 
   const closeDemographicModal = () => {
@@ -365,7 +411,7 @@ export default function TalentAdminPage() {
       <main className="admin-content">
         <div className="cards-container">
           {/* Registered Talents Card */}
-          <section className="admin-section" id="talents-list">
+          <section className="admin-section compact-card" id="talents-list">
             <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
               <div>
                 <h2>Registered Talents ({talentsData.length})</h2>
@@ -377,16 +423,16 @@ export default function TalentAdminPage() {
                   border: 'none',
                   background: '#111827',
                   color: '#fff',
-                  width: '40px',
-                  height: '40px',
+                  width: '32px',
+                  height: '32px',
                   borderRadius: '50%',
-                  fontSize: '1.8rem',
+                  fontSize: '1.4rem',
                   lineHeight: '1',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 6px 18px rgba(14, 29, 182, 0.25)',
+                  boxShadow: 'none',
                 }}
                 aria-label="Add talent"
               >
@@ -394,24 +440,22 @@ export default function TalentAdminPage() {
               </button>
             </div>
             <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Talent Name</th>
-                    <th>Category</th>
-                    <th>Description</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedTalents.length > 0 ? (
-                    displayedTalents.map((talent) => (
+              {displayedTalents.length > 0 ? (
+                <table className="data-table talent-table">
+                  <thead>
+                    <tr>
+                      <th>Talent</th>
+                      <th>Category</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedTalents.map((talent) => (
                       <tr key={talent.id}>
                         <td>{talent.name || 'N/A'}</td>
                         <td>{talent.category || 'N/A'}</td>
-                        <td>{talent.description || 'N/A'}</td>
                         <td>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <div className="simple-list-actions">
                             <button className="btn-action btn-edit" onClick={() => openEditTalentModal(talent)}>
                               Edit
                             </button>
@@ -425,12 +469,12 @@ export default function TalentAdminPage() {
                           </div>
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan="4">No talents found</td></tr>
-                  )}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="simple-list-empty">No talents found</div>
+              )}
             </div>
             {talentsData.length > 3 && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
@@ -447,7 +491,7 @@ export default function TalentAdminPage() {
           </section>
 
           {/* Competitions Card */}
-          <section className="admin-section" id="competitions">
+          <section className="admin-section compact-card" id="competitions">
             <div className="section-header">
               <h2>Competitions ({competitionsData.length})</h2>
             </div>
@@ -492,7 +536,7 @@ export default function TalentAdminPage() {
           </section>
 
           {/* Users & Staff Card */}
-          <section className="admin-section" id="users">
+          <section className="admin-section compact-card" id="users">
             <div className="section-header">
               <h2>Users &amp; Staff ({usersData.length})</h2>
             </div>
@@ -587,6 +631,7 @@ export default function TalentAdminPage() {
           }}
         >
           <div
+            className="compact-modal"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
@@ -737,6 +782,7 @@ export default function TalentAdminPage() {
           }}
         >
           <div
+            className="compact-modal"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
@@ -840,10 +886,11 @@ export default function TalentAdminPage() {
           }}
         >
           <div
+            className="compact-modal"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: '90vw',
-              maxWidth: '90vw',
+              width: '100%',
+              maxWidth: '520px',
               maxHeight: '80vh',
               overflowY: 'auto',
               background: '#fff',
@@ -937,10 +984,11 @@ export default function TalentAdminPage() {
           }}
         >
           <div
+            className="compact-modal"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: '90vw',
-              maxWidth: '90vw',
+              width: '100%',
+              maxWidth: '520px',
               maxHeight: '80vh',
               overflowY: 'auto',
               background: '#fff',
@@ -1001,10 +1049,11 @@ export default function TalentAdminPage() {
           }}
         >
           <div
+            className="compact-modal"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: '90vw',
-              maxWidth: '90vw',
+              width: '100%',
+              maxWidth: '520px',
               maxHeight: '80vh',
               overflowY: 'auto',
               background: '#fff',
@@ -1042,11 +1091,62 @@ export default function TalentAdminPage() {
                       <td>{user.first_name} {user.last_name}</td>
                       <td>{user.role || 'N/A'}</td>
                       <td>{user.email || 'N/A'}</td>
-                      <td><button className="btn-action">Manage</button></td>
+                      <td>
+                        <div className="report-popup-actions">
+                          <button type="button" className="report-text-action report-edit-action" onClick={() => openUserEditModal(user)}>
+                            Edit
+                          </button>
+                          <button type="button" className="report-text-action report-delete-action" onClick={() => handleDeleteUser(user.id)}>
+                            Delete
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUserEditModal && (
+        <div
+          onClick={() => setShowUserEditModal(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1200,
+            padding: '1rem',
+          }}
+        >
+          <div className="compact-modal" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: '420px', background: '#fff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#111827' }}>Edit User</h3>
+              <button type="button" className="report-text-action" onClick={() => setShowUserEditModal(false)} aria-label="Close edit user modal">×</button>
+            </div>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <input className="form-input" name="username" value={userForm.username} onChange={handleUserFormChange} placeholder="Username" disabled={submitting} />
+              <input className="form-input" name="first_name" value={userForm.first_name} onChange={handleUserFormChange} placeholder="First name" disabled={submitting} />
+              <input className="form-input" name="last_name" value={userForm.last_name} onChange={handleUserFormChange} placeholder="Last name" disabled={submitting} />
+              <input className="form-input" type="email" name="email" value={userForm.email} onChange={handleUserFormChange} placeholder="Email" disabled={submitting} />
+              <select className="form-input" name="role" value={userForm.role} onChange={handleUserFormChange} disabled={submitting}>
+                <option value="">Select role</option>
+                <option value="region_manager">Region Manager</option>
+                <option value="zone_manager">Zone Manager</option>
+                <option value="district_manager">District Manager</option>
+                <option value="ward_manager">Ward Manager</option>
+                <option value="head_teacher">Head Teacher</option>
+                <option value="sport_teacher">Sport Teacher</option>
+              </select>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <button type="button" className="report-text-action" onClick={() => setShowUserEditModal(false)} disabled={submitting}>Cancel</button>
+                <button type="button" className="btn-primary" onClick={handleSaveUser} disabled={submitting}>{submitting ? 'Saving...' : 'Save'}</button>
+              </div>
             </div>
           </div>
         </div>

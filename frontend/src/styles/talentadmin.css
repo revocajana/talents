@@ -87,6 +87,119 @@
   transform: translateY(-2px);
 }
 
+.compact-card {
+  padding: 1rem;
+}
+
+.compact-card .section-header {
+  margin-bottom: 0.75rem;
+}
+
+.compact-card .data-table {
+  font-size: 0.85rem;
+}
+
+.compact-card .data-table th,
+.compact-card .data-table td {
+  padding: 0.65rem;
+}
+
+.simple-list {
+  margin-top: 0.25rem;
+}
+
+.simple-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.simple-list-row:hover {
+  background-color: #f3f4f6;
+}
+
+.simple-list-info {
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.simple-list-info strong {
+  color: #111827;
+  font-size: 0.9rem;
+}
+
+.simple-list-info span {
+  overflow: hidden;
+  color: #6b7280;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simple-list-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.4rem;
+}
+
+.simple-list-actions .btn-action {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+.talent-table {
+  border: 1px solid #d1d5db;
+  border-collapse: collapse;
+}
+
+.talent-table th,
+.talent-table td {
+  border: 1px solid #d1d5db;
+}
+
+.talent-table th {
+  background-color: #f3f4f6;
+}
+
+.simple-list-empty {
+  padding: 1rem 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.compact-modal {
+  padding: 1rem !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14) !important;
+}
+
+.compact-modal h3 {
+  font-size: 1rem;
+}
+
+.compact-modal .table-container {
+  overflow-x: auto;
+}
+
+.compact-modal .data-table {
+  font-size: 0.85rem;
+}
+
+.compact-modal .data-table th,
+.compact-modal .data-table td {
+  padding: 0.5rem;
+}
+
+.compact-modal .btn-action,
+.compact-modal .btn-primary {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+}
+
 .section-header {
   margin-bottom: 1.5rem;
 }
@@ -321,6 +434,35 @@ textarea.form-input {
   color: #111827;
 }
 
+.report-popup-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.report-text-action {
+  padding: 0.25rem 0.35rem;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.report-text-action:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.report-delete-action {
+  color: #b45353;
+}
+
+.report-delete-action:hover {
+  color: #b45353;
+}
+
 .report-list li:last-child {
   border-bottom: none;
 }
@@ -423,6 +565,15 @@ textarea.form-input {
 
   .section-header h2 {
     font-size: 1.2rem;
+  }
+
+  .simple-list-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .simple-list-actions {
+    width: 100%;
   }
 
   .stat-card {
