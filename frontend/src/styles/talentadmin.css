@@ -25,10 +25,21 @@
 .stat-card {
   background: white;
   border-radius: 8px;
-  padding: 1.5rem;
-  border-left: 4px solid #0E1DB6;
+  padding: 0.9rem 1rem;
+  border-left: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.demographic-card {
+  min-height: 92px;
+  color: #111827;
+  cursor: pointer;
+}
+
+.demographic-card .stat-label,
+.demographic-card .stat-value {
+  color: #111827;
 }
 
 .stat-card:hover {
@@ -47,7 +58,7 @@
 }
 
 .stat-value {
-  font-size: 2rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #0E1DB6;
   margin: 0;

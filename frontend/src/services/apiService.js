@@ -74,11 +74,29 @@ api.interceptors.response.use(
 // ==================== GEOGRAPHIC HIERARCHY ====================
 
 export const getCountries = () => api.get('/countries/');
+export const createCountry = (data) => api.post('/countries/', data);
+export const updateCountry = (id, data) => api.put(`/countries/${id}/`, data);
+export const deleteCountry = (id) => api.delete(`/countries/${id}/`);
 export const getZones = (params = {}) => api.get('/zones/', { params });
+export const createZone = (data) => api.post('/zones/', data);
+export const updateZone = (id, data) => api.put(`/zones/${id}/`, data);
+export const deleteZone = (id) => api.delete(`/zones/${id}/`);
 export const getRegions = (params = {}) => api.get('/regions/', { params });
+export const createRegion = (data) => api.post('/regions/', data);
+export const updateRegion = (id, data) => api.put(`/regions/${id}/`, data);
+export const deleteRegion = (id) => api.delete(`/regions/${id}/`);
 export const getDistricts = (params = {}) => api.get('/districts/', { params });
+export const createDistrict = (data) => api.post('/districts/', data);
+export const updateDistrict = (id, data) => api.put(`/districts/${id}/`, data);
+export const deleteDistrict = (id) => api.delete(`/districts/${id}/`);
 export const getWards = (params = {}) => api.get('/wards/', { params });
+export const createWard = (data) => api.post('/wards/', data);
+export const updateWard = (id, data) => api.put(`/wards/${id}/`, data);
+export const deleteWard = (id) => api.delete(`/wards/${id}/`);
 export const getSchools = (params = {}) => api.get('/schools/', { params });
+export const createSchool = (data) => api.post('/schools/', data);
+export const updateSchool = (id, data) => api.put(`/schools/${id}/`, data);
+export const deleteSchool = (id) => api.delete(`/schools/${id}/`);
 
 // ==================== USER MANAGEMENT ====================
 
