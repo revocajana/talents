@@ -60,7 +60,7 @@
 .stat-value {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0E1DB6;
+  color: #111827;
   margin: 0;
 }
 
@@ -135,8 +135,8 @@
 
 .form-input:focus {
   outline: none;
-  border-color: #0E1DB6;
-  box-shadow: 0 0 0 3px rgba(14, 29, 182, 0.1);
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.12);
 }
 
 textarea.form-input {
@@ -147,7 +147,7 @@ textarea.form-input {
 
 .btn-primary {
   padding: 0.75rem 1.5rem;
-  background-color: #0E1DB6;
+  background-color: #111827;
   color: white;
   border: none;
   border-radius: 6px;
@@ -158,7 +158,7 @@ textarea.form-input {
 }
 
 .btn-primary:hover {
-  background-color: #0A1589;
+  background-color: #374151;
   transform: translateY(-1px);
 }
 
@@ -217,7 +217,7 @@ textarea.form-input {
 .btn-action {
   padding: 0.5rem 1rem;
   background-color: #f3f4f6;
-  color: #0E1DB6;
+  color: #111827;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 0.85rem;
@@ -227,17 +227,23 @@ textarea.form-input {
 }
 
 .btn-action:hover {
-  background-color: #0E1DB6;
+  background-color: #111827;
   color: white;
-  border-color: #0E1DB6;
+  border-color: #111827;
+}
+
+.btn-action.btn-edit:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+  border-color: #d1d5db;
 }
 
 /* Badges */
 .badge {
   display: inline-block;
   padding: 0.35rem 0.75rem;
-  background-color: #dbeafe;
-  color: #0E1DB6;
+  background-color: #f3f4f6;
+  color: #111827;
   border-radius: 4px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -252,13 +258,13 @@ textarea.form-input {
 }
 
 .status-badge.active {
-  background-color: #dcfce7;
-  color: #166534;
+  background-color: #f3f4f6;
+  color: #111827;
 }
 
 .status-badge.inactive {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: #e5e7eb;
+  color: #374151;
 }
 
 /* Reports Grid */
@@ -308,7 +314,7 @@ textarea.form-input {
 }
 
 .report-list span:last-child {
-  color: #0E1DB6;
+  color: #111827;
   font-weight: 600;
 }
 

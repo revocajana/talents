@@ -14,9 +14,10 @@ export default function TalentAdminPage() {
   const [showUserListModal, setShowUserListModal] = useState(false);
   const [showDemographicModal, setShowDemographicModal] = useState(false);
   const [showDemographicForm, setShowDemographicForm] = useState(false);
-  const [demographicType, setDemographicType] = useState('zone');
+  const [demographicType, setDemographicType] = useState('zones');
   const [editingDemographicId, setEditingDemographicId] = useState(null);
   const [demographicForm, setDemographicForm] = useState({});
+  const [demographicSearch, setDemographicSearch] = useState('');
   const [editingTalentId, setEditingTalentId] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -48,6 +49,14 @@ export default function TalentAdminPage() {
     wards: { label: 'Wards', singular: 'Ward', collection: 'wards' },
     schools: { label: 'Schools', singular: 'School', collection: 'schools' },
   };
+
+  const filteredDemographicItems = demographicData[demographicType].filter((item) => {
+    const searchValue = demographicSearch.trim().toLowerCase();
+    if (!searchValue) return true;
+    return [item.name, item.code, item.registry_number]
+      .filter(Boolean)
+      .some((value) => value.toString().toLowerCase().includes(searchValue));
+  });
 
   // Fetch all dashboard data on mount
   useEffect(() => {
@@ -96,6 +105,7 @@ export default function TalentAdminPage() {
 
   const openDemographicModal = (type, item = null) => {
     setDemographicType(type);
+    setDemographicSearch('');
     setEditingDemographicId(item?.id || null);
     setDemographicForm(item ? { ...item } : type === 'countries'
       ? { name: '', code: '' }
@@ -343,7 +353,7 @@ export default function TalentAdminPage() {
                       aria-label={`Add ${config.singular}`}
                       style={{
                         border: 'none',
-                        background: '#0E1DB6',
+                        background: '#111827',
                         color: '#fff',
                         width: '28px',
                         height: '28px',
@@ -373,7 +383,7 @@ export default function TalentAdminPage() {
                 onClick={openAddTalentModal}
                 style={{
                   border: 'none',
-                  background: '#0E1DB6',
+                  background: '#111827',
                   color: '#fff',
                   width: '40px',
                   height: '40px',
@@ -410,13 +420,13 @@ export default function TalentAdminPage() {
                         <td>{talent.description || 'N/A'}</td>
                         <td>
                           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <button className="btn-action" onClick={() => openEditTalentModal(talent)}>
+                            <button className="btn-action btn-edit" onClick={() => openEditTalentModal(talent)}>
                               Edit
                             </button>
                             <button
                               className="btn-action"
                               onClick={() => handleDeleteTalent(talent.id)}
-                              style={{ background: '#fee2e2', color: '#991b1b' }}
+                              style={{ background: '#fff', color: '#b45353' }}
                             >
                               Delete
                             </button>
@@ -436,7 +446,7 @@ export default function TalentAdminPage() {
                   type="button"
                   onClick={() => setShowTalentListModal(true)}
                   className="btn-action"
-                  style={{ background: '#eef2ff', color: '#1e3a8a', fontSize: '0.8rem' }}
+                  style={{ background: '#f3f4f6', color: '#111827', fontSize: '0.8rem' }}
                 >
                   View more
                 </button>
@@ -481,7 +491,7 @@ export default function TalentAdminPage() {
                   type="button"
                   onClick={() => setShowCompetitionListModal(true)}
                   className="btn-action"
-                  style={{ background: '#eef2ff', color: '#1e3a8a', fontSize: '0.8rem' }}
+                  style={{ background: '#f3f4f6', color: '#111827', fontSize: '0.8rem' }}
                 >
                   View more
                 </button>
@@ -526,7 +536,7 @@ export default function TalentAdminPage() {
                   type="button"
                   onClick={() => setShowUserListModal(true)}
                   className="btn-action"
-                  style={{ background: '#eef2ff', color: '#1e3a8a', fontSize: '0.8rem' }}
+                  style={{ background: '#f3f4f6', color: '#111827', fontSize: '0.8rem' }}
                 >
                   View more
                 </button>
@@ -613,7 +623,17 @@ export default function TalentAdminPage() {
 
             {!showDemographicForm ? (
               <>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  {demographicType === 'countries' && (
+                    <input
+                      type="search"
+                      value={demographicSearch}
+                      onChange={(e) => setDemographicSearch(e.target.value)}
+                      placeholder="Search countries"
+                      className="form-input"
+                      style={{ flex: '1 1 220px' }}
+                    />
+                  )}
                   <button type="button" className="btn-primary" onClick={openAddDemographicForm}>
                     + Add {demographicConfigs[demographicType].singular}
                   </button>
@@ -623,27 +643,34 @@ export default function TalentAdminPage() {
                     <thead>
                       <tr>
                         <th>Name</th>
-                        {demographicType === 'schools' ? <th>Registry number</th> : <th>Parent</th>}
+                        {demographicType === 'countries' ? <><th>Code</th><th>Zones</th></> : demographicType === 'schools' ? <th>Registry number</th> : <th>Parent</th>}
                         {demographicType === 'schools' && <th>Ownership</th>}
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {demographicData[demographicType].length > 0 ? demographicData[demographicType].map((item) => (
+                      {filteredDemographicItems.length > 0 ? filteredDemographicItems.map((item) => (
                         <tr key={item.id}>
                           <td>{item.name || 'N/A'}</td>
-                          <td>{demographicType === 'schools' ? item.registry_number || 'N/A' : getParentName(demographicType, item)}</td>
+                          {demographicType === 'countries' ? (
+                            <>
+                              <td>{item.code || 'N/A'}</td>
+                              <td>{demographicData.zones.filter((zone) => zone.country === item.id).length}</td>
+                            </>
+                          ) : (
+                            <td>{demographicType === 'schools' ? item.registry_number || 'N/A' : getParentName(demographicType, item)}</td>
+                          )}
                           {demographicType === 'schools' && <td>{item.ownership_type || 'N/A'}</td>}
                           <td>
                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                              <button type="button" className="btn-action" onClick={() => openDemographicModal(demographicType, item)}>
+                              <button type="button" className="btn-action btn-edit" onClick={() => openDemographicModal(demographicType, item)}>
                                 Edit
                               </button>
                               <button
                                 type="button"
                                 className="btn-action"
                                 onClick={() => handleDeleteDemographic(demographicType, item.id)}
-                                style={{ background: '#fee2e2', color: '#991b1b' }}
+                                style={{ background: '#fff', color: '#b45353' }}
                               >
                                 Delete
                               </button>
@@ -651,7 +678,7 @@ export default function TalentAdminPage() {
                           </td>
                         </tr>
                       )) : (
-                        <tr><td colSpan={demographicType === 'schools' ? '4' : '3'}>No {demographicConfigs[demographicType].label.toLowerCase()} found</td></tr>
+                        <tr><td colSpan={demographicType === 'countries' ? '4' : demographicType === 'schools' ? '4' : '3'}>No {demographicConfigs[demographicType].label.toLowerCase()} found</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -872,7 +899,7 @@ export default function TalentAdminPage() {
                         <td>
                           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <button
-                              className="btn-action"
+                              className="btn-action btn-edit"
                               onClick={() => {
                                 setShowTalentListModal(false);
                                 openEditTalentModal(talent);
@@ -883,7 +910,7 @@ export default function TalentAdminPage() {
                             <button
                               className="btn-action"
                               onClick={() => handleDeleteTalent(talent.id)}
-                              style={{ background: '#fee2e2', color: '#991b1b' }}
+                              style={{ background: '#fff', color: '#b45353' }}
                             >
                               Delete
                             </button>
