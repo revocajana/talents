@@ -316,6 +316,11 @@ textarea.form-input {
   cursor: pointer;
 }
 
+.report-list li[role='button']:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
 .report-list li:last-child {
   border-bottom: none;
 }
