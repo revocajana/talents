@@ -4,6 +4,15 @@ import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
 export default function HeadTeacherPage() {
+  return (
+    <div className="page-container">
+      <Header title="Head Teacher Dashboard" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', fontSize: '1.5rem', fontWeight: 600, color: '#374151' }}>
+        Coming soon
+      </div>
+    </div>
+  );
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
