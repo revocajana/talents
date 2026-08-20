@@ -7,7 +7,7 @@ from .serializers import ResultSerializer, ResultDetailSerializer
 class ResultViewSet(viewsets.ModelViewSet):
     queryset = Result.objects.select_related('participation__student', 'participation__competition').prefetch_related('details').all()
     serializer_class = ResultSerializer
-    filterset_fields = ['award', 'participation__competition']
+    filterset_fields = ['award', 'participation__competition', 'participation__student']
     search_fields = ['participation__student__first_name', 'participation__student__last_name', 'participation__competition__name']
     ordering_fields = ['competition_date', 'rank', 'recorded_at']
     ordering = ['-competition_date', 'rank']

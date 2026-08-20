@@ -87,9 +87,11 @@ class User(AbstractUser):
         ("ward_manager", "Ward Manager"),
         ("head_teacher", "Head Teacher"),
         ("sport_teacher", "Sport Teacher"),
+        ("student", "Student"),
     ]
     role = models.CharField(max_length=30, choices=ROLE_CHOICES)
     school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
+    student = models.OneToOneField('students.Student', on_delete=models.SET_NULL, null=True, blank=True, related_name="user")
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
