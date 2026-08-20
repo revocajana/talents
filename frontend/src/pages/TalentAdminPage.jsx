@@ -14,7 +14,8 @@ export default function TalentAdminPage() {
   const [showUserListModal, setShowUserListModal] = useState(false);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
-  const [userForm, setUserForm] = useState({ username: '', password: '', first_name: '', last_name: '', email: '', role: '', school: null });
+  const [userForm, setUserForm] = useState({ username: '', password: '', first_name: '', last_name: '', email: '', role: '', school: null, student: null });
+  const [studentForm, setStudentForm] = useState({ gender: '', date_of_birth: '', school_id: '' });
   const [selectedUserRole, setSelectedUserRole] = useState(null);
   const [showDemographicModal, setShowDemographicModal] = useState(false);
   const [showDemographicForm, setShowDemographicForm] = useState(false);
@@ -31,14 +32,15 @@ export default function TalentAdminPage() {
 
   const [talentsData, setTalentsData] = useState([]);
   const [competitionsData, setCompetitionsData] = useState([]);
+  const [studentsData, setStudentsData] = useState([]);
   const [usersData, setUsersData] = useState([]);
   const [reportStats, setReportStats] = useState({
     region_managers: 0,
-    zone_managers: 0,
     district_managers: 0,
     ward_managers: 0,
     head_teachers: 0,
     sport_teachers: 0,
+    students: 0,
     countries: 0,
     zones: 0,
     regions: 0,
@@ -86,11 +88,12 @@ export default function TalentAdminPage() {
         setLoading(true);
         setError(null);
 
-        const [talentsRes, competitionsRes, usersRes, userStatsRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, schoolsRes] = await Promise.all([
+        const [talentsRes, competitionsRes, usersRes, userStatsRes, studentsRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, schoolsRes] = await Promise.all([
           apiService.getTalents(),
           apiService.getCompetitions(),
           apiService.getUsers(),
           apiService.getUserStats(),
+          apiService.getStudents(),
           apiService.getCountries(),
           apiService.getZones(),
           apiService.getRegions(),
@@ -101,9 +104,11 @@ export default function TalentAdminPage() {
 
         setTalentsData(talentsRes.data.results || []);
         setCompetitionsData(competitionsRes.data.results || []);
+        setStudentsData(studentsRes.data.results || []);
         setUsersData(usersRes.data.results || []);
         setReportStats({
           ...userStatsRes.data,
+          students: studentsRes.data.count ?? (studentsRes.data.results || []).length,
           countries: countriesRes.data.count ?? (countriesRes.data.results || []).length,
           zones: zonesRes.data.count ?? (zonesRes.data.results || []).length,
           regions: regionsRes.data.count ?? (regionsRes.data.results || []).length,
@@ -169,6 +174,7 @@ export default function TalentAdminPage() {
   };
 
   const openUserEditModal = (user = null) => {
+    const linkedStudent = studentsData.find((student) => student.id === user?.student);
     setEditingUserId(user?.id || null);
     setUserForm({
       username: user?.username || '',
@@ -178,6 +184,12 @@ export default function TalentAdminPage() {
       email: user?.email || '',
       role: user?.role || selectedUserRole || '',
       school: user?.school || null,
+      student: user?.student || null,
+    });
+    setStudentForm({
+      gender: linkedStudent?.gender || '',
+      date_of_birth: linkedStudent?.date_of_birth || '',
+      school_id: linkedStudent?.school?.id || '',
     });
     setShowUserEditModal(true);
   };
@@ -186,17 +198,38 @@ export default function TalentAdminPage() {
     setUserForm({ ...userForm, [e.target.name]: e.target.value });
   };
 
+  const handleStudentFormChange = (e) => {
+    setStudentForm({ ...studentForm, [e.target.name]: e.target.value });
+  };
+
   const handleSaveUser = async () => {
     if (!editingUserId && (!userForm.username || !userForm.password || !userForm.role)) {
       alert('Username, password, and role are required.');
       return;
     }
+    if (userForm.role === 'student' && (!studentForm.gender || !studentForm.school_id)) {
+      alert('Student gender and school are required.');
+      return;
+    }
 
     setSubmitting(true);
     try {
+      let studentId = userForm.student;
+      if (userForm.role === 'student') {
+        const studentPayload = {
+          ...studentForm,
+          first_name: userForm.first_name,
+          last_name: userForm.last_name,
+        };
+        const studentResponse = studentId
+          ? await apiService.updateStudent(studentId, studentPayload)
+          : await apiService.createStudent(studentPayload);
+        studentId = studentResponse.data.id;
+      }
+      const userPayload = { ...userForm, student: studentId };
       const response = editingUserId
-        ? await apiService.updateUser(editingUserId, userForm)
-        : await apiService.createUser(userForm);
+        ? await apiService.updateUser(editingUserId, userPayload)
+        : await apiService.createUser(userPayload);
       setUsersData((currentUsers) => editingUserId
         ? currentUsers.map((user) => user.id === editingUserId ? response.data : user)
         : [...currentUsers, response.data]);
@@ -595,12 +628,12 @@ export default function TalentAdminPage() {
               <div className="report-card">
                 <h4>Users by Role</h4>
                 <ul className="report-list">
-                  <li onClick={() => openUserRoleModal('zone_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('zone_manager')} role="button" tabIndex={0}><span>Zone Managers:</span> {reportStats.zone_managers}</li>
                   <li onClick={() => openUserRoleModal('region_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('region_manager')} role="button" tabIndex={0}><span>Region Managers:</span> {reportStats.region_managers}</li>
                   <li onClick={() => openUserRoleModal('district_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('district_manager')} role="button" tabIndex={0}><span>District Managers:</span> {reportStats.district_managers}</li>
                   <li onClick={() => openUserRoleModal('ward_manager')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('ward_manager')} role="button" tabIndex={0}><span>Ward Managers:</span> {reportStats.ward_managers}</li>
                   <li onClick={() => openUserRoleModal('head_teacher')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('head_teacher')} role="button" tabIndex={0}><span>Head Teachers:</span> {reportStats.head_teachers}</li>
                   <li onClick={() => openUserRoleModal('sport_teacher')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('sport_teacher')} role="button" tabIndex={0}><span>Sport Teachers:</span> {reportStats.sport_teachers}</li>
+                  <li onClick={() => openUserRoleModal('student')} onKeyDown={(e) => e.key === 'Enter' && openUserRoleModal('student')} role="button" tabIndex={0}><span>Students:</span> {reportStats.students}</li>
                 </ul>
               </div>
               
@@ -1146,7 +1179,25 @@ export default function TalentAdminPage() {
                 <option value="ward_manager">Ward Manager</option>
                 <option value="head_teacher">Head Teacher</option>
                 <option value="sport_teacher">Sport Teacher</option>
+                <option value="student">Student</option>
               </select>
+              {userForm.role === 'student' && (
+                <>
+                  <select className="form-input" name="gender" value={studentForm.gender} onChange={handleStudentFormChange} disabled={submitting}>
+                    <option value="">Select gender</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="O">Other</option>
+                  </select>
+                  <input className="form-input" type="date" name="date_of_birth" value={studentForm.date_of_birth} onChange={handleStudentFormChange} disabled={submitting} />
+                  <select className="form-input" name="school_id" value={studentForm.school_id} onChange={handleStudentFormChange} disabled={submitting}>
+                    <option value="">Select school</option>
+                    {demographicData.schools.map((school) => (
+                      <option key={school.id} value={school.id}>{school.name} ({school.registry_number})</option>
+                    ))}
+                  </select>
+                </>
+              )}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button type="button" className="report-text-action" onClick={() => setShowUserEditModal(false)} disabled={submitting}>Cancel</button>
                 <button type="button" className="btn-primary" onClick={handleSaveUser} disabled={submitting}>{submitting ? 'Saving...' : editingUserId ? 'Save' : 'Add User'}</button>

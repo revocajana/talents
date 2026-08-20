@@ -9,6 +9,7 @@ import DistrictManagerPage from './pages/DistrictManagerPage';
 import WardManagerPage from './pages/WardManagerPage';
 import HeadTeacherPage from './pages/HeadTeacherPage';
 import SportTeacherPage from './pages/SportTeacherPage';
+import StudentPage from './pages/StudentPage';
 import './App.css';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
@@ -95,6 +96,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="sport_teacher">
             <SportTeacherPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/dashboard/student"
+        element={
+          <ProtectedRoute requiredRole="student">
+            <StudentPage />
           </ProtectedRoute>
         }
       />
