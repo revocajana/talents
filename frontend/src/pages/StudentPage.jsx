@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Header } from '../components/shared';
 import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
-const getResults = (response) => response.data.results || [];
+const list = (response) => response?.data?.results || (Array.isArray(response?.data) ? response.data : []);
 
 export default function StudentPage() {
   const [student, setStudent] = useState(null);
@@ -25,37 +25,39 @@ export default function StudentPage() {
         const studentId = userResponse.data.student;
 
         if (!studentId) {
-          throw new Error('This student account is not linked to a student record.');
+          throw new Error('This account is not linked to a student record yet.');
         }
 
-        const studentResponse = await apiService.getStudentById(studentId);
-        const studentRecord = studentResponse.data;
-        setStudent(studentRecord);
-
-        const [resultsResponse, announcementsResponse, talentsResponse, membershipsResponse] = await Promise.all([
+        const [studentResponse, resultsResponse, announcementsResponse, talentsResponse, membershipsResponse] = await Promise.all([
+          apiService.getStudentById(studentId),
           apiService.getResults({ 'participation__student': studentId }),
           apiService.getAnnouncements({ is_active: true }),
           apiService.getStudentTalents({ student: studentId }),
           apiService.getClubMemberships({ student: studentId, is_active: true }),
         ]);
 
+        const studentRecord = studentResponse.data;
+        setStudent(studentRecord);
+        setResults(list(resultsResponse));
+        setTalents(list(talentsResponse));
+        setMembership(list(membershipsResponse)[0] || null);
+
         const school = studentRecord.school;
         let districtRecord = null;
         if (school?.district) {
           const districtResponse = await apiService.getDistricts();
-          districtRecord = getResults(districtResponse).find((item) => item.id === school.district) || null;
+          districtRecord = list(districtResponse).find((item) => Number(item.id) === Number(school.district)) || null;
         }
         setDistrict(districtRecord);
 
-        const announcementList = getResults(announcementsResponse);
-        setMessages(announcementList.filter((message) => (
-          message.scope === 'national'
-          || (message.scope === 'district' && message.district === school?.district)
-          || (message.scope === 'school' && message.school === school?.id)
-        )));
-        setResults(getResults(resultsResponse));
-        setTalents(getResults(talentsResponse));
-        setMembership(getResults(membershipsResponse)[0] || null);
+        const announcementList = list(announcementsResponse);
+        const visibleMessages = announcementList.filter((message) => {
+          if (message.scope === 'national') return true;
+          if (message.scope === 'district') return Number(message.district) === Number(school?.district);
+          if (message.scope === 'school') return Number(message.school) === Number(school?.id);
+          return false;
+        });
+        setMessages(visibleMessages);
       } catch (err) {
         setError(err.response?.data?.detail || err.message || 'Failed to load student dashboard.');
       } finally {
@@ -65,6 +67,15 @@ export default function StudentPage() {
 
     loadStudentDashboard();
   }, []);
+
+  const summaryStats = useMemo(() => [
+    { label: 'Talents', value: String(talents.length) },
+    { label: 'Results', value: String(results.length) },
+    { label: 'Messages', value: String(messages.length) },
+    { label: 'Club', value: membership?.club_name || membership?.club ? 'Active' : 'Not assigned' },
+  ], [talents.length, results.length, messages.length, membership]);
+
+  const totalPoints = results.reduce((sum, result) => sum + (Number(result.grade_points) || 0), 0);
 
   return (
     <div className="page-container">
@@ -77,8 +88,23 @@ export default function StudentPage() {
           <div className="cards-container">
             <section className="admin-section">
               <div className="section-header">
-                <h2>My School</h2>
+                <h2>Student Overview</h2>
                 <p>{student?.first_name} {student?.last_name}</p>
+              </div>
+              <div className="stats-overview">
+                {summaryStats.map((stat, index) => (
+                  <div key={index} className="stat-card">
+                    <p className="stat-label">{stat.label}</p>
+                    <h3 className="stat-value">{stat.value}</h3>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="admin-section">
+              <div className="section-header">
+                <h2>My Profile</h2>
+                <p>School and district details</p>
               </div>
               <div className="reports-grid">
                 <div className="report-card">
@@ -89,11 +115,17 @@ export default function StudentPage() {
                 <div className="report-card">
                   <h4>District</h4>
                   <p>{district?.name || 'Not available'}</p>
-                  <p>Region ID: {district?.region || 'Not available'}</p>
+                  <p>Region: {district?.region || 'Not available'}</p>
                 </div>
                 <div className="report-card">
                   <h4>My Club</h4>
-                  <p>{membership?.club_name || membership?.club || 'Not assigned'}</p>
+                  <p>{membership?.club_name || 'Not assigned'}</p>
+                  <p>Status: {membership ? 'Active' : 'No active membership'}</p>
+                </div>
+                <div className="report-card">
+                  <h4>Performance</h4>
+                  <p>Results recorded: {results.length}</p>
+                  <p>Total points: {totalPoints}</p>
                 </div>
               </div>
             </section>
@@ -109,6 +141,7 @@ export default function StudentPage() {
                     <h4>{talent.talent_name || 'Talent'}</h4>
                     <p>{talent.talent_category || 'Category not available'}</p>
                     <p>Proficiency level: {talent.proficiency_level || 'N/A'}</p>
+                    {talent.notes ? <p>Notes: {talent.notes}</p> : null}
                   </div>
                 )) : (
                   <div className="report-card"><p>No talents registered.</p></div>

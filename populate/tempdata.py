@@ -38,8 +38,10 @@ from core.models import ( # type: ignore
     School,
     StudentClubMembership,
     StudentTalent,
+    SubmissionFeedback,
     Talent,
     TalentEvaluation,
+    TalentSubmission,
     User,
     Ward,
     Zone,
@@ -73,10 +75,23 @@ CRITERIA = [
 
 
 def get_or_create_user(username, role, **fields):
-    user, _ = User.objects.get_or_create(
-        username=username,
-        defaults={'role': role, **fields},
-    )
+    student = fields.get('student')
+    if student is not None:
+        existing_user = User.objects.filter(student=student).first()
+        if existing_user is not None and existing_user.username != username:
+            user = existing_user
+            user.username = username
+        else:
+            user, _ = User.objects.get_or_create(
+                username=username,
+                defaults={'role': role, **fields},
+            )
+    else:
+        user, _ = User.objects.get_or_create(
+            username=username,
+            defaults={'role': role, **fields},
+        )
+
     changed = False
     if user.role != role:
         user.role = role
@@ -91,6 +106,40 @@ def get_or_create_user(username, role, **fields):
     if changed:
         user.save()
     return user
+
+
+def clear_demo_data():
+    """Delete previously seeded demo records so the script can run repeatedly."""
+    demo_user_ids = list(User.objects.filter(username__startswith='demo-').values_list('id', flat=True))
+    demo_student_ids = list(Student.objects.filter(student_id__startswith='DEMO-').values_list('id', flat=True))
+
+    if demo_user_ids:
+        Message.objects.filter(sender_id__in=demo_user_ids).delete()
+        TalentEvaluation.objects.filter(evaluator_id__in=demo_user_ids).delete()
+        SubmissionFeedback.objects.filter(author_id__in=demo_user_ids).delete()
+        Notification.objects.filter(recipient_id__in=demo_user_ids).delete()
+        AuditLog.objects.filter(actor_id__in=demo_user_ids).delete()
+
+    if demo_student_ids:
+        StudentTalent.objects.filter(student_id__in=demo_student_ids).delete()
+        StudentClubMembership.objects.filter(student_id__in=demo_student_ids).delete()
+        TalentSubmission.objects.filter(student_id__in=demo_student_ids).delete()
+        CompetitionParticipation.objects.filter(student_id__in=demo_student_ids).delete()
+
+    User.objects.filter(username__startswith='demo-').delete()
+    Parent.objects.filter(username__startswith='demo-').delete()
+
+    School.objects.filter(registry_number__startswith='DEMO-').delete()
+    Ward.objects.filter(name__startswith='DEMO-').delete()
+    District.objects.filter(name__startswith='DEMO-').delete()
+    Region.objects.filter(name__startswith='DEMO-').delete()
+    Zone.objects.filter(name__startswith='DEMO-').delete()
+    Country.objects.filter(code='DMO').delete()
+    Talent.objects.filter(name__startswith='DEMO-').delete()
+    Competition.objects.filter(name__startswith='DEMO-').delete()
+    Announcement.objects.filter(title__startswith='DEMO-').delete()
+    Message.objects.filter(subject__startswith='DEMO-').delete()
+    Notification.objects.filter(title__startswith='DEMO-').delete()
 
 
 def create_geography():
@@ -318,6 +367,7 @@ def create_competitions_and_results(schools, students, talent_map, evaluator):
 
 @transaction.atomic
 def populate():
+    clear_demo_data()
     country, zone, region, districts, schools = create_geography()
     talent_map = create_talents()
     students, student_users, teachers, parent_user, district_manager, talent_admin = create_students_and_users(schools, districts)

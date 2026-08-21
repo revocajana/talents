@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Header } from '../components/shared';
 import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
@@ -7,48 +7,47 @@ export default function DistrictManagerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState('');
   const [allDistricts, setAllDistricts] = useState([]);
-  const [schoolsData, setSchoolsData] = useState([]);
-  const [wardData, setWardData] = useState([]);
-  const [competitionsData, setCompetitionsData] = useState([]);
-  const [statsData, setStatsData] = useState([
-    { label: 'Schools', value: '0' },
-    { label: 'Students', value: '0' },
-    { label: 'Talents Registered', value: '0' },
-    { label: 'Active Competitions', value: '0' },
-  ]);
+  const [schools, setSchools] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [competitions, setCompetitions] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [studentTalents, setStudentTalents] = useState([]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const userRes = await apiService.getCurrentUser();
-        setCurrentUser(userRes.data);
-        const districtId = userRes.data.school?.district;
-        setSelectedDistrict(districtId);
-        
-        // Fetch all districts for the dropdown
-        const districtsRes = await apiService.getDistricts();
-        setAllDistricts(districtsRes.data.results || []);
-        
-        const [schoolsRes, wardsRes, competitionsRes, talentsRes] = await Promise.all([
-          apiService.getSchools({ district: districtId }),
-          apiService.getWards({ district: districtId }),
-          apiService.getCompetitions({ level: 'district' }),
+
+        const [userRes, districtsRes, schoolsRes, wardsRes, competitionsRes, studentsRes, talentsRes] = await Promise.all([
+          apiService.getCurrentUser(),
+          apiService.getDistricts(),
+          apiService.getSchools(),
+          apiService.getWards(),
+          apiService.getCompetitions(),
+          apiService.getStudents(),
           apiService.getStudentTalents(),
         ]);
-        setSchoolsData((schoolsRes.data.results || []).slice(0, 10));
-        setWardData((wardsRes.data.results || []).slice(0, 10));
-        setCompetitionsData((competitionsRes.data.results || []).slice(0, 10));
-        const stats = [
-          { label: 'Schools', value: (schoolsRes.data?.count || 0).toString() },
-          { label: 'Students', value: '0' },
-          { label: 'Talents Registered', value: (talentsRes.data?.count || 0).toString() },
-          { label: 'Active Competitions', value: (competitionsRes.data?.count || 0).toString() },
-        ];
-        setStatsData(stats);
+
+        const districtList = districtsRes.data.results || [];
+        const schoolList = schoolsRes.data.results || [];
+        const wardList = wardsRes.data.results || [];
+        const competitionList = competitionsRes.data.results || [];
+        const studentList = studentsRes.data.results || [];
+        const talentList = talentsRes.data.results || [];
+
+        setCurrentUser(userRes.data);
+        setAllDistricts(districtList);
+        setSchools(schoolList);
+        setWards(wardList);
+        setCompetitions(competitionList);
+        setStudents(studentList);
+        setStudentTalents(talentList);
+
+        const defaultDistrict = userRes.data?.district || districtList[0]?.id || '';
+        setSelectedDistrict(String(defaultDistrict));
       } catch (err) {
         console.error('Error fetching district dashboard:', err);
         setError(err.response?.data?.detail || 'Failed to load dashboard data');
@@ -56,23 +55,84 @@ export default function DistrictManagerPage() {
         setLoading(false);
       }
     };
+
     fetchDashboardData();
   }, []);
+
+  const visibleDistrictId = selectedDistrict ? Number(selectedDistrict) : null;
+
+  const districtSchools = useMemo(() => {
+    if (!visibleDistrictId) return schools;
+    return schools.filter((school) => Number(school.district) === visibleDistrictId);
+  }, [schools, visibleDistrictId]);
+
+  const districtWards = useMemo(() => {
+    if (!visibleDistrictId) return wards;
+    return wards.filter((ward) => Number(ward.district) === visibleDistrictId);
+  }, [wards, visibleDistrictId]);
+
+  const districtStudents = useMemo(() => {
+    if (!visibleDistrictId) return students;
+    const schoolIds = new Set(districtSchools.map((school) => Number(school.id)));
+    return students.filter((student) => schoolIds.has(Number(student.school?.id ?? student.school)));
+  }, [districtSchools, students, visibleDistrictId]);
+
+  const districtTalents = useMemo(() => {
+    if (!visibleDistrictId) return studentTalents;
+    const studentIds = new Set(districtStudents.map((student) => Number(student.id)));
+    return studentTalents.filter((entry) => studentIds.has(Number(entry.student)));
+  }, [districtStudents, studentTalents, visibleDistrictId]);
+
+  const districtCompetitions = useMemo(() => {
+    if (!visibleDistrictId) return competitions;
+    return competitions.filter((competition) => {
+      const locationId = competition.location ?? competition.district ?? competition.region ?? competition.zone ?? competition.country;
+      return Number(locationId) === visibleDistrictId || competition.level === 'district';
+    });
+  }, [competitions, visibleDistrictId]);
+
+  const statsData = [
+    { label: 'Schools', value: String(districtSchools.length) },
+    { label: 'Students', value: String(districtStudents.length) },
+    { label: 'Talents Registered', value: String(districtTalents.length) },
+    { label: 'Active Competitions', value: String(districtCompetitions.length) },
+  ];
+
+  const topSchools = useMemo(() => {
+    const schoolScores = districtSchools.map((school) => {
+      const studentCount = students.filter((student) => Number(student.school?.id ?? student.school) === Number(school.id)).length;
+      const talentCount = studentTalents.filter((talent) => Number(talent.student) === Number(
+        students.find((student) => Number(student.school?.id ?? student.school) === Number(school.id))?.id
+      )).length;
+      return {
+        name: school.name,
+        score: studentCount * 10 + talentCount * 20,
+      };
+    });
+
+    return [...schoolScores].sort((a, b) => b.score - a.score).slice(0, 3);
+  }, [districtSchools, studentTalents, students]);
 
   return (
     <div className="page-container">
       <Header title="District Manager Dashboard" />
-      {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
-      
-      {/* District Selector */}
+
+      {error && (
+        <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>
+          {error}
+        </div>
+      )}
+
       {!loading && (
         <div style={{ padding: '1.5rem 2rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', maxWidth: '100%' }}>
-            <label htmlFor="district-select" style={{ fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Select District:</label>
+            <label htmlFor="district-select" style={{ fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
+              Select District:
+            </label>
             <select
               id="district-select"
-              value={selectedDistrict || ''}
-              onChange={(e) => setSelectedDistrict(parseInt(e.target.value))}
+              value={selectedDistrict}
+              onChange={(e) => setSelectedDistrict(e.target.value)}
               style={{
                 padding: '0.5rem 1rem',
                 border: '1px solid #d1d5db',
@@ -80,7 +140,7 @@ export default function DistrictManagerPage() {
                 fontSize: '0.95rem',
                 backgroundColor: '#fff',
                 cursor: 'pointer',
-                minWidth: '200px',
+                minWidth: '220px',
               }}
             >
               <option value="">-- Select a District --</option>
@@ -93,172 +153,186 @@ export default function DistrictManagerPage() {
           </div>
         </div>
       )}
-      
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
       ) : (
-      <main className="admin-content">
-        <div className="cards-container">
-          {/* District Overview Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>District Overview</h2>
-              <p>Key statistics for your district</p>
-            </div>
-            <div className="stats-overview">
-              {statsData.map((stat, idx) => (
-                <div key={idx} className="stat-card">
-                  <p className="stat-label">{stat.label}</p>
-                  <h3 className="stat-value">{stat.value}</h3>
+        <main className="admin-content">
+          <div className="cards-container">
+            <section className="admin-section">
+              <div className="section-header">
+                <h2>District Overview</h2>
+                <p>
+                  {allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name || 'District'} summary
+                </p>
+              </div>
+              <div className="stats-overview">
+                {statsData.map((stat, index) => (
+                  <div key={index} className="stat-card">
+                    <p className="stat-label">{stat.label}</p>
+                    <h3 className="stat-value">{stat.value}</h3>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="admin-section">
+              <div className="section-header">
+                <h2>District Performance</h2>
+                <p>School activation and participation snapshot</p>
+              </div>
+              <div className="reports-grid">
+                <div className="report-card">
+                  <h4>Top Schools</h4>
+                  <ol className="stats-list">
+                    {topSchools.length > 0 ? (
+                      topSchools.map((school) => (
+                        <li key={school.name}>
+                          <span>{school.name}</span> {school.score} pts
+                        </li>
+                      ))
+                    ) : (
+                      <li><span>No schools</span></li>
+                    )}
+                  </ol>
                 </div>
-              ))}
-            </div>
-          </section>
-
-          {/* District Performance Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>District Performance</h2>
-              <p>Performance metrics overview</p>
-            </div>
-            <div className="reports-grid">
-              <div className="report-card">
-                <h4>Top Schools This Year</h4>
-                <ol className="stats-list">
-                  <li><span>Central Secondary</span> 580 pts</li>
-                  <li><span>District Academy</span> 420 pts</li>
-                  <li><span>Tech School</span> 340 pts</li>
-                </ol>
+                <div className="report-card">
+                  <h4>District Metrics</h4>
+                  <ul className="stats-list">
+                    <li><span>Total Wards:</span> {districtWards.length}</li>
+                    <li><span>Schools Tracked:</span> {districtSchools.length}</li>
+                    <li><span>Competitions:</span> {districtCompetitions.length}</li>
+                  </ul>
+                </div>
               </div>
-              <div className="report-card">
-                <h4>District Metrics</h4>
-                <ul className="stats-list">
-                  <li><span>Total Wards:</span> 3</li>
-                  <li><span>Teachers Trained:</span> 24</li>
-                  <li><span>Competition Participants:</span> 2,340</li>
-                </ul>
-              </div>
-            </div>
-          </section>
+            </section>
 
-          {/* District Schools Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>District Schools</h2>
-              <p>Schools in your district</p>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>School Name</th>
-                    <th>Ward</th>
-                    <th>Students</th>
-                    <th>Talents</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schoolsData.length > 0 ? (
-                    schoolsData.map((school) => (
-                      <tr key={school.id}>
-                        <td>{school.name}</td>
-                        <td>{school.ward_name || 'N/A'}</td>
-                        <td>{school.students_count || '0'}</td>
-                        <td>{school.talents_count || '0'}</td>
+            <section className="admin-section">
+              <div className="section-header">
+                <h2>District Schools</h2>
+                <p>Schools currently under this district</p>
+              </div>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>School Name</th>
+                      <th>Ward</th>
+                      <th>Students</th>
+                      <th>Talents</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {districtSchools.length > 0 ? (
+                      districtSchools.map((school) => {
+                        const schoolStudentCount = students.filter(
+                          (student) => Number(student.school?.id ?? student.school) === Number(school.id)
+                        ).length;
+                        const schoolTalentCount = studentTalents.filter((entry) =>
+                          students.some(
+                            (student) =>
+                              Number(student.id) === Number(entry.student) &&
+                              Number(student.school?.id ?? student.school) === Number(school.id)
+                          )
+                        ).length;
+
+                        return (
+                          <tr key={school.id}>
+                            <td>{school.name}</td>
+                            <td>{school.ward ? (wards.find((ward) => Number(ward.id) === Number(school.ward))?.name || 'N/A') : 'N/A'}</td>
+                            <td>{schoolStudentCount}</td>
+                            <td>{schoolTalentCount}</td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="4">No schools found</td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan="4">No schools found</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
-          {/* Ward Managers Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>Ward Managers</h2>
-              <p>Manage wards and managers</p>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Ward</th>
-                    <th>Schools</th>
-                    <th>Students</th>
-                    <th>Managers</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {wardData.length > 0 ? (
-                    wardData.map((ward) => (
-                      <tr key={ward.id}>
-                        <td>{ward.name}</td>
-                        <td>{ward.schools_count || '0'}</td>
-                        <td>{ward.students_count || '0'}</td>
-                        <td>{'0'}</td>
+            <section className="admin-section">
+              <div className="section-header">
+                <h2>Wards</h2>
+                <p>Ward-level focus points</p>
+              </div>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Ward</th>
+                      <th>Schools</th>
+                      <th>Students</th>
+                      <th>Talents</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {districtWards.length > 0 ? (
+                      districtWards.map((ward) => {
+                        const wardSchools = districtSchools.filter((school) => Number(school.ward) === Number(ward.id));
+                        const wardStudentCount = students.filter((student) =>
+                          wardSchools.some((school) => Number(student.school?.id ?? student.school) === Number(school.id))
+                        ).length;
+                        const wardTalentCount = studentTalents.filter((entry) =>
+                          students.some(
+                            (student) =>
+                              Number(student.id) === Number(entry.student) &&
+                              wardSchools.some((school) => Number(student.school?.id ?? student.school) === Number(school.id))
+                          )
+                        ).length;
+
+                        return (
+                          <tr key={ward.id}>
+                            <td>{ward.name}</td>
+                            <td>{wardSchools.length}</td>
+                            <td>{wardStudentCount}</td>
+                            <td>{wardTalentCount}</td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="4">No wards found</td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan="4">No wards found</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
-          {/* Competitions Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>District Competitions</h2>
-              <p>Manage competitions</p>
-            </div>
-            <div className="stats-overview">
-              <div className="stat-card">
-                <p className="stat-label">Planned</p>
-                <h3 className="stat-value">5</h3>
+            <section className="admin-section">
+              <div className="section-header">
+                <h2>District Competitions</h2>
+                <p>Competition list for this district</p>
               </div>
-              <div className="stat-card">
-                <p className="stat-label">In Progress</p>
-                <h3 className="stat-value">3</h3>
+              <div className="reports-grid">
+                {districtCompetitions.length > 0 ? (
+                  districtCompetitions.slice(0, 6).map((competition) => (
+                    <div className="report-card" key={competition.id}>
+                      <h4>{competition.name}</h4>
+                      <p>{competition.description || 'No description provided'}</p>
+                      <ul className="stats-list">
+                        <li><span>Level:</span> {competition.level}</li>
+                        <li><span>Status:</span> {competition.status}</li>
+                      </ul>
+                    </div>
+                  ))
+                ) : (
+                  <div className="report-card">
+                    <h4>No competitions</h4>
+                    <p>No competition records found for this district.</p>
+                  </div>
+                )}
               </div>
-              <div className="stat-card">
-                <p className="stat-label">Completed</p>
-                <h3 className="stat-value">4</h3>
-              </div>
-            </div>
-          </section>
-
-          {/* Reports Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>District Reports</h2>
-              <p>Generate and view reports</p>
-            </div>
-            <div className="reports-grid">
-              <div className="report-card">
-                <h4>📊 Performance Report</h4>
-                <p>School and student performance metrics.</p>
-              </div>
-              <div className="report-card">
-                <h4>🏆 Competition Results</h4>
-                <p>Competition results and rankings.</p>
-              </div>
-              <div className="report-card">
-                <h4>📈 Talent Analysis</h4>
-                <p>Talent distribution and performance.</p>
-              </div>
-              <div className="report-card">
-                <h4>📅 Annual Summary</h4>
-                <p>Year-end comprehensive summary.</p>
-              </div>
-            </div>
-          </section>
-        </div>
-      </main>
+            </section>
+          </div>
+        </main>
       )}
     </div>
   );
 }
+
