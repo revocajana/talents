@@ -1,6 +1,11 @@
 from rest_framework import serializers
 
-from .models import Country, Zone, Region, District, Ward, School, User, Talent, StudentTalent, Announcement
+from .models import (
+    Country, Zone, Region, District, Ward, School, User, Talent, StudentTalent,
+    Announcement, Club, ClubTeacher, ClubTalent, StudentClubMembership,
+    EvaluationCriterion, TalentEvaluation, EvaluationScore, TalentSubmission,
+    SubmissionFeedback, Message, Notification, AuditLog,
+)
 
 
 class CountrySerializer(serializers.ModelSerializer):
@@ -57,7 +62,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'password', 'first_name', 'last_name', 'email', 'role', 'school', 'student']
+        fields = [
+            'id', 'username', 'password', 'first_name', 'last_name', 'email',
+            'role', 'school', 'student', 'country', 'zone', 'region', 'district', 'ward',
+        ]
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
@@ -107,6 +115,16 @@ class StudentTalentSerializer(serializers.ModelSerializer):
             'added_at',
         ]
 
+    def validate(self, attrs):
+        student = attrs.get('student', getattr(self.instance, 'student', None))
+        if student is None and self.initial_data.get('student'):
+            student = StudentTalent._meta.get_field('student').remote_field.model.objects.get(pk=self.initial_data['student'])
+        if student:
+            existing = StudentTalent.objects.filter(student=student).exclude(pk=getattr(self.instance, 'pk', None)).count()
+            if existing >= 5:
+                raise serializers.ValidationError('A student may have at most five talents.')
+        return attrs
+
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}"
 
@@ -133,6 +151,127 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+
+
+class ClubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Club
+        fields = ['id', 'name', 'focus', 'description', 'school', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+
+    def validate(self, attrs):
+        school = attrs.get('school', getattr(self.instance, 'school', None))
+        is_active = attrs.get('is_active', getattr(self.instance, 'is_active', True))
+        if school and is_active:
+            existing = Club.objects.filter(school=school, is_active=True).exclude(pk=getattr(self.instance, 'pk', None)).count()
+            if existing >= school.recommended_club_count:
+                raise serializers.ValidationError('This school has reached its recommended club limit.')
+        return attrs
+
+
+class ClubTeacherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClubTeacher
+        fields = '__all__'
+
+
+class ClubTalentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClubTalent
+        fields = ['id', 'club', 'talent', 'added_at']
+        read_only_fields = ['added_at']
+
+
+class StudentClubMembershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudentClubMembership
+        fields = ['id', 'student', 'club', 'joined_at', 'left_at', 'is_active', 'transfer_reason']
+        read_only_fields = ['joined_at']
+
+    def validate(self, attrs):
+        student = attrs.get('student', getattr(self.instance, 'student', None))
+        club = attrs.get('club', getattr(self.instance, 'club', None))
+        is_active = attrs.get('is_active', getattr(self.instance, 'is_active', True))
+        if student and club and student.school_id != club.school_id:
+            raise serializers.ValidationError('A student can only join a club in their school.')
+        if student and is_active:
+            existing = StudentClubMembership.objects.filter(student=student, is_active=True).exclude(pk=getattr(self.instance, 'pk', None)).exists()
+            if existing:
+                raise serializers.ValidationError('A student can only have one active club membership.')
+        return attrs
+
+
+class EvaluationCriterionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EvaluationCriterion
+        fields = '__all__'
+
+    def validate_weight(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError('Weight must be between 0 and 100.')
+        return value
+
+
+class EvaluationScoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EvaluationScore
+        fields = '__all__'
+
+    def validate_score(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError('Score must be between 0 and 100.')
+        return value
+
+    def validate(self, attrs):
+        evaluation = attrs.get('evaluation', getattr(self.instance, 'evaluation', None))
+        criterion = attrs.get('criterion', getattr(self.instance, 'criterion', None))
+        if evaluation and criterion and criterion.talent_id != evaluation.student_talent.talent_id:
+            raise serializers.ValidationError('Criterion must belong to the evaluated talent.')
+        return attrs
+
+
+class TalentEvaluationSerializer(serializers.ModelSerializer):
+    scores = EvaluationScoreSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = TalentEvaluation
+        fields = '__all__'
+        read_only_fields = ['total_score', 'grade', 'passed', 'evaluated_at', 'updated_at', 'evaluator']
+
+
+class TalentSubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TalentSubmission
+        fields = '__all__'
+        read_only_fields = ['status', 'submitted_at', 'reviewed_at', 'reviewed_by']
+
+
+class SubmissionFeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubmissionFeedback
+        fields = '__all__'
+        read_only_fields = ['author', 'created_at']
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = '__all__'
+        read_only_fields = ['sender', 'created_at', 'read_at']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
+        read_only_fields = ['recipient', 'created_at', 'read_at']
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuditLog
+        fields = '__all__'
+        read_only_fields = ['actor', 'created_at']
 
 
 class TalentSerializer(serializers.ModelSerializer):
@@ -164,6 +303,14 @@ class StudentTalentSerializer(serializers.ModelSerializer):
             'notes',
             'added_at',
         ]
+
+    def validate(self, attrs):
+        student = attrs.get('student', getattr(self.instance, 'student', None))
+        if student:
+            existing = StudentTalent.objects.filter(student=student).exclude(pk=getattr(self.instance, 'pk', None)).count()
+            if existing >= 5:
+                raise serializers.ValidationError('A student may have at most five talents.')
+        return attrs
 
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}"

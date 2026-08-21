@@ -4,7 +4,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
 
-from .models import Country, Zone, Region, District, Ward, School, User, Talent, StudentTalent, Announcement
+from .models import (
+    Country, Zone, Region, District, Ward, School, User, Talent, StudentTalent,
+    Announcement, Club, ClubTeacher, ClubTalent, StudentClubMembership,
+    EvaluationCriterion, TalentEvaluation, EvaluationScore, TalentSubmission,
+    SubmissionFeedback, Message, Notification, AuditLog,
+)
 from .serializers import (
     CountrySerializer,
     ZoneSerializer,
@@ -16,43 +21,68 @@ from .serializers import (
     TalentSerializer,
     StudentTalentSerializer,
     AnnouncementSerializer,
+    ClubSerializer, ClubTeacherSerializer, ClubTalentSerializer,
+    StudentClubMembershipSerializer, EvaluationCriterionSerializer,
+    TalentEvaluationSerializer, EvaluationScoreSerializer,
+    TalentSubmissionSerializer, SubmissionFeedbackSerializer,
+    MessageSerializer, NotificationSerializer, AuditLogSerializer,
+)
+from .permissions import (
+    AuthenticatedReadOnly, ConfigurationPermission, StudentDataPermission,
+    SubmissionPermission, ScopedQuerysetMixin,
 )
 
 
-class CountryViewSet(viewsets.ModelViewSet):
+class CountryViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
+    permission_classes = [ConfigurationPermission]
+    scope_paths = {'country': 'id'}
 
 
-class ZoneViewSet(viewsets.ModelViewSet):
+class ZoneViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Zone.objects.select_related('country').all()
     serializer_class = ZoneSerializer
+    permission_classes = [ConfigurationPermission]
+    scope_paths = {'country': 'country_id', 'zone': 'id'}
 
 
-class RegionViewSet(viewsets.ModelViewSet):
+class RegionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Region.objects.select_related('zone').all()
     serializer_class = RegionSerializer
+    permission_classes = [ConfigurationPermission]
+    scope_paths = {'country': 'zone__country_id', 'zone': 'zone_id', 'region': 'id'}
 
 
-class DistrictViewSet(viewsets.ModelViewSet):
+class DistrictViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = District.objects.select_related('region').all()
     serializer_class = DistrictSerializer
+    permission_classes = [ConfigurationPermission]
+    scope_paths = {'country': 'region__zone__country_id', 'zone': 'region__zone_id', 'region': 'region_id', 'district': 'id'}
 
 
-class WardViewSet(viewsets.ModelViewSet):
+class WardViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Ward.objects.select_related('district').all()
     serializer_class = WardSerializer
+    permission_classes = [ConfigurationPermission]
+    scope_paths = {'country': 'district__region__zone__country_id', 'zone': 'district__region__zone_id', 'region': 'district__region_id', 'district': 'district_id', 'ward': 'id'}
 
 
-class SchoolViewSet(viewsets.ModelViewSet):
+class SchoolViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = School.objects.select_related('country', 'zone', 'region', 'district', 'ward').all()
     serializer_class = SchoolSerializer
+    permission_classes = [ConfigurationPermission]
+    scope_paths = {
+        'country': 'country_id', 'zone': 'zone_id', 'region': 'region_id',
+        'district': 'district_id', 'ward': 'ward_id', 'school': 'id',
+    }
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.select_related('school').all()
+class UserViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = User.objects.select_related('school', 'student').all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [ConfigurationPermission]
+    scope_paths = {'school': 'school_id'}
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def current(self, request):
@@ -80,13 +110,21 @@ class TalentViewSet(viewsets.ModelViewSet):
     serializer_class = TalentSerializer
     filterset_fields = ['category']
     search_fields = ['name', 'description']
+    permission_classes = [ConfigurationPermission]
 
 
-class StudentTalentViewSet(viewsets.ModelViewSet):
+class StudentTalentViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = StudentTalent.objects.select_related('student', 'talent').all()
     serializer_class = StudentTalentSerializer
     filterset_fields = ['talent__category', 'proficiency_level', 'student']
     search_fields = ['student__first_name', 'student__last_name', 'talent__name']
+    permission_classes = [StudentDataPermission]
+    scope_paths = {
+        'student': 'student_id', 'school': 'student__school_id',
+        'country': 'student__school__country_id', 'zone': 'student__school__zone_id',
+        'region': 'student__school__region_id', 'district': 'student__school__district_id',
+        'ward': 'student__school__ward_id',
+    }
 
 
 class AnnouncementViewSet(viewsets.ModelViewSet):
@@ -96,4 +134,119 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'content']
     ordering_fields = ['created_at', 'published_at']
     ordering = ['-created_at']
+    permission_classes = [AuthenticatedReadOnly]
+
+
+class ClubViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = Club.objects.select_related('school').all()
+    serializer_class = ClubSerializer
+    permission_classes = [AuthenticatedReadOnly]
+    scope_paths = {'student': 'memberships__student_id', 'school': 'school_id', 'country': 'school__country_id', 'zone': 'school__zone_id', 'region': 'school__region_id', 'district': 'school__district_id', 'ward': 'school__ward_id'}
+
+
+class ClubTeacherViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = ClubTeacher.objects.select_related('club', 'teacher').all()
+    serializer_class = ClubTeacherSerializer
+    permission_classes = [AuthenticatedReadOnly]
+    scope_paths = {'school': 'club__school_id', 'country': 'club__school__country_id', 'zone': 'club__school__zone_id', 'region': 'club__school__region_id', 'district': 'club__school__district_id', 'ward': 'club__school__ward_id'}
+
+
+class ClubTalentViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = ClubTalent.objects.select_related('club', 'talent').all()
+    serializer_class = ClubTalentSerializer
+    permission_classes = [AuthenticatedReadOnly]
+    scope_paths = {'school': 'club__school_id', 'country': 'club__school__country_id', 'zone': 'club__school__zone_id', 'region': 'club__school__region_id', 'district': 'club__school__district_id', 'ward': 'club__school__ward_id'}
+
+
+class StudentClubMembershipViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = StudentClubMembership.objects.select_related('student', 'club').all()
+    serializer_class = StudentClubMembershipSerializer
+    permission_classes = [StudentDataPermission]
+    scope_paths = {
+        'student': 'student_id', 'school': 'student__school_id',
+        'country': 'student__school__country_id', 'zone': 'student__school__zone_id',
+        'region': 'student__school__region_id', 'district': 'student__school__district_id',
+        'ward': 'student__school__ward_id',
+    }
+
+
+class EvaluationCriterionViewSet(viewsets.ModelViewSet):
+    queryset = EvaluationCriterion.objects.select_related('talent').all()
+    serializer_class = EvaluationCriterionSerializer
+    permission_classes = [ConfigurationPermission]
+
+
+class TalentEvaluationViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = TalentEvaluation.objects.select_related('student_talent', 'evaluator').prefetch_related('scores').all()
+    serializer_class = TalentEvaluationSerializer
+    permission_classes = [AuthenticatedReadOnly]
+    scope_paths = {
+        'student': 'student_talent__student_id', 'school': 'student_talent__student__school_id',
+        'country': 'student_talent__student__school__country_id', 'zone': 'student_talent__student__school__zone_id',
+        'region': 'student_talent__student__school__region_id', 'district': 'student_talent__student__school__district_id',
+        'ward': 'student_talent__student__school__ward_id',
+    }
+
+    def perform_create(self, serializer):
+        serializer.save(evaluator=self.request.user)
+
+
+class EvaluationScoreViewSet(viewsets.ModelViewSet):
+    queryset = EvaluationScore.objects.select_related('evaluation', 'criterion').all()
+    serializer_class = EvaluationScoreSerializer
+    permission_classes = [AuthenticatedReadOnly]
+
+
+class TalentSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = TalentSubmission.objects.select_related('student', 'talent', 'club').all()
+    serializer_class = TalentSubmissionSerializer
+    permission_classes = [SubmissionPermission]
+    scope_paths = {
+        'student': 'student_id', 'school': 'student__school_id',
+        'country': 'student__school__country_id', 'zone': 'student__school__zone_id',
+        'region': 'student__school__region_id', 'district': 'student__school__district_id',
+        'ward': 'student__school__ward_id',
+    }
+
+    def perform_create(self, serializer):
+        if self.request.user.role == 'student':
+            serializer.save(student_id=self.request.user.student_id)
+        else:
+            serializer.save()
+
+
+class SubmissionFeedbackViewSet(viewsets.ModelViewSet):
+    queryset = SubmissionFeedback.objects.select_related('submission', 'author').all()
+    serializer_class = SubmissionFeedbackSerializer
+    permission_classes = [AuthenticatedReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+
+class MessageViewSet(viewsets.ModelViewSet):
+    queryset = Message.objects.select_related('sender', 'recipient').all()
+    serializer_class = MessageSerializer
+    permission_classes = [AuthenticatedReadOnly]
+
+    def get_queryset(self):
+        return self.queryset.filter(sender=self.request.user) | self.queryset.filter(recipient=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(sender=self.request.user)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.select_related('recipient').all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.queryset.filter(recipient=self.request.user)
+
+
+class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = AuditLog.objects.select_related('actor').all()
+    serializer_class = AuditLogSerializer
+    permission_classes = [ConfigurationPermission]
 

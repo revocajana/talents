@@ -30,6 +30,18 @@ from core.views import (
     TalentViewSet,
     StudentTalentViewSet,
     AnnouncementViewSet,
+    ClubViewSet,
+    ClubTeacherViewSet,
+    ClubTalentViewSet,
+    StudentClubMembershipViewSet,
+    EvaluationCriterionViewSet,
+    TalentEvaluationViewSet,
+    EvaluationScoreViewSet,
+    TalentSubmissionViewSet,
+    SubmissionFeedbackViewSet,
+    MessageViewSet,
+    NotificationViewSet,
+    AuditLogViewSet,
 )
 from students.views import StudentViewSet, ParentViewSet
 from competitions.views import CompetitionViewSet, CompetitionParticipationViewSet
@@ -52,6 +64,18 @@ router.register('competitions', CompetitionViewSet)
 router.register('participations', CompetitionParticipationViewSet)
 router.register('results', ResultViewSet)
 router.register('result-details', ResultDetailViewSet)
+router.register('clubs', ClubViewSet)
+router.register('club-teachers', ClubTeacherViewSet)
+router.register('club-talents', ClubTalentViewSet)
+router.register('club-memberships', StudentClubMembershipViewSet)
+router.register('evaluation-criteria', EvaluationCriterionViewSet)
+router.register('evaluations', TalentEvaluationViewSet)
+router.register('evaluation-scores', EvaluationScoreViewSet)
+router.register('talent-submissions', TalentSubmissionViewSet)
+router.register('submission-feedback', SubmissionFeedbackViewSet)
+router.register('messages', MessageViewSet)
+router.register('notifications', NotificationViewSet)
+router.register('audit-logs', AuditLogViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

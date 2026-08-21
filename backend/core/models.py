@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
@@ -227,6 +230,13 @@ class Club(models.Model):
             models.UniqueConstraint(fields=['school', 'name'], name='unique_club_name_per_school'),
         ]
 
+    def clean(self):
+        if not self.school_id or not self.is_active:
+            return
+        active_clubs = Club.objects.filter(school_id=self.school_id, is_active=True).exclude(pk=self.pk).count()
+        if active_clubs >= self.school.recommended_club_count:
+            raise ValidationError({'school': 'This school has reached its recommended club limit.'})
+
     def __str__(self):
         return f"{self.name} ({self.school.name})"
 
@@ -268,6 +278,17 @@ class StudentClubMembership(models.Model):
             models.UniqueConstraint(fields=['student'], condition=models.Q(is_active=True), name='one_active_club_per_student'),
         ]
 
+    def clean(self):
+        if self.student_id and self.club_id and self.student.school_id != self.club.school_id:
+            raise ValidationError('A student can only join a club in their school.')
+        if self.is_active and self.student_id:
+            active_membership = StudentClubMembership.objects.filter(
+                student_id=self.student_id,
+                is_active=True,
+            ).exclude(pk=self.pk).exists()
+            if active_membership:
+                raise ValidationError('A student can only have one active club membership.')
+
 
 class EvaluationCriterion(models.Model):
     talent = models.ForeignKey(Talent, on_delete=models.CASCADE, related_name='evaluation_criteria')
@@ -282,15 +303,61 @@ class EvaluationCriterion(models.Model):
             models.UniqueConstraint(fields=['talent', 'name'], name='unique_criterion_per_talent'),
         ]
 
+    def clean(self):
+        if self.weight < 0 or self.weight > 100:
+            raise ValidationError({'weight': 'Weight must be between 0 and 100.'})
+
 
 class TalentEvaluation(models.Model):
+    GRADE_CHOICES = [
+        ('A+', 'A+'), ('A', 'A'), ('B+', 'B+'), ('B', 'B'),
+        ('C', 'C'), ('D', 'D'), ('E', 'E'), ('F', 'F'),
+    ]
+
     student_talent = models.ForeignKey(StudentTalent, on_delete=models.CASCADE, related_name='evaluations')
     evaluator = models.ForeignKey(User, on_delete=models.PROTECT, related_name='talent_evaluations')
     total_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    grade = models.CharField(max_length=2, choices=GRADE_CHOICES, blank=True)
     passed = models.BooleanField(default=False)
     feedback = models.TextField(blank=True)
     evaluated_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def calculate_grade(self):
+        score = self.total_score or Decimal('0')
+        if score >= 90:
+            return 'A+'
+        if score >= 75:
+            return 'A'
+        if score >= 60:
+            return 'B+'
+        if score >= 50:
+            return 'B'
+        if score >= 40:
+            return 'C'
+        if score >= 30:
+            return 'D'
+        if score >= 20:
+            return 'E'
+        return 'F'
+
+    def recalculate(self):
+        scores = list(self.scores.select_related('criterion').all())
+        total_weight = sum((score.criterion.weight for score in scores), Decimal('0'))
+        if total_weight:
+            total = sum((score.score * score.criterion.weight for score in scores), Decimal('0')) / total_weight
+        elif scores:
+            total = sum((score.score for score in scores), Decimal('0')) / len(scores)
+        else:
+            total = Decimal('0')
+        self.total_score = total.quantize(Decimal('0.01'))
+        self.passed = self.total_score >= Decimal('50')
+        self.grade = self.calculate_grade()
+        type(self).objects.filter(pk=self.pk).update(
+            total_score=self.total_score,
+            grade=self.grade,
+            passed=self.passed,
+        )
 
 
 class EvaluationScore(models.Model):
@@ -303,6 +370,18 @@ class EvaluationScore(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['evaluation', 'criterion'], name='unique_score_per_criterion'),
         ]
+
+    def clean(self):
+        if self.score < 0 or self.score > 100:
+            raise ValidationError({'score': 'Score must be between 0 and 100.'})
+        if self.evaluation_id and self.criterion_id:
+            if self.criterion.talent_id != self.evaluation.student_talent.talent_id:
+                raise ValidationError({'criterion': 'Criterion must belong to the evaluated talent.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+        self.evaluation.recalculate()
 
 
 class TalentSubmission(models.Model):
