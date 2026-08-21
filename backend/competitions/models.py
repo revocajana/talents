@@ -29,6 +29,17 @@ class Competition(models.Model):
     level = models.CharField(max_length=20, choices=LEVEL_CHOICES)
     start_date = models.DateField(default=timezone.now)
     end_date = models.DateField(null=True, blank=True)
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('pending_approval', 'Pending approval'),
+        ('approved', 'Approved'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    organizer = models.ForeignKey('core.User', on_delete=models.PROTECT, null=True, blank=True, related_name='organized_competitions')
+    approved_by = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_competitions')
+    approved_at = models.DateTimeField(null=True, blank=True)
 
     # Generic relation to any geographic entity
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
@@ -42,6 +53,7 @@ class Competition(models.Model):
         related_name='competitions',
         blank=True,
     )
+    judges = models.ManyToManyField('core.User', through='CompetitionJudge', related_name='judged_competitions', blank=True)
     def __str__(self):
         return f"{self.name} ({self.get_level_display()})"
 
@@ -71,3 +83,14 @@ class CompetitionParticipation(models.Model):
 
     def __str__(self):
         return f"{self.student} ↔ {self.competition} [{self.status}]"
+
+
+class CompetitionJudge(models.Model):
+    competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name='judge_assignments')
+    judge = models.ForeignKey('core.User', on_delete=models.PROTECT, related_name='judge_assignments')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['competition', 'judge'], name='unique_judge_per_competition'),
+        ]

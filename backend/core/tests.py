@@ -1,6 +1,8 @@
 from django.test import TestCase
 
 from students.models import Student
+from competitions.models import Competition, CompetitionParticipation
+from results.models import Result
 from .models import (
 	Country, Zone, Region, District, Ward, School, User, Talent, Club,
 	StudentClubMembership, StudentTalent, EvaluationCriterion, TalentEvaluation,
@@ -111,3 +113,21 @@ class FoundationRulesTests(TestCase):
 
 		self.assertFalse(serializer.is_valid())
 		self.assertIn('score', serializer.errors)
+
+	def test_result_derives_grade_from_score(self):
+		competition = Competition.objects.create(name='Test Competition', level='school')
+		competition.schools.add(self.school)
+		participation = CompetitionParticipation.objects.create(
+			competition=competition,
+			student=self.student,
+			score=49,
+			status='finished',
+		)
+		result = Result.objects.create(participation=participation, grade='A+', score=49)
+		self.assertEqual(result.grade, 'C')
+		self.assertEqual(result.score, 49)
+
+		result.score = 75
+		result.save()
+		result.refresh_from_db()
+		self.assertEqual(result.grade, 'A')

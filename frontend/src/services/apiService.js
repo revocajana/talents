@@ -124,8 +124,14 @@ export const deleteStudentTalent = (id) => api.delete(`/student-talents/${id}/`)
 // ==================== CLUBS AND EVALUATIONS ====================
 
 export const getClubs = (params = {}) => api.get('/clubs/', { params });
+export const createClub = (data) => api.post('/clubs/', data);
 export const getClubMemberships = (params = {}) => api.get('/club-memberships/', { params });
+export const createClubMembership = (data) => api.post('/club-memberships/', data);
 export const getEvaluations = (params = {}) => api.get('/evaluations/', { params });
+export const getEvaluationCriteria = (params = {}) => api.get('/evaluation-criteria/', { params });
+export const createEvaluation = (data) => api.post('/evaluations/', data);
+export const createEvaluationScore = (data) => api.post('/evaluation-scores/', data);
+export const createTalentSubmission = (data) => api.post('/talent-submissions/', data);
 export const getMessages = (params = {}) => api.get('/messages/', { params });
 export const sendMessage = (data) => api.post('/messages/', data);
 
@@ -156,8 +162,8 @@ export const deleteCompetition = (id) => api.delete(`/competitions/${id}/`);
 // ==================== COMPETITION PARTICIPATION ====================
 
 export const getParticipations = (params = {}) => api.get('/participations/', { params });
-export const getParticipationById = (id) => api.get(`/participations/${id}/`);
 export const createParticipation = (data) => api.post('/participations/', data);
+export const getParticipationById = (id) => api.get(`/participations/${id}/`);
 export const updateParticipation = (id, data) => api.put(`/participations/${id}/`, data);
 export const deleteParticipation = (id) => api.delete(`/participations/${id}/`);
 

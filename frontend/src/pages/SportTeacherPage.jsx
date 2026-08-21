@@ -1,256 +1,262 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Header } from '../components/shared';
 import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
+const emptyStudent = { first_name: '', last_name: '', gender: '', date_of_birth: '', school_id: '' };
+const emptyTalent = { student: '', talent: '', proficiency_level: 1, notes: '' };
+const emptyClub = { name: '', focus: '', description: '', school: '' };
+const emptyMembership = { student: '', club: '' };
+const emptyEvaluation = { studentTalent: '', criteria: {}, feedback: '' };
+
+const list = (response) => response.data.results || [];
+
 export default function SportTeacherPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
-  const [studentTalentData, setStudentTalentData] = useState([]);
-  const [trainingData, setTrainingData] = useState([]);
-  const [competitionsData, setCompetitionsData] = useState([]);
-  const [statsData, setStatsData] = useState([
-    { label: 'Students Trained', value: '0' },
-    { label: 'Training Programs', value: '0' },
-    { label: 'Competitions', value: '0' },
-    { label: 'Medals Won', value: '0' },
-  ]);
+  const [students, setStudents] = useState([]);
+  const [talents, setTalents] = useState([]);
+  const [studentTalents, setStudentTalents] = useState([]);
+  const [clubs, setClubs] = useState([]);
+  const [memberships, setMemberships] = useState([]);
+  const [evaluations, setEvaluations] = useState([]);
+  const [competitions, setCompetitions] = useState([]);
+  const [results, setResults] = useState([]);
+  const [criteria, setCriteria] = useState([]);
+  const [studentForm, setStudentForm] = useState(emptyStudent);
+  const [talentForm, setTalentForm] = useState(emptyTalent);
+  const [clubForm, setClubForm] = useState(emptyClub);
+  const [membershipForm, setMembershipForm] = useState(emptyMembership);
+  const [evaluationForm, setEvaluationForm] = useState(emptyEvaluation);
+  const [submissionForm, setSubmissionForm] = useState({ student: '', talent: '', title: '', description: '', media: null });
+  const [resultForm, setResultForm] = useState({ student: '', competition: '', score: '', grade: '', award: 'none', rank: '', venue: '' });
+
+  const schoolId = currentUser?.school;
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const userResponse = await apiService.getCurrentUser();
+      const user = userResponse.data;
+      setCurrentUser(user);
+      const school = user.school;
+      const [studentsRes, talentsRes, studentTalentsRes, clubsRes, membershipsRes, evaluationsRes, competitionsRes, resultsRes, criteriaRes] = await Promise.all([
+        apiService.getStudents({ school }),
+        apiService.getTalents(),
+        apiService.getStudentTalents(),
+        apiService.getClubs({ school }),
+        apiService.getClubMemberships(),
+        apiService.getEvaluations(),
+        apiService.getCompetitions(),
+        apiService.getResults(),
+        apiService.getEvaluationCriteria(),
+      ]);
+      setStudents(list(studentsRes));
+      setTalents(list(talentsRes));
+      setStudentTalents(list(studentTalentsRes));
+      setClubs(list(clubsRes));
+      setMemberships(list(membershipsRes));
+      setEvaluations(list(evaluationsRes));
+      setCompetitions(list(competitionsRes));
+      setResults(list(resultsRes));
+      setCriteria(list(criteriaRes));
+      setClubForm((form) => ({ ...form, school: school || '' }));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to load the school workspace.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const userRes = await apiService.getCurrentUser();
-        setCurrentUser(userRes.data);
-        const schoolId = userRes.data.school?.id;
-        const [talentsRes, competitionsRes, studentsRes] = await Promise.all([
-          apiService.getStudentTalents({ student__school: schoolId }),
-          apiService.getCompetitions(),
-          apiService.getStudents({ school: schoolId }),
-        ]);
-        setStudentTalentData((talentsRes.data.results || []).slice(0, 10));
-        setCompetitionsData((competitionsRes.data.results || []).slice(0, 10));
-        setTrainingData((studentsRes.data.results || []).slice(0, 5));
-        const stats = [
-          { label: 'Students Trained', value: (talentsRes.data?.count || 0).toString() },
-          { label: 'Training Programs', value: '0' },
-          { label: 'Competitions', value: (competitionsRes.data?.count || 0).toString() },
-          { label: 'Medals Won', value: '0' },
-        ];
-        setStatsData(stats);
-      } catch (err) {
-        console.error('Error fetching sport teacher dashboard data:', err);
-        setError(err.response?.data?.detail || 'Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboardData();
+    loadData();
   }, []);
+
+  const save = async (request, successMessage) => {
+    try {
+      setSaving(true);
+      setError('');
+      await request();
+      setNotice(successMessage);
+      await loadData();
+    } catch (err) {
+      const details = err.response?.data;
+      setError(details?.detail || details?.non_field_errors?.[0] || Object.values(details || {}).flat()[0] || err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitStudent = (event) => {
+    event.preventDefault();
+    save(() => apiService.createStudent({ ...studentForm, school_id: schoolId }), 'Student registered.').then(() => setStudentForm(emptyStudent));
+  };
+
+  const submitTalent = (event) => {
+    event.preventDefault();
+    save(() => apiService.createStudentTalent(talentForm), 'Talent assigned to student.').then(() => setTalentForm(emptyTalent));
+  };
+
+  const submitClub = (event) => {
+    event.preventDefault();
+    save(() => apiService.createClub({ ...clubForm, school: schoolId }), 'Club created.').then(() => setClubForm({ ...emptyClub, school: schoolId || '' }));
+  };
+
+  const submitMembership = (event) => {
+    event.preventDefault();
+    save(() => apiService.createClubMembership({ ...membershipForm, is_active: true }), 'Student assigned to club.').then(() => setMembershipForm(emptyMembership));
+  };
+
+  const submitEvaluation = async (event) => {
+    event.preventDefault();
+    await save(async () => {
+      const evaluationResponse = await apiService.createEvaluation({
+        student_talent: Number(evaluationForm.studentTalent),
+        feedback: evaluationForm.feedback,
+      });
+      await Promise.all(Object.entries(evaluationForm.criteria).map(([criterion, score]) => (
+        score === '' ? Promise.resolve() : apiService.createEvaluationScore({
+          evaluation: evaluationResponse.data.id,
+          criterion: Number(criterion),
+          score: Number(score),
+        })
+      )));
+    }, 'Evaluation recorded.');
+    setEvaluationForm(emptyEvaluation);
+  };
+
+  const submitSubmission = (event) => {
+    event.preventDefault();
+    const data = new FormData();
+    data.append('student', submissionForm.student);
+    data.append('talent', submissionForm.talent);
+    data.append('title', submissionForm.title);
+    data.append('description', submissionForm.description);
+    if (submissionForm.media) data.append('media', submissionForm.media);
+    save(() => apiService.createTalentSubmission(data), 'Talent submission uploaded.').then(() => setSubmissionForm({ student: '', talent: '', title: '', description: '', media: null }));
+  };
+
+  const submitResult = (event) => {
+    event.preventDefault();
+    save(async () => {
+      const participationResponse = await apiService.createParticipation({
+        competition: Number(resultForm.competition),
+        student: Number(resultForm.student),
+        score: resultForm.score ? Number(resultForm.score) : null,
+        status: 'finished',
+      });
+      await apiService.createResult({
+        participation: participationResponse.data.id,
+        grade: resultForm.grade || null,
+        award: resultForm.award,
+        rank: resultForm.rank ? Number(resultForm.rank) : null,
+        venue: resultForm.venue,
+      });
+    }, 'Competition result recorded.').then(() => setResultForm({ student: '', competition: '', score: '', grade: '', award: 'none', rank: '', venue: '' }));
+  };
+
+  const selectedStudentTalent = studentTalents.find((item) => item.id === Number(evaluationForm.studentTalent));
+  const selectedCriteria = selectedStudentTalent ? criteria.filter((criterion) => criterion.talent === selectedStudentTalent.talent) : [];
+  const uniqueStudentCount = new Set(studentTalents.map((item) => item.student)).size;
+  const medals = results.filter((result) => ['gold', 'silver', 'bronze'].includes(result.award)).length;
 
   return (
     <div className="page-container">
-      <Header title="Sport Teacher Dashboard" />
-      {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
-      ) : (
+      <Header title="Sport Teacher Workspace" />
       <main className="admin-content">
-        <div className="cards-container">
-          {/* Teaching Overview Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>Teaching Overview</h2>
-              <p>Your teaching statistics</p>
-            </div>
-            <div className="stats-overview">
-              {statsData.map((stat, idx) => (
-                <div key={idx} className="stat-card">
-                  <p className="stat-label">{stat.label}</p>
-                  <h3 className="stat-value">{stat.value}</h3>
-                </div>
-              ))}
-            </div>
-          </section>
+        {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+        {notice && <div style={{ padding: '1rem', background: '#ecfdf5', color: '#047857', borderRadius: '4px', marginBottom: '1rem' }}>{notice}</div>}
+        {loading ? <div style={{ textAlign: 'center', padding: '2rem' }}>Loading school workspace...</div> : (
+          <div className="cards-container">
+            <section className="admin-section">
+              <div className="section-header"><h2>School Overview</h2><p>Live data for {currentUser?.school || 'your school'}</p></div>
+              <div className="stats-overview">
+                <div className="stat-card"><p className="stat-label">Students with talents</p><h3 className="stat-value">{uniqueStudentCount}</h3></div>
+                <div className="stat-card"><p className="stat-label">Clubs</p><h3 className="stat-value">{clubs.length}</h3></div>
+                <div className="stat-card"><p className="stat-label">Competitions</p><h3 className="stat-value">{competitions.length}</h3></div>
+                <div className="stat-card"><p className="stat-label">Medals</p><h3 className="stat-value">{medals}</h3></div>
+              </div>
+            </section>
 
-          {/* Performance Summary Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>Performance Summary</h2>
-              <p>Student performance overview</p>
-            </div>
-            <div className="reports-grid">
-              <div className="report-card">
-                <h4>Students by Talent</h4>
-                <ul className="stats-list">
-                  <li><span>Football:</span> 34</li>
-                  <li><span>Volleyball:</span> 22</li>
-                  <li><span>Basketball:</span> 18</li>
-                  <li><span>Other Sports:</span> 13</li>
-                </ul>
-              </div>
-              <div className="report-card">
-                <h4>Achievement Stats</h4>
-                <ul className="stats-list">
-                  <li><span>Gold Medals:</span> 8</li>
-                  <li><span>Silver Medals:</span> 9</li>
-                  <li><span>Bronze Medals:</span> 6</li>
-                  <li><span>Success Rate:</span> 78%</li>
-                </ul>
-              </div>
-            </div>
-          </section>
+            <section className="admin-section">
+              <div className="section-header"><h2>Talent Submissions</h2><p>Upload a student performance or creative submission.</p></div>
+              <form className="report-card" onSubmit={submitSubmission}>
+                <select className="form-input" value={submissionForm.student} onChange={(e) => setSubmissionForm({ ...submissionForm, student: e.target.value })} required><option value="">Student</option>{students.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select>
+                <select className="form-input" value={submissionForm.talent} onChange={(e) => setSubmissionForm({ ...submissionForm, talent: e.target.value })} required><option value="">Talent</option>{talents.map((talent) => <option key={talent.id} value={talent.id}>{talent.name}</option>)}</select>
+                <input className="form-input" placeholder="Submission title" value={submissionForm.title} onChange={(e) => setSubmissionForm({ ...submissionForm, title: e.target.value })} required />
+                <textarea className="form-input" placeholder="Description" value={submissionForm.description} onChange={(e) => setSubmissionForm({ ...submissionForm, description: e.target.value })} />
+                <input className="form-input" type="file" onChange={(e) => setSubmissionForm({ ...submissionForm, media: e.target.files[0] || null })} />
+                <button className="btn-primary" disabled={saving}>Upload submission</button>
+              </form>
+            </section>
 
-          {/* Trained Students Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>My Trained Students</h2>
-              <p>Students under your training</p>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Student Name</th>
-                    <th>Talent</th>
-                    <th>Proficiency Level</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {studentTalentData.length > 0 ? (
-                    studentTalentData.map((student) => (
-                      <tr key={student.id}>
-                        <td>{student.student_name || 'N/A'}</td>
-                        <td>{student.talent_name || 'N/A'}</td>
-                        <td>{student.proficiency_level || 'N/A'}</td>
-                        <td><button className="btn-action">Update</button></td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan="4">No trained students yet</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+            <section className="admin-section">
+              <div className="section-header"><h2>Record Competition Result</h2><p>Register participation and record the final result.</p></div>
+              <form className="report-card" onSubmit={submitResult}>
+                <select className="form-input" value={resultForm.student} onChange={(e) => setResultForm({ ...resultForm, student: e.target.value })} required><option value="">Student</option>{students.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select>
+                <select className="form-input" value={resultForm.competition} onChange={(e) => setResultForm({ ...resultForm, competition: e.target.value })} required><option value="">Competition</option>{competitions.map((competition) => <option key={competition.id} value={competition.id}>{competition.name}</option>)}</select>
+                <input className="form-input" type="number" min="0" max="100" placeholder="Score" value={resultForm.score} onChange={(e) => setResultForm({ ...resultForm, score: e.target.value })} />
+                <select className="form-input" value={resultForm.grade} onChange={(e) => setResultForm({ ...resultForm, grade: e.target.value })}><option value="">Grade</option>{['A+', 'A', 'B+', 'B', 'C', 'D', 'F'].map((grade) => <option key={grade} value={grade}>{grade}</option>)}</select>
+                <select className="form-input" value={resultForm.award} onChange={(e) => setResultForm({ ...resultForm, award: e.target.value })}><option value="none">No award</option><option value="gold">Gold</option><option value="silver">Silver</option><option value="bronze">Bronze</option></select>
+                <input className="form-input" type="number" min="1" placeholder="Rank" value={resultForm.rank} onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
+                <input className="form-input" placeholder="Venue" value={resultForm.venue} onChange={(e) => setResultForm({ ...resultForm, venue: e.target.value })} />
+                <button className="btn-primary" disabled={saving}>Record result</button>
+              </form>
+            </section>
 
-          {/* Talents & Skills Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>Talents & Skills Management</h2>
-              <p>Register and update student talents</p>
-            </div>
-            <div className="reports-grid">
-              <div className="report-card">
-                <h4>Register New Talent</h4>
-                <ul className="stats-list">
-                  <li>Select Student</li>
-                  <li>Choose Sport/Talent</li>
-                  <li>Set Proficiency Level</li>
-                </ul>
-              </div>
-              <div className="report-card">
-                <h4>Update Progress</h4>
-                <ul className="stats-list">
-                  <li>Select Student</li>
-                  <li>New Level</li>
-                  <li>Progress Notes</li>
-                </ul>
-              </div>
-            </div>
-          </section>
+            <section className="admin-section">
+              <div className="section-header"><h2>Register Student</h2><p>Add a student to your school.</p></div>
+              <form className="reports-grid" onSubmit={submitStudent}>
+                <input className="form-input" placeholder="First name" value={studentForm.first_name} onChange={(e) => setStudentForm({ ...studentForm, first_name: e.target.value })} required />
+                <input className="form-input" placeholder="Last name" value={studentForm.last_name} onChange={(e) => setStudentForm({ ...studentForm, last_name: e.target.value })} required />
+                <select className="form-input" value={studentForm.gender} onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })} required><option value="">Gender</option><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option></select>
+                <input className="form-input" type="date" value={studentForm.date_of_birth} onChange={(e) => setStudentForm({ ...studentForm, date_of_birth: e.target.value })} />
+                <button className="btn-primary" disabled={saving}>Register student</button>
+              </form>
+            </section>
 
-          {/* Training Programs Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>Training Programs</h2>
-              <p>Active training programs</p>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Program</th>
-                    <th>Schedule</th>
-                    <th>Students</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {trainingData.length > 0 ? (
-                    trainingData.map((program, idx) => (
-                      <tr key={idx}>
-                        <td>{program.first_name} {program.last_name}</td>
-                        <td>Assigned</td>
-                        <td>1</td>
-                        <td><button className="btn-action">View</button></td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan="4">No training programs active</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+            <section className="admin-section">
+              <div className="section-header"><h2>Assign Talent</h2><p>Assign up to five talents to each student.</p></div>
+              <form className="reports-grid" onSubmit={submitTalent}>
+                <select className="form-input" value={talentForm.student} onChange={(e) => setTalentForm({ ...talentForm, student: e.target.value })} required><option value="">Student</option>{students.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select>
+                <select className="form-input" value={talentForm.talent} onChange={(e) => setTalentForm({ ...talentForm, talent: e.target.value })} required><option value="">Talent</option>{talents.map((talent) => <option key={talent.id} value={talent.id}>{talent.name}</option>)}</select>
+                <select className="form-input" value={talentForm.proficiency_level} onChange={(e) => setTalentForm({ ...talentForm, proficiency_level: e.target.value })}><option value="1">Beginner</option><option value="2">Intermediate</option><option value="3">Advanced</option><option value="4">Expert</option></select>
+                <input className="form-input" placeholder="Progress notes" value={talentForm.notes} onChange={(e) => setTalentForm({ ...talentForm, notes: e.target.value })} />
+                <button className="btn-primary" disabled={saving}>Assign talent</button>
+              </form>
+            </section>
 
-          {/* Attendance Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>Attendance Records</h2>
-              <p>Track student attendance</p>
-            </div>
-            <div className="reports-grid">
-              <div className="report-card">
-                <h4>Attendance Summary</h4>
-                <ul className="stats-list">
-                  <li><span>Total Sessions:</span> 48</li>
-                  <li><span>Average Attendance:</span> 82%</li>
-                  <li><span>This Month:</span> 12 sessions</li>
-                </ul>
+            <section className="admin-section">
+              <div className="section-header"><h2>Club Management</h2><p>Create clubs and assign students to one active club.</p></div>
+              <div className="reports-grid">
+                <form className="report-card" onSubmit={submitClub}><h4>Create club</h4><input className="form-input" placeholder="Club name" value={clubForm.name} onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })} required /><input className="form-input" placeholder="Focus" value={clubForm.focus} onChange={(e) => setClubForm({ ...clubForm, focus: e.target.value })} /><button className="btn-primary" disabled={saving}>Create club</button></form>
+                <form className="report-card" onSubmit={submitMembership}><h4>Assign student</h4><select className="form-input" value={membershipForm.student} onChange={(e) => setMembershipForm({ ...membershipForm, student: e.target.value })} required><option value="">Student</option>{students.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select><select className="form-input" value={membershipForm.club} onChange={(e) => setMembershipForm({ ...membershipForm, club: e.target.value })} required><option value="">Club</option>{clubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select><button className="btn-primary" disabled={saving}>Assign to club</button></form>
               </div>
-              <div className="report-card">
-                <h4>Mark Attendance</h4>
-                <ul className="stats-list">
-                  <li>Select Program</li>
-                  <li>Choose Date</li>
-                  <li>Record Session</li>
-                </ul>
-              </div>
-            </div>
-          </section>
+              <div className="table-container"><table className="data-table"><thead><tr><th>Club</th><th>Focus</th><th>Status</th></tr></thead><tbody>{clubs.map((club) => <tr key={club.id}><td>{club.name}</td><td>{club.focus || 'N/A'}</td><td>{club.is_active ? 'Active' : 'Inactive'}</td></tr>)}{clubs.length === 0 && <tr><td colSpan="3">No clubs found</td></tr>}</tbody></table></div>
+            </section>
 
-          {/* Progress Tracking Card */}
-          <section className="admin-section">
-            <div className="section-header">
-              <h2>Progress Tracking</h2>
-              <p>Student progress and achievements</p>
-            </div>
-            <div className="reports-grid">
-              <div className="report-card">
-                <h4>📈 Performance Report</h4>
-                <p>View individual student performance metrics.</p>
-              </div>
-              <div className="report-card">
-                <h4>🏆 Competition Prep</h4>
-                <p>Check which students are competition-ready.</p>
-              </div>
-              <div className="report-card">
-                <h4>📊 Progress Charts</h4>
-                <p>Visual progress tracking for each student.</p>
-              </div>
-              <div className="report-card">
-                <h4>🎯 Goal Tracking</h4>
-                <p>Track student goals and achievements.</p>
-              </div>
-            </div>
-          </section>
-        </div>
+            <section className="admin-section">
+              <div className="section-header"><h2>Evaluate Talent</h2><p>Score criteria from 0 to 100. The backend calculates grade and pass status.</p></div>
+              <form className="report-card" onSubmit={submitEvaluation}>
+                <select className="form-input" value={evaluationForm.studentTalent} onChange={(e) => setEvaluationForm({ ...evaluationForm, studentTalent: e.target.value, criteria: {} })} required><option value="">Student talent</option>{studentTalents.map((item) => <option key={item.id} value={item.id}>{item.student_name} - {item.talent_name}</option>)}</select>
+                {selectedCriteria.map((criterion) => <input key={criterion.id} className="form-input" type="number" min="0" max="100" placeholder={`${criterion.name} (${criterion.weight}%)`} value={evaluationForm.criteria[criterion.id] || ''} onChange={(e) => setEvaluationForm({ ...evaluationForm, criteria: { ...evaluationForm.criteria, [criterion.id]: e.target.value } })} required />)}
+                <textarea className="form-input" placeholder="Feedback" value={evaluationForm.feedback} onChange={(e) => setEvaluationForm({ ...evaluationForm, feedback: e.target.value })} />
+                <button className="btn-primary" disabled={saving || !selectedStudentTalent}>Save evaluation</button>
+              </form>
+            </section>
+
+            <section className="admin-section">
+              <div className="section-header"><h2>Students and Results</h2><p>Current school records.</p></div>
+              <div className="table-container"><table className="data-table"><thead><tr><th>Student</th><th>Student ID</th><th>School</th></tr></thead><tbody>{students.map((student) => <tr key={student.id}><td>{student.first_name} {student.last_name}</td><td>{student.student_id || 'N/A'}</td><td>{student.school?.name || 'Current school'}</td></tr>)}{students.length === 0 && <tr><td colSpan="3">No students found</td></tr>}</tbody></table></div>
+              <div className="table-container"><table className="data-table"><thead><tr><th>Competition</th><th>Grade</th><th>Award</th><th>Rank</th></tr></thead><tbody>{results.map((result) => <tr key={result.id}><td>{result.participation_details}</td><td>{result.grade || 'N/A'}</td><td>{result.award}</td><td>{result.rank || 'N/A'}</td></tr>)}{results.length === 0 && <tr><td colSpan="4">No results found</td></tr>}</tbody></table></div>
+            </section>
+          </div>
+        )}
       </main>
-      )}
     </div>
   );
 }

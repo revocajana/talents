@@ -44,8 +44,8 @@ from core.views import (
     AuditLogViewSet,
 )
 from students.views import StudentViewSet, ParentViewSet
-from competitions.views import CompetitionViewSet, CompetitionParticipationViewSet
-from results.views import ResultViewSet, ResultDetailViewSet
+from competitions.views import CompetitionViewSet, CompetitionParticipationViewSet, CompetitionJudgeViewSet
+from results.views import ResultViewSet, ResultDetailViewSet, ResultPromotionViewSet
 
 router = DefaultRouter()
 router.register('countries', CountryViewSet)
@@ -62,8 +62,10 @@ router.register('student-talents', StudentTalentViewSet)
 router.register('announcements', AnnouncementViewSet)
 router.register('competitions', CompetitionViewSet)
 router.register('participations', CompetitionParticipationViewSet)
+router.register('competition-judges', CompetitionJudgeViewSet)
 router.register('results', ResultViewSet)
 router.register('result-details', ResultDetailViewSet)
+router.register('result-promotions', ResultPromotionViewSet)
 router.register('clubs', ClubViewSet)
 router.register('club-teachers', ClubTeacherViewSet)
 router.register('club-talents', ClubTalentViewSet)

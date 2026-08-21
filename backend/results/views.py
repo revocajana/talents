@@ -1,7 +1,10 @@
+from django.utils import timezone
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
-from .models import Result, ResultDetail
-from .serializers import ResultSerializer, ResultDetailSerializer
+from .models import Result, ResultDetail, ResultPromotion
+from .serializers import ResultSerializer, ResultDetailSerializer, ResultPromotionSerializer
 from core.permissions import AuthenticatedReadOnly, StudentDataPermission, ScopedQuerysetMixin
 
 
@@ -21,6 +24,15 @@ class ResultViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         'ward': 'participation__student__school__ward_id',
     }
 
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        result = self.get_object()
+        result.approval_status = 'approved'
+        result.approved_by = request.user
+        result.approved_at = timezone.now()
+        result.save(update_fields=['approval_status', 'approved_by', 'approved_at', 'updated_at'])
+        return Response(self.get_serializer(result).data)
+
 
 class ResultDetailViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = ResultDetail.objects.select_related('result', 'talent').all()
@@ -36,4 +48,13 @@ class ResultDetailViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         'region': 'result__participation__student__school__region_id', 'district': 'result__participation__student__school__district_id',
         'ward': 'result__participation__student__school__ward_id',
     }
+
+
+class ResultPromotionViewSet(viewsets.ModelViewSet):
+    queryset = ResultPromotion.objects.select_related('result', 'promoted_by').all()
+    serializer_class = ResultPromotionSerializer
+    permission_classes = [AuthenticatedReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(promoted_by=self.request.user)
 
