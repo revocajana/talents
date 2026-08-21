@@ -121,6 +121,14 @@ export const createStudentTalent = (data) => api.post('/student-talents/', data)
 export const updateStudentTalent = (id, data) => api.put(`/student-talents/${id}/`, data);
 export const deleteStudentTalent = (id) => api.delete(`/student-talents/${id}/`);
 
+// ==================== CLUBS AND EVALUATIONS ====================
+
+export const getClubs = (params = {}) => api.get('/clubs/', { params });
+export const getClubMemberships = (params = {}) => api.get('/club-memberships/', { params });
+export const getEvaluations = (params = {}) => api.get('/evaluations/', { params });
+export const getMessages = (params = {}) => api.get('/messages/', { params });
+export const sendMessage = (data) => api.post('/messages/', data);
+
 // ==================== STUDENTS ====================
 
 export const getStudents = (params = {}) => api.get('/students/', { params });

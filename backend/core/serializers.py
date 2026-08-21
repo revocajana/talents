@@ -183,9 +183,11 @@ class ClubTalentSerializer(serializers.ModelSerializer):
 
 
 class StudentClubMembershipSerializer(serializers.ModelSerializer):
+    club_name = serializers.CharField(source='club.name', read_only=True)
+
     class Meta:
         model = StudentClubMembership
-        fields = ['id', 'student', 'club', 'joined_at', 'left_at', 'is_active', 'transfer_reason']
+        fields = ['id', 'student', 'club', 'club_name', 'joined_at', 'left_at', 'is_active', 'transfer_reason']
         read_only_fields = ['joined_at']
 
     def validate(self, attrs):

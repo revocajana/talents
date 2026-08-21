@@ -10,6 +10,8 @@ export default function StudentPage() {
   const [district, setDistrict] = useState(null);
   const [messages, setMessages] = useState([]);
   const [results, setResults] = useState([]);
+  const [talents, setTalents] = useState([]);
+  const [membership, setMembership] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -30,9 +32,11 @@ export default function StudentPage() {
         const studentRecord = studentResponse.data;
         setStudent(studentRecord);
 
-        const [resultsResponse, announcementsResponse] = await Promise.all([
+        const [resultsResponse, announcementsResponse, talentsResponse, membershipsResponse] = await Promise.all([
           apiService.getResults({ 'participation__student': studentId }),
           apiService.getAnnouncements({ is_active: true }),
+          apiService.getStudentTalents({ student: studentId }),
+          apiService.getClubMemberships({ student: studentId, is_active: true }),
         ]);
 
         const school = studentRecord.school;
@@ -50,6 +54,8 @@ export default function StudentPage() {
           || (message.scope === 'school' && message.school === school?.id)
         )));
         setResults(getResults(resultsResponse));
+        setTalents(getResults(talentsResponse));
+        setMembership(getResults(membershipsResponse)[0] || null);
       } catch (err) {
         setError(err.response?.data?.detail || err.message || 'Failed to load student dashboard.');
       } finally {
@@ -85,6 +91,28 @@ export default function StudentPage() {
                   <p>{district?.name || 'Not available'}</p>
                   <p>Region ID: {district?.region || 'Not available'}</p>
                 </div>
+                <div className="report-card">
+                  <h4>My Club</h4>
+                  <p>{membership?.club_name || membership?.club || 'Not assigned'}</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="admin-section">
+              <div className="section-header">
+                <h2>My Talents</h2>
+                <p>Talents registered to your profile</p>
+              </div>
+              <div className="reports-grid">
+                {talents.length > 0 ? talents.map((talent) => (
+                  <div className="report-card" key={talent.id}>
+                    <h4>{talent.talent_name || 'Talent'}</h4>
+                    <p>{talent.talent_category || 'Category not available'}</p>
+                    <p>Proficiency level: {talent.proficiency_level || 'N/A'}</p>
+                  </div>
+                )) : (
+                  <div className="report-card"><p>No talents registered.</p></div>
+                )}
               </div>
             </section>
 

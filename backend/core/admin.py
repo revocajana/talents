@@ -18,6 +18,7 @@ from .models import (
     StudentTalent,
     Announcement,
 )
+from students.models import Student
 
 
 class RegionInline(admin.TabularInline):
@@ -283,10 +284,28 @@ class UserChangeFormWithPassword(UserChangeForm):
         required=False,
         help_text="Must match the new password above."
     )
+    student_gender = forms.ChoiceField(choices=Student.GENDER_CHOICES, required=False, label='Gender')
+    student_date_of_birth = forms.DateField(required=False, label='Date of birth', widget=forms.DateInput(attrs={'type': 'date'}))
 
     class Meta:
         model = User
         fields = ('username', 'first_name', 'last_name', 'email', 'role', 'school', 'is_active', 'is_staff', 'is_superuser')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        linked_student = getattr(self.instance, 'student', None)
+        if linked_student:
+            self.initial['student_gender'] = linked_student.gender
+            self.initial['student_date_of_birth'] = linked_student.date_of_birth
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('role') == 'student':
+            if not cleaned_data.get('school'):
+                self.add_error('school', 'A school is required for a student account.')
+            if not cleaned_data.get('student_gender'):
+                self.add_error('student_gender', 'Gender is required for a student account.')
+        return cleaned_data
 
     def clean(self):
         cleaned_data = super().clean()
@@ -312,6 +331,19 @@ class UserChangeFormWithPassword(UserChangeForm):
             user.set_password(password_new)
         if commit:
             user.save()
+            if user.role == 'student':
+                student = getattr(user, 'student', None)
+                if student is None:
+                    student = Student()
+                student.first_name = user.first_name
+                student.last_name = user.last_name
+                student.gender = self.cleaned_data['student_gender']
+                student.date_of_birth = self.cleaned_data.get('student_date_of_birth')
+                student.school = user.school
+                student.save()
+                if user.student_id != student.id:
+                    user.student = student
+                    user.save(update_fields=['student'])
         return user
 
 
@@ -329,6 +361,10 @@ class UserAdmin(admin.ModelAdmin):
         }),
         ("Role & Access", {
             "fields": ("role", "school", "is_staff", "is_superuser", "is_active")
+        }),
+        ("Student Profile", {
+            "fields": ("student_gender", "student_date_of_birth"),
+            "description": "Complete these fields when the role is Student. The student profile is created automatically."
         }),
         ("Change Password", {
             "fields": ("password_new", "password_confirm"),
