@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Header } from '../components/shared';
 import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
+import '../styles/talentadmin.css';
 
 const emptyStudent = { first_name: '', last_name: '', gender: '', date_of_birth: '', school_id: '' };
 const emptyTalent = { student: '', talent: '', proficiency_level: 1, notes: '' };
@@ -35,6 +36,18 @@ export default function SportTeacherPage() {
   const [resultForm, setResultForm] = useState({ student: '', competition: '', score: '', grade: '', award: 'none', rank: '', venue: '' });
 
   const schoolId = currentUser?.school;
+  const schoolStudents = students.filter((student) => {
+    const studentSchool = student.school?.id ?? student.school ?? student.school_id;
+    return studentSchool === schoolId;
+  });
+  const schoolStudentTalents = studentTalents.filter((item) => {
+    const itemStudentSchool = item.student_school?.id ?? item.student_school ?? item.student?.school?.id ?? item.student_school_id;
+    return itemStudentSchool === schoolId;
+  });
+  const schoolClubs = clubs.filter((club) => club.school === schoolId || club.school?.id === schoolId);
+  const firstSchoolStudentId = schoolStudents[0]?.id || '';
+  const firstSchoolTalentId = schoolStudentTalents[0]?.id || '';
+  const firstSchoolClubId = schoolClubs[0]?.id || '';
 
   const loadData = async () => {
     try {
@@ -164,6 +177,27 @@ export default function SportTeacherPage() {
   const uniqueStudentCount = new Set(studentTalents.map((item) => item.student)).size;
   const medals = results.filter((result) => ['gold', 'silver', 'bronze'].includes(result.award)).length;
 
+  useEffect(() => {
+    if (!loading && schoolStudents.length && !submissionForm.student) {
+      setSubmissionForm((form) => ({ ...form, student: String(firstSchoolStudentId) }));
+    }
+    if (!loading && schoolStudents.length && !resultForm.student) {
+      setResultForm((form) => ({ ...form, student: String(firstSchoolStudentId) }));
+    }
+    if (!loading && schoolStudents.length && !membershipForm.student) {
+      setMembershipForm((form) => ({ ...form, student: String(firstSchoolStudentId) }));
+    }
+    if (!loading && schoolStudentTalents.length && !evaluationForm.studentTalent) {
+      setEvaluationForm((form) => ({ ...form, studentTalent: String(firstSchoolTalentId) }));
+    }
+    if (!loading && schoolClubs.length && !membershipForm.club) {
+      setMembershipForm((form) => ({ ...form, club: String(firstSchoolClubId) }));
+    }
+    if (!loading && schoolStudents.length && !talentForm.student) {
+      setTalentForm((form) => ({ ...form, student: String(firstSchoolStudentId) }));
+    }
+  }, [loading, schoolStudents, schoolStudentTalents, schoolClubs, submissionForm.student, resultForm.student, membershipForm.student, membershipForm.club, evaluationForm.studentTalent, talentForm.student]);
+
   return (
     <div className="page-container">
       <Header title="Sport Teacher Workspace" />
@@ -185,7 +219,7 @@ export default function SportTeacherPage() {
             <section className="admin-section">
               <div className="section-header"><h2>Talent Submissions</h2><p>Upload a student performance or creative submission.</p></div>
               <form className="report-card" onSubmit={submitSubmission}>
-                <select className="form-input" value={submissionForm.student} onChange={(e) => setSubmissionForm({ ...submissionForm, student: e.target.value })} required><option value="">Student</option>{students.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select>
+                <select className="form-input" value={submissionForm.student || firstSchoolStudentId} onChange={(e) => setSubmissionForm({ ...submissionForm, student: e.target.value })} required><option value="">Student</option>{schoolStudents.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select>
                 <select className="form-input" value={submissionForm.talent} onChange={(e) => setSubmissionForm({ ...submissionForm, talent: e.target.value })} required><option value="">Talent</option>{talents.map((talent) => <option key={talent.id} value={talent.id}>{talent.name}</option>)}</select>
                 <input className="form-input" placeholder="Submission title" value={submissionForm.title} onChange={(e) => setSubmissionForm({ ...submissionForm, title: e.target.value })} required />
                 <textarea className="form-input" placeholder="Description" value={submissionForm.description} onChange={(e) => setSubmissionForm({ ...submissionForm, description: e.target.value })} />
@@ -197,7 +231,7 @@ export default function SportTeacherPage() {
             <section className="admin-section">
               <div className="section-header"><h2>Record Competition Result</h2><p>Register participation and record the final result.</p></div>
               <form className="report-card" onSubmit={submitResult}>
-                <select className="form-input" value={resultForm.student} onChange={(e) => setResultForm({ ...resultForm, student: e.target.value })} required><option value="">Student</option>{students.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select>
+                <select className="form-input" value={resultForm.student || firstSchoolStudentId} onChange={(e) => setResultForm({ ...resultForm, student: e.target.value })} required><option value="">Student</option>{schoolStudents.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select>
                 <select className="form-input" value={resultForm.competition} onChange={(e) => setResultForm({ ...resultForm, competition: e.target.value })} required><option value="">Competition</option>{competitions.map((competition) => <option key={competition.id} value={competition.id}>{competition.name}</option>)}</select>
                 <input className="form-input" type="number" min="0" max="100" placeholder="Score" value={resultForm.score} onChange={(e) => setResultForm({ ...resultForm, score: e.target.value })} />
                 <select className="form-input" value={resultForm.grade} onChange={(e) => setResultForm({ ...resultForm, grade: e.target.value })}><option value="">Grade</option>{['A+', 'A', 'B+', 'B', 'C', 'D', 'F'].map((grade) => <option key={grade} value={grade}>{grade}</option>)}</select>
@@ -217,12 +251,37 @@ export default function SportTeacherPage() {
                 <input className="form-input" type="date" value={studentForm.date_of_birth} onChange={(e) => setStudentForm({ ...studentForm, date_of_birth: e.target.value })} />
                 <button className="btn-primary" disabled={saving}>Register student</button>
               </form>
+
+              <div className="table-container" style={{ marginTop: '1.5rem' }}>
+                <h3>Students in your school</h3>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Gender</th>
+                      <th>Date of birth</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {schoolStudents.map((student) => (
+                      <tr key={student.id}>
+                        <td>{student.first_name} {student.last_name}</td>
+                        <td>{student.gender === 'M' ? 'Male' : student.gender === 'F' ? 'Female' : 'Other'}</td>
+                        <td>{student.date_of_birth || '—'}</td>
+                      </tr>
+                    ))}
+                    {schoolStudents.length === 0 && (
+                      <tr><td colSpan="3">No students registered for this school yet.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             <section className="admin-section">
               <div className="section-header"><h2>Assign Talent</h2><p>Assign up to five talents to each student.</p></div>
               <form className="reports-grid" onSubmit={submitTalent}>
-                <select className="form-input" value={talentForm.student} onChange={(e) => setTalentForm({ ...talentForm, student: e.target.value })} required><option value="">Student</option>{students.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select>
+                <select className="form-input" value={talentForm.student || firstSchoolStudentId} onChange={(e) => setTalentForm({ ...talentForm, student: e.target.value })} required><option value="">Student</option>{schoolStudents.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select>
                 <select className="form-input" value={talentForm.talent} onChange={(e) => setTalentForm({ ...talentForm, talent: e.target.value })} required><option value="">Talent</option>{talents.map((talent) => <option key={talent.id} value={talent.id}>{talent.name}</option>)}</select>
                 <select className="form-input" value={talentForm.proficiency_level} onChange={(e) => setTalentForm({ ...talentForm, proficiency_level: e.target.value })}><option value="1">Beginner</option><option value="2">Intermediate</option><option value="3">Advanced</option><option value="4">Expert</option></select>
                 <input className="form-input" placeholder="Progress notes" value={talentForm.notes} onChange={(e) => setTalentForm({ ...talentForm, notes: e.target.value })} />
@@ -234,15 +293,15 @@ export default function SportTeacherPage() {
               <div className="section-header"><h2>Club Management</h2><p>Create clubs and assign students to one active club.</p></div>
               <div className="reports-grid">
                 <form className="report-card" onSubmit={submitClub}><h4>Create club</h4><input className="form-input" placeholder="Club name" value={clubForm.name} onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })} required /><input className="form-input" placeholder="Focus" value={clubForm.focus} onChange={(e) => setClubForm({ ...clubForm, focus: e.target.value })} /><button className="btn-primary" disabled={saving}>Create club</button></form>
-                <form className="report-card" onSubmit={submitMembership}><h4>Assign student</h4><select className="form-input" value={membershipForm.student} onChange={(e) => setMembershipForm({ ...membershipForm, student: e.target.value })} required><option value="">Student</option>{students.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select><select className="form-input" value={membershipForm.club} onChange={(e) => setMembershipForm({ ...membershipForm, club: e.target.value })} required><option value="">Club</option>{clubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select><button className="btn-primary" disabled={saving}>Assign to club</button></form>
+                <form className="report-card" onSubmit={submitMembership}><h4>Assign student</h4><select className="form-input" value={membershipForm.student || firstSchoolStudentId} onChange={(e) => setMembershipForm({ ...membershipForm, student: e.target.value })} required><option value="">Student</option>{schoolStudents.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select><select className="form-input" value={membershipForm.club || firstSchoolClubId} onChange={(e) => setMembershipForm({ ...membershipForm, club: e.target.value })} required><option value="">Club</option>{schoolClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select><button className="btn-primary" disabled={saving}>Assign to club</button></form>
               </div>
-              <div className="table-container"><table className="data-table"><thead><tr><th>Club</th><th>Focus</th><th>Status</th></tr></thead><tbody>{clubs.map((club) => <tr key={club.id}><td>{club.name}</td><td>{club.focus || 'N/A'}</td><td>{club.is_active ? 'Active' : 'Inactive'}</td></tr>)}{clubs.length === 0 && <tr><td colSpan="3">No clubs found</td></tr>}</tbody></table></div>
+              <div className="table-container"><table className="data-table"><thead><tr><th>Club</th><th>Focus</th><th>Status</th></tr></thead><tbody>{schoolClubs.map((club) => <tr key={club.id}><td>{club.name}</td><td>{club.focus || 'N/A'}</td><td>{club.is_active ? 'Active' : 'Inactive'}</td></tr>)}{schoolClubs.length === 0 && <tr><td colSpan="3">No clubs found</td></tr>}</tbody></table></div>
             </section>
 
             <section className="admin-section">
               <div className="section-header"><h2>Evaluate Talent</h2><p>Score criteria from 0 to 100. The backend calculates grade and pass status.</p></div>
               <form className="report-card" onSubmit={submitEvaluation}>
-                <select className="form-input" value={evaluationForm.studentTalent} onChange={(e) => setEvaluationForm({ ...evaluationForm, studentTalent: e.target.value, criteria: {} })} required><option value="">Student talent</option>{studentTalents.map((item) => <option key={item.id} value={item.id}>{item.student_name} - {item.talent_name}</option>)}</select>
+                <select className="form-input" value={evaluationForm.studentTalent || firstSchoolTalentId} onChange={(e) => setEvaluationForm({ ...evaluationForm, studentTalent: e.target.value, criteria: {} })} required><option value="">Student talent</option>{schoolStudentTalents.map((item) => <option key={item.id} value={item.id}>{item.student_name} - {item.talent_name}</option>)}</select>
                 {selectedCriteria.map((criterion) => <input key={criterion.id} className="form-input" type="number" min="0" max="100" placeholder={`${criterion.name} (${criterion.weight}%)`} value={evaluationForm.criteria[criterion.id] || ''} onChange={(e) => setEvaluationForm({ ...evaluationForm, criteria: { ...evaluationForm.criteria, [criterion.id]: e.target.value } })} required />)}
                 <textarea className="form-input" placeholder="Feedback" value={evaluationForm.feedback} onChange={(e) => setEvaluationForm({ ...evaluationForm, feedback: e.target.value })} />
                 <button className="btn-primary" disabled={saving || !selectedStudentTalent}>Save evaluation</button>
