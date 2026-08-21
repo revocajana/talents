@@ -71,7 +71,16 @@ class School(models.Model):
     ward = models.ForeignKey(Ward, on_delete=models.PROTECT, related_name="schools")
     phone = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
+    student_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def recommended_club_count(self):
+        if self.student_count <= 200:
+            return 3
+        if self.student_count < 500:
+            return 5
+        return 10
 
     def __str__(self):
         return f"{self.name} ({self.registry_number})"
@@ -88,10 +97,16 @@ class User(AbstractUser):
         ("head_teacher", "Head Teacher"),
         ("sport_teacher", "Sport Teacher"),
         ("student", "Student"),
+        ("parent", "Parent"),
     ]
     role = models.CharField(max_length=30, choices=ROLE_CHOICES)
     school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
     student = models.OneToOneField('students.Student', on_delete=models.SET_NULL, null=True, blank=True, related_name="user")
+    country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True, related_name="scoped_users")
+    zone = models.ForeignKey(Zone, on_delete=models.SET_NULL, null=True, blank=True, related_name="scoped_users")
+    region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, related_name="scoped_users")
+    district = models.ForeignKey(District, on_delete=models.SET_NULL, null=True, blank=True, related_name="scoped_users")
+    ward = models.ForeignKey(Ward, on_delete=models.SET_NULL, null=True, blank=True, related_name="scoped_users")
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
@@ -104,6 +119,7 @@ class Parent(models.Model):
     full_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=20)
     email = models.EmailField(blank=True, null=True)
+    user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="parent_profile")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -187,6 +203,166 @@ class Announcement(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_scope_display()})"
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class Club(models.Model):
+    """A school club that groups students and their related talents."""
+
+    name = models.CharField(max_length=150)
+    focus = models.CharField(max_length=200, blank=True)
+    description = models.TextField(blank=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='clubs')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    teachers = models.ManyToManyField(User, through='ClubTeacher', related_name='managed_clubs', blank=True)
+    talents = models.ManyToManyField(Talent, through='ClubTalent', related_name='clubs', blank=True)
+
+    class Meta:
+        ordering = ['school', 'name']
+        constraints = [
+            models.UniqueConstraint(fields=['school', 'name'], name='unique_club_name_per_school'),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.school.name})"
+
+
+class ClubTeacher(models.Model):
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='teacher_assignments')
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='club_assignments')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['club', 'teacher'], name='unique_teacher_per_club'),
+        ]
+
+
+class ClubTalent(models.Model):
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='talent_assignments')
+    talent = models.ForeignKey(Talent, on_delete=models.CASCADE, related_name='club_assignments')
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['club', 'talent'], name='unique_talent_per_club'),
+        ]
+
+
+class StudentClubMembership(models.Model):
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='club_memberships')
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='memberships')
+    joined_at = models.DateTimeField(auto_now_add=True)
+    left_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    transfer_reason = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-joined_at']
+        constraints = [
+            models.UniqueConstraint(fields=['student', 'club'], name='unique_student_club_membership'),
+            models.UniqueConstraint(fields=['student'], condition=models.Q(is_active=True), name='one_active_club_per_student'),
+        ]
+
+
+class EvaluationCriterion(models.Model):
+    talent = models.ForeignKey(Talent, on_delete=models.CASCADE, related_name='evaluation_criteria')
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    weight = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['talent', 'name']
+        constraints = [
+            models.UniqueConstraint(fields=['talent', 'name'], name='unique_criterion_per_talent'),
+        ]
+
+
+class TalentEvaluation(models.Model):
+    student_talent = models.ForeignKey(StudentTalent, on_delete=models.CASCADE, related_name='evaluations')
+    evaluator = models.ForeignKey(User, on_delete=models.PROTECT, related_name='talent_evaluations')
+    total_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    passed = models.BooleanField(default=False)
+    feedback = models.TextField(blank=True)
+    evaluated_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class EvaluationScore(models.Model):
+    evaluation = models.ForeignKey(TalentEvaluation, on_delete=models.CASCADE, related_name='scores')
+    criterion = models.ForeignKey(EvaluationCriterion, on_delete=models.PROTECT, related_name='scores')
+    score = models.DecimalField(max_digits=5, decimal_places=2)
+    comment = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['evaluation', 'criterion'], name='unique_score_per_criterion'),
+        ]
+
+
+class TalentSubmission(models.Model):
+    STATUS_CHOICES = [
+        ('submitted', 'Submitted'),
+        ('under_review', 'Under Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='talent_submissions')
+    talent = models.ForeignKey(Talent, on_delete=models.PROTECT, related_name='submissions')
+    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, blank=True, related_name='submissions')
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    media = models.FileField(upload_to='talent_submissions/', blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='submitted')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_submissions')
+
+
+class SubmissionFeedback(models.Model):
+    submission = models.ForeignKey(TalentSubmission, on_delete=models.CASCADE, related_name='feedback_entries')
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='submission_feedback')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Message(models.Model):
+    sender = models.ForeignKey(User, on_delete=models.PROTECT, related_name='sent_messages')
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
+    subject = models.CharField(max_length=200, blank=True)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+    link = models.CharField(max_length=255, blank=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class AuditLog(models.Model):
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
+    action = models.CharField(max_length=50)
+    model_name = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=64, blank=True)
+    changes = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
