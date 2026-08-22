@@ -6,8 +6,24 @@
       region: $('#id_region'),
       district: $('#id_district'),
       ward: $('#id_ward'),
-      school: $('#id_school')
+      school: $('#id_school'),
+      scope: $('#id_scope')
     };
+
+    var scopeFields = {
+      national: ['country'],
+      zone: ['country', 'zone'],
+      region: ['country', 'zone', 'region'],
+      district: ['country', 'zone', 'region', 'district'],
+      school: ['country', 'zone', 'region', 'district', 'ward', 'school']
+    };
+
+    function updateScopeFields() {
+      var enabledFields = scopeFields[fields.scope.val()] || [];
+      ['country', 'zone', 'region', 'district', 'ward', 'school'].forEach(function (name) {
+        fields[name].prop('disabled', enabledFields.indexOf(name) === -1);
+      });
+    }
 
     function endpoint() {
       return window.location.pathname.replace(/(add|change)\/?$/, 'geography/');
@@ -40,19 +56,21 @@
       populate(fields.school, []);
 
       $.getJSON(endpoint(), params, function (response) {
-        if (level === 'country') {
+        if (level === 'country' && !fields.zone.prop('disabled')) {
           populate(fields.zone, response.zones);
         }
-        if (level === 'country' || level === 'zone') {
+        if ((level === 'country' || level === 'zone') && !fields.region.prop('disabled')) {
           populate(fields.region, response.regions);
         }
-        if (level === 'country' || level === 'zone' || level === 'region') {
+        if ((level === 'country' || level === 'zone' || level === 'region') && !fields.district.prop('disabled')) {
           populate(fields.district, response.districts);
         }
-        if (level !== 'ward') {
+        if (level !== 'ward' && !fields.ward.prop('disabled')) {
           populate(fields.ward, response.wards);
         }
-        populate(fields.school, response.schools);
+        if (!fields.school.prop('disabled')) {
+          populate(fields.school, response.schools);
+        }
       });
     }
 
@@ -91,7 +109,24 @@
       refresh({ ward_id: fields.ward.val() }, 'ward');
     });
 
-    if (fields.country.val()) {
+    fields.scope.on('change', function () {
+      var scope = fields.scope.val();
+      var enabledFields = scopeFields[scope] || [];
+      ['zone', 'region', 'district', 'ward', 'school'].forEach(function (name) {
+        if (enabledFields.indexOf(name) === -1) {
+          fields[name].val('');
+        }
+      });
+      updateScopeFields();
+
+      if (fields.country.val() && enabledFields.indexOf('zone') !== -1) {
+        refresh({ country_id: fields.country.val() }, 'country');
+      }
+    });
+
+    updateScopeFields();
+
+    if (fields.country.val() && fields.zone.prop('disabled') === false) {
       refresh({
         country_id: fields.country.val(),
         zone_id: fields.zone.val(),

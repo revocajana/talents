@@ -457,6 +457,22 @@ class AnnouncementAdminForm(forms.ModelForm):
         if ward_id:
             self.fields['school'].queryset = School.objects.filter(ward_id=ward_id).order_by('name')
 
+    def clean(self):
+        cleaned_data = super().clean()
+        scope = cleaned_data.get('scope')
+        allowed_fields = {
+            'national': {'country'},
+            'zone': {'country', 'zone'},
+            'region': {'country', 'zone', 'region'},
+            'district': {'country', 'zone', 'region', 'district'},
+            'school': {'country', 'zone', 'region', 'district', 'school'},
+        }.get(scope, set())
+
+        for field_name in ('country', 'zone', 'region', 'district', 'school'):
+            if field_name not in allowed_fields:
+                cleaned_data[field_name] = None
+        return cleaned_data
+
 
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
