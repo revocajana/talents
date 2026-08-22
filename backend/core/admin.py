@@ -111,11 +111,93 @@ class RegionAdmin(admin.ModelAdmin):
     district_count.short_description = "# Districts"
 
 
+class DistrictAdminForm(forms.ModelForm):
+    country = forms.ModelChoiceField(queryset=Country.objects.all().order_by('name'), label='Country')
+    zone = forms.ModelChoiceField(queryset=Zone.objects.none(), label='Zone')
+
+    class Meta:
+        model = District
+        fields = ('country', 'zone', 'region', 'name')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['zone'].queryset = Zone.objects.none()
+        self.fields['region'].queryset = Region.objects.none()
+
+        country_id = self.data.get('country') if self.data else None
+        zone_id = self.data.get('zone') if self.data else None
+        region_id = self.data.get('region') if self.data else None
+
+        if self.instance and self.instance.pk:
+            region = self.instance.region
+            country_id = country_id or region.zone.country_id
+            zone_id = zone_id or region.zone_id
+            region_id = region_id or region.pk
+            self.initial.update({
+                'country': country_id,
+                'zone': zone_id,
+                'region': region_id,
+            })
+
+        if country_id:
+            self.fields['zone'].queryset = Zone.objects.filter(country_id=country_id).order_by('name')
+        if zone_id:
+            self.fields['region'].queryset = Region.objects.filter(zone_id=zone_id).order_by('name')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        country = cleaned_data.get('country')
+        zone = cleaned_data.get('zone')
+        region = cleaned_data.get('region')
+
+        if zone and country and zone.country_id != country.pk:
+            self.add_error('zone', 'Choose a zone belonging to the selected country.')
+        if region and zone and region.zone_id != zone.pk:
+            self.add_error('region', 'Choose a region belonging to the selected zone.')
+        return cleaned_data
+
+
 @admin.register(District)
 class DistrictAdmin(admin.ModelAdmin):
-    list_display = ("name", "region", "ward_count")
+    form = DistrictAdminForm
+    list_display = ("name", "region_location", "ward_count")
     list_filter = ("region",)
     search_fields = ("name",)
+    fieldsets = (
+        ('Location', {
+            'fields': ('country', 'zone', 'region')
+        }),
+        ('District', {
+            'fields': ('name',)
+        }),
+    )
+    class Media:
+        js = ('admin/js/jquery.init.js', 'core/js/district_geography.js')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('region__zone__country')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('geography/', self.admin_site.admin_view(self.geography_data), name='core_district_geography'),
+            path('<path:object_id>/geography/', self.admin_site.admin_view(self.geography_data), name='core_district_geography_object'),
+        ]
+        return custom_urls + urls
+
+    def geography_data(self, request, object_id=None):
+        country_id = request.GET.get('country_id')
+        zone_id = request.GET.get('zone_id')
+        zones = Zone.objects.filter(country_id=country_id) if country_id else Zone.objects.none()
+        regions = Region.objects.filter(zone_id=zone_id) if zone_id else Region.objects.none()
+        return JsonResponse({
+            'zones': [{'id': item.pk, 'name': str(item)} for item in zones.order_by('name')],
+            'regions': [{'id': item.pk, 'name': str(item)} for item in regions.order_by('name')],
+        })
+
+    @admin.display(description='Region')
+    def region_location(self, obj):
+        return f'{obj.region.name} - {obj.region.zone.name} - {obj.region.zone.country.name}'
 
     def ward_count(self, obj):
         # District -> Ward uses related_name='wards'
