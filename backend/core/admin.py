@@ -21,6 +21,11 @@ from .models import (
 from students.models import Student
 
 
+admin.site.site_header = 'Super admin'
+admin.site.site_title = 'Super admin'
+admin.site.index_title = 'Super admin'
+
+
 class RegionInline(admin.TabularInline):
     model = Region
     fk_name = 'zone'
