@@ -1,130 +1,92 @@
-(function ($) {
-  $(function () {
-    var countrySelect = $('#id_country');
-    var zoneSelect = $('#id_zone');
-    var regionSelect = $('#id_region');
-    var districtSelect = $('#id_district');
-    var wardSelect = $('#id_ward');
+(function () {
+  document.addEventListener('DOMContentLoaded', function () {
+    var countrySelect = document.getElementById('id_country');
+    var zoneSelect = document.getElementById('id_zone');
+    var regionSelect = document.getElementById('id_region');
+    var districtSelect = document.getElementById('id_district');
+    var wardSelect = document.getElementById('id_ward');
+
+    if (!countrySelect || !zoneSelect || !regionSelect || !districtSelect || !wardSelect) {
+      return;
+    }
 
     function adminEndpoint() {
-      return window.location.pathname.replace(/(add|change)\/?$/, 'geography/');
+      return window.location.pathname.replace(/\/(?:add|change)\/?$/, '/geography/');
     }
 
     function populateSelect(selectEl, items, selectedId) {
-      if (!selectEl.length) {
-        return;
-      }
-      var currentValue = selectEl.val();
-      selectEl.empty().append('<option value="">---------</option>');
-
-      $.each(items || [], function (_, item) {
-        selectEl.append($('<option>').attr('value', item.id).text(item.name));
+      var currentValue = selectedId || selectEl.value;
+      selectEl.replaceChildren(new Option('---------', ''));
+      (items || []).forEach(function (item) {
+        selectEl.add(new Option(item.name, item.id));
       });
-
-      if (selectedId) {
-        selectEl.val(selectedId);
-      } else if (currentValue && selectEl.find('option[value="' + currentValue + '"]').length) {
-        selectEl.val(currentValue);
+      if (currentValue && Array.from(selectEl.options).some(function (option) {
+        return option.value === String(currentValue);
+      })) {
+        selectEl.value = currentValue;
       }
     }
 
-    function fetchGeography(params, callback) {
-      $.getJSON(adminEndpoint(), params, callback);
-    }
-
-    function setRelationshipValues(related) {
-      if (!related) {
-        return;
-      }
-      if (related.country_id) {
-        countrySelect.val(related.country_id);
-      }
-      if (related.zone_id) {
-        zoneSelect.val(related.zone_id);
-      }
-      if (related.region_id) {
-        regionSelect.val(related.region_id);
-      }
-      if (related.district_id) {
-        districtSelect.val(related.district_id);
-      }
-      if (related.ward_id) {
-        wardSelect.val(related.ward_id);
-      }
-    }
-
-    function refreshCountry() {
-      fetchGeography({ country_id: countrySelect.val() }, function (response) {
-        populateSelect(zoneSelect, response.zones);
-        populateSelect(regionSelect, response.regions);
-        populateSelect(districtSelect, response.districts);
-        populateSelect(wardSelect, response.wards);
-      });
-    }
-
-    function refreshZone() {
-      fetchGeography({ country_id: countrySelect.val(), zone_id: zoneSelect.val() }, function (response) {
-        if (response.related) {
-          setRelationshipValues(response.related);
+    function loadGeography(params, preserve) {
+      var query = new URLSearchParams(params);
+      return fetch(adminEndpoint() + '?' + query.toString(), {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' }
+      }).then(function (response) {
+        if (!response.ok) {
+          throw new Error('Geography request failed with status ' + response.status);
         }
-        populateSelect(regionSelect, response.regions, response.related ? response.related.region_id : null);
-        populateSelect(districtSelect, response.districts);
-        populateSelect(wardSelect, response.wards);
+        return response.json();
+      }).then(function (data) {
+        populateSelect(zoneSelect, data.zones, preserve && preserve.zone);
+        populateSelect(regionSelect, data.regions, preserve && preserve.region);
+        populateSelect(districtSelect, data.districts, preserve && preserve.district);
+        populateSelect(wardSelect, data.wards, preserve && preserve.ward);
+      }).catch(function (error) {
+        console.error('Unable to load school geography options.', error);
       });
     }
 
-    function refreshRegion() {
-      fetchGeography({ country_id: countrySelect.val(), zone_id: zoneSelect.val(), region_id: regionSelect.val() }, function (response) {
-        if (response.related) {
-          setRelationshipValues(response.related);
-        }
-        populateSelect(districtSelect, response.districts, response.related ? response.related.district_id : null);
-        populateSelect(wardSelect, response.wards);
+    function clearBelow(select) {
+      var levels = [zoneSelect, regionSelect, districtSelect, wardSelect];
+      levels.slice(levels.indexOf(select)).forEach(function (field) {
+        populateSelect(field, []);
       });
     }
 
-    function refreshDistrict() {
-      fetchGeography({
-        country_id: countrySelect.val(),
-        zone_id: zoneSelect.val(),
-        region_id: regionSelect.val(),
-        district_id: districtSelect.val(),
-      }, function (response) {
-        if (response.related) {
-          setRelationshipValues(response.related);
-        }
-        populateSelect(wardSelect, response.wards, response.related ? response.related.ward_id : null);
+    countrySelect.addEventListener('change', function () {
+      clearBelow(zoneSelect);
+      loadGeography({ country_id: countrySelect.value });
+    });
+    zoneSelect.addEventListener('change', function () {
+      clearBelow(regionSelect);
+      loadGeography({ country_id: countrySelect.value, zone_id: zoneSelect.value });
+    });
+    regionSelect.addEventListener('change', function () {
+      clearBelow(districtSelect);
+      loadGeography({ country_id: countrySelect.value, zone_id: zoneSelect.value, region_id: regionSelect.value });
+    });
+    districtSelect.addEventListener('change', function () {
+      clearBelow(wardSelect);
+      loadGeography({ country_id: countrySelect.value, zone_id: zoneSelect.value, region_id: regionSelect.value, district_id: districtSelect.value });
+    });
+    wardSelect.addEventListener('change', function () {
+      loadGeography({ country_id: countrySelect.value, zone_id: zoneSelect.value, region_id: regionSelect.value, district_id: districtSelect.value, ward_id: wardSelect.value });
+    });
+
+    if (countrySelect.value) {
+      loadGeography({
+        country_id: countrySelect.value,
+        zone_id: zoneSelect.value,
+        region_id: regionSelect.value,
+        district_id: districtSelect.value,
+        ward_id: wardSelect.value
+      }, {
+        zone: zoneSelect.value,
+        region: regionSelect.value,
+        district: districtSelect.value,
+        ward: wardSelect.value
       });
-    }
-
-    function refreshWard() {
-      fetchGeography({ ward_id: wardSelect.val() }, function (response) {
-        if (response.related) {
-          setRelationshipValues(response.related);
-        }
-        populateSelect(zoneSelect, response.zones, response.related ? response.related.zone_id : null);
-        populateSelect(regionSelect, response.regions, response.related ? response.related.region_id : null);
-        populateSelect(districtSelect, response.districts, response.related ? response.related.district_id : null);
-        populateSelect(wardSelect, response.wards, response.related ? response.related.ward_id : null);
-      });
-    }
-
-    countrySelect.on('change', refreshCountry);
-    zoneSelect.on('change', refreshZone);
-    regionSelect.on('change', refreshRegion);
-    districtSelect.on('change', refreshDistrict);
-    wardSelect.on('change', refreshWard);
-
-    if (countrySelect.val()) {
-      refreshCountry();
-    } else if (zoneSelect.val()) {
-      refreshZone();
-    } else if (regionSelect.val()) {
-      refreshRegion();
-    } else if (districtSelect.val()) {
-      refreshDistrict();
-    } else if (wardSelect.val()) {
-      refreshWard();
     }
   });
-})(django.jQuery);
+}());
