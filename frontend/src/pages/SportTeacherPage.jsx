@@ -247,7 +247,7 @@ export default function SportTeacherPage() {
               <form className="reports-grid" onSubmit={submitStudent}>
                 <input className="form-input" placeholder="First name" value={studentForm.first_name} onChange={(e) => setStudentForm({ ...studentForm, first_name: e.target.value })} required />
                 <input className="form-input" placeholder="Last name" value={studentForm.last_name} onChange={(e) => setStudentForm({ ...studentForm, last_name: e.target.value })} required />
-                <select className="form-input" value={studentForm.gender} onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })} required><option value="">Gender</option><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option></select>
+                <select className="form-input" value={studentForm.gender} onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })} required><option value="">Gender</option><option value="M">Male</option><option value="F">Female</option></select>
                 <input className="form-input" type="date" value={studentForm.date_of_birth} onChange={(e) => setStudentForm({ ...studentForm, date_of_birth: e.target.value })} />
                 <button className="btn-primary" disabled={saving}>Register student</button>
               </form>
@@ -266,7 +266,7 @@ export default function SportTeacherPage() {
                     {schoolStudents.map((student) => (
                       <tr key={student.id}>
                         <td>{student.first_name} {student.last_name}</td>
-                        <td>{student.gender === 'M' ? 'Male' : student.gender === 'F' ? 'Female' : 'Other'}</td>
+                        <td>{student.gender === 'M' ? 'Male' : student.gender === 'F' ? 'Female' : 'Not provided'}</td>
                         <td>{student.date_of_birth || '—'}</td>
                       </tr>
                     ))}

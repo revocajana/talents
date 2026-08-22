@@ -14,7 +14,7 @@ export default function TalentAdminPage() {
   const [showUserListModal, setShowUserListModal] = useState(false);
   const [showUserEditModal, setShowUserEditModal] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
-  const [userForm, setUserForm] = useState({ username: '', password: '', first_name: '', last_name: '', email: '', role: '', school: null, student: null });
+  const [userForm, setUserForm] = useState({ username: '', password: '', first_name: '', last_name: '', email: '', role: '', country: null, zone: null, region: null, district: null, ward: null, school: null, student: null });
   const [studentForm, setStudentForm] = useState({ gender: '', date_of_birth: '', school_id: '' });
   const [selectedUserRole, setSelectedUserRole] = useState(null);
   const [showDemographicModal, setShowDemographicModal] = useState(false);
@@ -63,6 +63,73 @@ export default function TalentAdminPage() {
   const usersForModal = selectedUserRole
     ? usersData.filter((user) => user.role === selectedUserRole)
     : usersData;
+
+  const getNameById = (collection, id) => {
+    if (!id || !Array.isArray(collection)) return '';
+    const item = collection.find((entry) => entry.id === id);
+    return item?.name || item?.registry_number || '';
+  };
+
+  const getSchoolLocationChain = (schoolId) => {
+    const school = demographicData.schools.find((entry) => entry.id === schoolId) || null;
+    if (!school) return null;
+
+    const ward = demographicData.wards.find((entry) => entry.id === school.ward) || null;
+    const district = demographicData.districts.find((entry) => entry.id === (ward?.district ?? school.district)) || null;
+    const region = demographicData.regions.find((entry) => entry.id === (district?.region ?? school.region)) || null;
+    const zone = demographicData.zones.find((entry) => entry.id === (region?.zone ?? school.zone)) || null;
+
+    return { school, ward, district, region, zone };
+  };
+
+  const getUserLocationLabel = (user) => {
+    const school = demographicData.schools.find((entry) => entry.id === user.school) || null;
+    const schoolLocation = school ? getSchoolLocationChain(school.id) : null;
+    const ward = schoolLocation?.ward || demographicData.wards.find((entry) => entry.id === user.ward) || null;
+    const district = schoolLocation?.district || demographicData.districts.find((entry) => entry.id === user.district) || null;
+    const region = schoolLocation?.region || demographicData.regions.find((entry) => entry.id === user.region) || null;
+    const zone = schoolLocation?.zone || demographicData.zones.find((entry) => entry.id === user.zone) || null;
+
+    const schoolName = school?.name || 'School not assigned';
+    const wardName = ward?.name || 'Ward not assigned';
+    const districtName = district?.name || 'District not assigned';
+    const regionName = region?.name || 'Region not assigned';
+    const zoneName = zone?.name || 'Zone not assigned';
+
+    switch (user.role) {
+      case 'region_manager':
+        return regionName;
+      case 'district_manager':
+        return districtName && regionName ? `${districtName} • ${regionName}` : districtName || regionName;
+      case 'ward_manager':
+        return wardName && districtName && regionName ? `${wardName} • ${districtName} • ${regionName}` : wardName || districtName || regionName;
+      case 'head_teacher':
+      case 'sport_teacher':
+        return schoolName && wardName && districtName && regionName && zoneName ? `${schoolName} • ${wardName} • ${districtName} • ${regionName} • ${zoneName}` : schoolName || wardName || districtName || regionName || zoneName;
+      case 'student':
+        return schoolName;
+      default:
+        return user.email || 'No location';
+    }
+  };
+
+  const renderUserNameCell = (user) => {
+    if (user.role === 'student') {
+      const schoolLocation = user.school ? getSchoolLocationChain(user.school) : null;
+      const schoolName = schoolLocation?.school?.name || null;
+
+      return (
+        <div style={{ display: 'grid', gap: '0.2rem' }}>
+          <span style={{ fontWeight: 600 }}>{user.first_name} {user.last_name}</span>
+          {schoolName ? (
+            <small style={{ color: '#6b7280', fontSize: '0.76rem' }}>{schoolName}</small>
+          ) : null}
+        </div>
+      );
+    }
+
+    return <span>{user.first_name} {user.last_name}</span>;
+  };
 
   const demographicConfigs = {
     countries: { label: 'Countries', singular: 'Country', collection: 'countries' },
@@ -183,6 +250,11 @@ export default function TalentAdminPage() {
       last_name: user?.last_name || '',
       email: user?.email || '',
       role: user?.role || selectedUserRole || '',
+      country: user?.country || null,
+      zone: user?.zone || null,
+      region: user?.region || null,
+      district: user?.district || null,
+      ward: user?.ward || null,
       school: user?.school || null,
       student: user?.student || null,
     });
@@ -195,11 +267,61 @@ export default function TalentAdminPage() {
   };
 
   const handleUserFormChange = (e) => {
-    setUserForm({ ...userForm, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'role') {
+      setUserForm((current) => ({
+        ...current,
+        role: value,
+        country: null,
+        zone: null,
+        region: null,
+        district: null,
+        ward: null,
+        school: null,
+      }));
+      setStudentForm((current) => ({
+        ...current,
+        school_id: '',
+      }));
+      return;
+    }
+
+    const nextValue = value === '' ? null : value;
+    setUserForm((current) => ({
+      ...current,
+      [name]: nextValue,
+    }));
+
+    if (name === 'school') {
+      setStudentForm((current) => ({
+        ...current,
+        school_id: nextValue ?? '',
+      }));
+    }
   };
 
   const handleStudentFormChange = (e) => {
     setStudentForm({ ...studentForm, [e.target.name]: e.target.value });
+  };
+
+  const getUserLocationFields = () => {
+    const role = userForm.role;
+
+    if (!role) return [];
+
+    const roleFields = {
+      talent_admin: [],
+      region_manager: ['region'],
+      zone_manager: ['zone'],
+      district_manager: ['district'],
+      ward_manager: ['ward'],
+      head_teacher: ['school'],
+      sport_teacher: ['school'],
+      student: ['school'],
+      parent: [],
+    };
+
+    return roleFields[role] || [];
   };
 
   const handleSaveUser = async () => {
@@ -218,6 +340,7 @@ export default function TalentAdminPage() {
       if (userForm.role === 'student') {
         const studentPayload = {
           ...studentForm,
+          school_id: userForm.school ?? studentForm.school_id,
           first_name: userForm.first_name,
           last_name: userForm.last_name,
         };
@@ -351,7 +474,10 @@ export default function TalentAdminPage() {
     schools: [
       { name: 'registry_number', label: 'Registry number', type: 'text' },
       { name: 'name', label: 'School name', type: 'text' },
-      { name: 'ownership_type', label: 'Ownership type', type: 'text' },
+      { name: 'ownership_type', label: 'Ownership type', type: 'select', options: [
+        { id: 'private', name: 'Private' },
+        { id: 'government', name: 'Government' },
+      ] },
       { name: 'country', label: 'Country', type: 'select', options: demographicData.countries },
       { name: 'zone', label: 'Zone', type: 'select', options: demographicData.zones },
       { name: 'region', label: 'Region', type: 'select', options: demographicData.regions },
@@ -592,7 +718,7 @@ export default function TalentAdminPage() {
                   {displayedUsers.length > 0 ? (
                     displayedUsers.map((user) => (
                       <tr key={user.id}>
-                        <td>{user.first_name} {user.last_name}</td>
+                        <td>{renderUserNameCell(user)}</td>
                         <td>{user.role || 'N/A'}</td>
                         <td>{user.email || 'N/A'}</td>
                         <td><button className="btn-action">Manage</button></td>
@@ -618,11 +744,11 @@ export default function TalentAdminPage() {
             )}
           </section>
 
-          {/* System Reports Card */}
+          {/* Network Overview Card */}
           <section className="admin-section" id="reports">
             <div className="section-header">
-              <h2>System Reports</h2>
-              <p>Analytics and insights</p>
+              <h2>Network Overview</h2>
+              <p>Operational snapshot of the entire talent system</p>
             </div>
             <div className="reports-grid">
               <div className="report-card">
@@ -729,7 +855,7 @@ export default function TalentAdminPage() {
                     <thead>
                       <tr>
                         <th>Name</th>
-                        {demographicType === 'countries' ? <><th>Code</th><th>Zones</th></> : demographicType === 'schools' ? <th>Registry number</th> : <th>Parent</th>}
+                        {demographicType === 'countries' ? <><th>Code</th><th>Zones</th></> : demographicType === 'schools' ? <th>Registry number</th> : demographicType === 'regions' ? <th>Zone</th> : <th>Country</th>}
                         {demographicType === 'schools' && <th>Ownership</th>}
                         <th>Actions</th>
                       </tr>
@@ -1118,27 +1244,47 @@ export default function TalentAdminPage() {
                 <thead>
                   <tr>
                     <th>Name</th>
-                    <th>Email</th>
+                    <th>Location</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usersForModal.map((user) => (
-                    <tr key={user.id}>
-                      <td>{user.first_name} {user.last_name}</td>
-                      <td>{user.email || 'N/A'}</td>
-                      <td>
-                        <div className="report-popup-actions">
-                          <button type="button" className="report-text-action report-edit-action" onClick={() => openUserEditModal(user)}>
-                            Edit
-                          </button>
-                          <button type="button" className="report-text-action report-delete-action" onClick={() => handleDeleteUser(user.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {usersForModal.map((user) => {
+                    const school = demographicData.schools.find((entry) => entry.id === user.school) || null;
+                    const schoolLocation = school ? getSchoolLocationChain(school.id) : null;
+                    const displayLocation = (() => {
+                      if (user.role === 'region_manager') {
+                        return demographicData.regions.find((region) => region.id === (user.region ?? schoolLocation?.region?.id))?.name || 'Region not assigned';
+                      }
+                      if (user.role === 'district_manager') {
+                        return demographicData.districts.find((district) => district.id === (user.district ?? schoolLocation?.district?.id))?.name || 'District not assigned';
+                      }
+                      if (user.role === 'ward_manager') {
+                        return demographicData.wards.find((ward) => ward.id === (user.ward ?? schoolLocation?.ward?.id))?.name || 'Ward not assigned';
+                      }
+                      if (['student', 'head_teacher', 'sport_teacher'].includes(user.role)) {
+                        return school?.name || 'School not assigned';
+                      }
+                      return getUserLocationLabel(user);
+                    })();
+
+                    return (
+                      <tr key={user.id}>
+                        <td>{renderUserNameCell(user)}</td>
+                        <td>{displayLocation}</td>
+                        <td>
+                          <div className="report-popup-actions">
+                            <button type="button" className="report-text-action report-edit-action" onClick={() => openUserEditModal(user)}>
+                              Edit
+                            </button>
+                            <button type="button" className="report-text-action report-delete-action" onClick={() => handleDeleteUser(user.id)}>
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1181,21 +1327,72 @@ export default function TalentAdminPage() {
                 <option value="sport_teacher">Sport Teacher</option>
                 <option value="student">Student</option>
               </select>
+
+              {userForm.role && (
+                <>
+                  {getUserLocationFields().includes('country') && (
+                    <select className="form-input" name="country" value={userForm.country || ''} onChange={handleUserFormChange} disabled={submitting}>
+                      <option value="">Select country</option>
+                      {demographicData.countries.map((country) => (
+                        <option key={country.id} value={country.id}>{country.name}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {getUserLocationFields().includes('zone') && (
+                    <select className="form-input" name="zone" value={userForm.zone || ''} onChange={handleUserFormChange} disabled={submitting}>
+                      <option value="">Select zone</option>
+                      {demographicData.zones.map((zone) => (
+                        <option key={zone.id} value={zone.id}>{zone.name}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {getUserLocationFields().includes('region') && (
+                    <select className="form-input" name="region" value={userForm.region || ''} onChange={handleUserFormChange} disabled={submitting}>
+                      <option value="">Select region</option>
+                      {demographicData.regions.map((region) => (
+                        <option key={region.id} value={region.id}>{region.name}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {getUserLocationFields().includes('district') && (
+                    <select className="form-input" name="district" value={userForm.district || ''} onChange={handleUserFormChange} disabled={submitting}>
+                      <option value="">Select district</option>
+                      {demographicData.districts.map((district) => (
+                        <option key={district.id} value={district.id}>{district.name}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {getUserLocationFields().includes('ward') && (
+                    <select className="form-input" name="ward" value={userForm.ward || ''} onChange={handleUserFormChange} disabled={submitting}>
+                      <option value="">Select ward</option>
+                      {demographicData.wards.map((ward) => (
+                        <option key={ward.id} value={ward.id}>{ward.name}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {getUserLocationFields().includes('school') && (
+                    <select className="form-input" name="school" value={userForm.school || ''} onChange={handleUserFormChange} disabled={submitting}>
+                      <option value="">Select school</option>
+                      {demographicData.schools.map((school) => (
+                        <option key={school.id} value={school.id}>{school.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </>
+              )}
               {userForm.role === 'student' && (
                 <>
                   <select className="form-input" name="gender" value={studentForm.gender} onChange={handleStudentFormChange} disabled={submitting}>
                     <option value="">Select gender</option>
                     <option value="M">Male</option>
                     <option value="F">Female</option>
-                    <option value="O">Other</option>
                   </select>
                   <input className="form-input" type="date" name="date_of_birth" value={studentForm.date_of_birth} onChange={handleStudentFormChange} disabled={submitting} />
-                  <select className="form-input" name="school_id" value={studentForm.school_id} onChange={handleStudentFormChange} disabled={submitting}>
-                    <option value="">Select school</option>
-                    {demographicData.schools.map((school) => (
-                      <option key={school.id} value={school.id}>{school.name} ({school.registry_number})</option>
-                    ))}
-                  </select>
                 </>
               )}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
