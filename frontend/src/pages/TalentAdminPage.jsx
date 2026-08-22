@@ -268,6 +268,8 @@ export default function TalentAdminPage() {
 
   const handleUserFormChange = (e) => {
     const { name, value } = e.target;
+    const nextValue = value === '' ? null : value;
+
     if (name === 'role') {
       setUserForm((current) => ({
         ...current,
@@ -286,11 +288,41 @@ export default function TalentAdminPage() {
       return;
     }
 
-    const nextValue = value === '' ? null : value;
-    setUserForm((current) => ({
-      ...current,
-      [name]: nextValue,
-    }));
+    setUserForm((current) => {
+      const updated = { ...current, [name]: nextValue };
+
+      if (name === 'country') {
+        updated.zone = null;
+        updated.region = null;
+        updated.district = null;
+        updated.ward = null;
+        updated.school = null;
+      }
+
+      if (name === 'zone') {
+        updated.region = null;
+        updated.district = null;
+        updated.ward = null;
+        updated.school = null;
+      }
+
+      if (name === 'region') {
+        updated.district = null;
+        updated.ward = null;
+        updated.school = null;
+      }
+
+      if (name === 'district') {
+        updated.ward = null;
+        updated.school = null;
+      }
+
+      if (name === 'ward') {
+        updated.school = null;
+      }
+
+      return updated;
+    });
 
     if (name === 'school') {
       setStudentForm((current) => ({

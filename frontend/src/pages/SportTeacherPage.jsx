@@ -41,8 +41,10 @@ export default function SportTeacherPage() {
     return studentSchool === schoolId;
   });
   const schoolStudentTalents = studentTalents.filter((item) => {
-    const itemStudentSchool = item.student_school?.id ?? item.student_school ?? item.student?.school?.id ?? item.student_school_id;
-    return itemStudentSchool === schoolId;
+    const itemStudentId = typeof item.student === 'number' ? item.student : Number(item.student);
+    const studentSchool = item.student_school?.id ?? item.student_school ?? item.student?.school?.id ?? item.student_school_id ??
+      (Number.isFinite(itemStudentId) ? students.find((student) => student.id === itemStudentId)?.school?.id ?? students.find((student) => student.id === itemStudentId)?.school : undefined);
+    return studentSchool === schoolId;
   });
   const schoolClubs = clubs.filter((club) => club.school === schoolId || club.school?.id === schoolId);
   const firstSchoolStudentId = schoolStudents[0]?.id || '';
@@ -60,12 +62,12 @@ export default function SportTeacherPage() {
       const [studentsRes, talentsRes, studentTalentsRes, clubsRes, membershipsRes, evaluationsRes, competitionsRes, resultsRes, criteriaRes] = await Promise.all([
         apiService.getStudents({ school }),
         apiService.getTalents(),
-        apiService.getStudentTalents(),
+        apiService.getStudentTalents({ school }),
         apiService.getClubs({ school }),
-        apiService.getClubMemberships(),
-        apiService.getEvaluations(),
-        apiService.getCompetitions(),
-        apiService.getResults(),
+        apiService.getClubMemberships({ school }),
+        apiService.getEvaluations({ school }),
+        apiService.getCompetitions({ school }),
+        apiService.getResults({ school }),
         apiService.getEvaluationCriteria(),
       ]);
       setStudents(list(studentsRes));

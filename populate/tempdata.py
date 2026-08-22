@@ -75,6 +75,7 @@ CRITERIA = [
 
 
 def get_or_create_user(username, role, **fields):
+    password = fields.pop('password', 'DemoPass123!')
     student = fields.get('student')
     if student is not None:
         existing_user = User.objects.filter(student=student).first()
@@ -84,12 +85,12 @@ def get_or_create_user(username, role, **fields):
         else:
             user, _ = User.objects.get_or_create(
                 username=username,
-                defaults={'role': role, **fields},
+                defaults={'role': role, 'password': make_password(password), **fields},
             )
     else:
         user, _ = User.objects.get_or_create(
             username=username,
-            defaults={'role': role, **fields},
+            defaults={'role': role, 'password': make_password(password), **fields},
         )
 
     changed = False
@@ -100,8 +101,8 @@ def get_or_create_user(username, role, **fields):
         if value is not None and getattr(user, field) != value:
             setattr(user, field, value)
             changed = True
-    if not user.has_usable_password():
-        user.password = make_password('DemoPass123!')
+    if not user.has_usable_password() or not user.check_password(password):
+        user.password = make_password(password)
         changed = True
     if changed:
         user.save()
