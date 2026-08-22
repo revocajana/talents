@@ -17,6 +17,10 @@ from .models import (
     Talent,
     StudentTalent,
     Announcement,
+    Club,
+    ClubTeacher,
+    ClubTalent,
+    StudentClubMembership,
 )
 from students.models import Student
 
@@ -43,6 +47,13 @@ class SchoolInline(admin.TabularInline):
     show_change_link = True
 
 
+class ClubInline(admin.TabularInline):
+    model = Club
+    extra = 0
+    fields = ('name', 'focus', 'is_active')
+    show_change_link = True
+
+
 class SchoolAdminForm(forms.ModelForm):
     class Meta:
         model = School
@@ -51,10 +62,10 @@ class SchoolAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields['zone'].queryset = Zone.objects.all().order_by('name')
-        self.fields['region'].queryset = Region.objects.all().order_by('name')
-        self.fields['district'].queryset = District.objects.all().order_by('name')
-        self.fields['ward'].queryset = Ward.objects.all().order_by('name')
+        self.fields['zone'].queryset = Zone.objects.none()
+        self.fields['region'].queryset = Region.objects.none()
+        self.fields['district'].queryset = District.objects.none()
+        self.fields['ward'].queryset = Ward.objects.none()
 
         country_id = self.data.get('country') if self.data else None
         zone_id = self.data.get('zone') if self.data else None
@@ -79,6 +90,24 @@ class SchoolAdminForm(forms.ModelForm):
 
         if district_id:
             self.fields['ward'].queryset = Ward.objects.filter(district_id=district_id).order_by('name')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        country = cleaned_data.get('country')
+        zone = cleaned_data.get('zone')
+        region = cleaned_data.get('region')
+        district = cleaned_data.get('district')
+        ward = cleaned_data.get('ward')
+
+        if zone and country and zone.country_id != country.pk:
+            self.add_error('zone', 'Choose a zone belonging to the selected country.')
+        if region and zone and region.zone_id != zone.pk:
+            self.add_error('region', 'Choose a region belonging to the selected zone.')
+        if district and region and district.region_id != region.pk:
+            self.add_error('district', 'Choose a district belonging to the selected region.')
+        if ward and district and ward.district_id != district.pk:
+            self.add_error('ward', 'Choose a ward belonging to the selected district.')
+        return cleaned_data
 
 
 @admin.register(Country)
@@ -269,12 +298,111 @@ class DistrictAdmin(admin.ModelAdmin):
     ward_count.short_description = "# Wards"
 
 
+class WardAdminForm(forms.ModelForm):
+    country = forms.ModelChoiceField(queryset=Country.objects.all().order_by('name'), label='Country')
+    zone = forms.ModelChoiceField(queryset=Zone.objects.none(), label='Zone')
+    region = forms.ModelChoiceField(queryset=Region.objects.none(), label='Region')
+
+    class Meta:
+        model = Ward
+        fields = ('country', 'zone', 'region', 'district', 'name')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['zone'].queryset = Zone.objects.none()
+        self.fields['region'].queryset = Region.objects.none()
+        self.fields['district'].queryset = District.objects.none()
+
+        country_id = self.data.get('country') if self.data else None
+        zone_id = self.data.get('zone') if self.data else None
+        region_id = self.data.get('region') if self.data else None
+        district_id = self.data.get('district') if self.data else None
+
+        if self.instance and self.instance.pk:
+            district = self.instance.district
+            region = district.region
+            zone = region.zone
+            country_id = country_id or zone.country_id
+            zone_id = zone_id or zone.pk
+            region_id = region_id or region.pk
+            district_id = district_id or district.pk
+            self.initial.update({
+                'country': country_id,
+                'zone': zone_id,
+                'region': region_id,
+                'district': district_id,
+            })
+
+        if country_id:
+            self.fields['zone'].queryset = Zone.objects.filter(country_id=country_id).order_by('name')
+        if zone_id:
+            self.fields['region'].queryset = Region.objects.filter(zone_id=zone_id).order_by('name')
+        if region_id:
+            self.fields['district'].queryset = District.objects.filter(region_id=region_id).order_by('name')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        country = cleaned_data.get('country')
+        zone = cleaned_data.get('zone')
+        region = cleaned_data.get('region')
+        district = cleaned_data.get('district')
+
+        if zone and country and zone.country_id != country.pk:
+            self.add_error('zone', 'Choose a zone belonging to the selected country.')
+        if region and zone and region.zone_id != zone.pk:
+            self.add_error('region', 'Choose a region belonging to the selected zone.')
+        if district and region and district.region_id != region.pk:
+            self.add_error('district', 'Choose a district belonging to the selected region.')
+        return cleaned_data
+
+
 @admin.register(Ward)
 class WardAdmin(admin.ModelAdmin):
-    list_display = ("name", "district", "school_count")
+    form = WardAdminForm
+    list_display = ("name", "location", "school_count")
     list_filter = ("district",)
     search_fields = ("name",)
     inlines = [SchoolInline]
+    fieldsets = (
+        ('Location', {
+            'fields': ('country', 'zone', 'region', 'district')
+        }),
+        ('Ward', {
+            'fields': ('name',)
+        }),
+    )
+    class Media:
+        js = ('core/js/ward_geography.js',)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('district__region__zone__country')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('geography/', self.admin_site.admin_view(self.geography_data), name='core_ward_geography'),
+            path('<path:object_id>/geography/', self.admin_site.admin_view(self.geography_data), name='core_ward_geography_object'),
+        ]
+        return custom_urls + urls
+
+    def geography_data(self, request, object_id=None):
+        country_id = request.GET.get('country_id')
+        zone_id = request.GET.get('zone_id')
+        region_id = request.GET.get('region_id')
+        zones = Zone.objects.filter(country_id=country_id) if country_id else Zone.objects.none()
+        regions = Region.objects.filter(zone_id=zone_id) if zone_id else Region.objects.none()
+        districts = District.objects.filter(region_id=region_id) if region_id else District.objects.none()
+        return JsonResponse({
+            'zones': [{'id': item.pk, 'name': str(item)} for item in zones.order_by('name')],
+            'regions': [{'id': item.pk, 'name': str(item)} for item in regions.order_by('name')],
+            'districts': [{'id': item.pk, 'name': str(item)} for item in districts.order_by('name')],
+        })
+
+    @admin.display(description='Location')
+    def location(self, obj):
+        district = obj.district
+        region = district.region
+        return f'{obj.name} - {district.name} - {region.name} - {region.zone.name} - {region.zone.country.name}'
 
     def school_count(self, obj):
         return obj.schools.count()
@@ -304,9 +432,15 @@ class SchoolAdmin(admin.ModelAdmin):
         'ward',
     )
     search_fields = ('name', 'registry_number')
+    inlines = (ClubInline,)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'country', 'zone', 'region', 'district', 'ward'
+        )
 
     class Media:
-        js = ('admin/js/jquery.init.js', 'core/js/school_geography.js')
+        js = ('core/js/school_geography.js',)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -536,6 +670,14 @@ class ParentAdmin(admin.ModelAdmin):
     search_fields = ("full_name", "username")
 
 
+@admin.register(Student)
+class StudentAdmin(admin.ModelAdmin):
+    list_display = ('student_id', 'first_name', 'last_name', 'school', 'gender', 'parent')
+    list_filter = ('gender', 'school__country', 'school__zone', 'school__region', 'school__district', 'school__ward')
+    search_fields = ('student_id', 'first_name', 'last_name', 'school__name')
+    autocomplete_fields = ('school', 'parent')
+
+
 @admin.register(Talent)
 class TalentAdmin(admin.ModelAdmin):
     list_display = ('name', 'category', 'student_count')
@@ -553,6 +695,96 @@ class StudentTalentAdmin(admin.ModelAdmin):
     list_filter = ('talent__category', 'proficiency_level', 'added_at')
     search_fields = ('student__first_name', 'student__last_name', 'talent__name')
     readonly_fields = ('added_at',)
+
+
+class ClubTeacherInline(admin.TabularInline):
+    model = ClubTeacher
+    extra = 0
+    autocomplete_fields = ('teacher',)
+    readonly_fields = ('assigned_at',)
+
+
+class ClubTalentInline(admin.TabularInline):
+    model = ClubTalent
+    extra = 0
+    autocomplete_fields = ('talent',)
+    readonly_fields = ('added_at',)
+
+
+@admin.register(Club)
+class ClubAdmin(admin.ModelAdmin):
+    list_display = ('name', 'school_location', 'focus', 'is_active', 'teacher_count', 'talent_count', 'member_count')
+    list_filter = ('is_active', 'school__country', 'school__zone', 'school__region', 'school__district', 'school__ward')
+    search_fields = ('name', 'focus', 'school__name', 'school__registry_number')
+    autocomplete_fields = ('school',)
+    readonly_fields = ('created_at', 'updated_at')
+    inlines = (ClubTeacherInline, ClubTalentInline)
+
+    @admin.display(description='School')
+    def school_location(self, obj):
+        school = obj.school
+        return f'{school.name} - {school.ward.name} - {school.district.name} - {school.region.name}'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'school__ward__district__region__zone__country'
+        ).prefetch_related(
+            'teacher_assignments', 'talent_assignments', 'memberships'
+        )
+
+    @admin.display(description='Teachers')
+    def teacher_count(self, obj):
+        return len(obj.teacher_assignments.all())
+
+    @admin.display(description='Talents')
+    def talent_count(self, obj):
+        return len(obj.talent_assignments.all())
+
+    @admin.display(description='Members')
+    def member_count(self, obj):
+        return obj.memberships.filter(is_active=True).count()
+
+
+@admin.register(ClubTeacher)
+class ClubTeacherAdmin(admin.ModelAdmin):
+    list_display = ('club', 'teacher', 'teacher_school', 'assigned_at')
+    list_filter = ('club__school__country', 'club__school__zone', 'club__school__region', 'club__school')
+    search_fields = ('club__name', 'club__school__name', 'teacher__username', 'teacher__first_name', 'teacher__last_name')
+    autocomplete_fields = ('club', 'teacher')
+    readonly_fields = ('assigned_at',)
+
+    @admin.display(description='Teacher school')
+    def teacher_school(self, obj):
+        return obj.teacher.school or 'Not assigned'
+
+
+@admin.register(ClubTalent)
+class ClubTalentAdmin(admin.ModelAdmin):
+    list_display = ('club', 'talent', 'school', 'added_at')
+    list_filter = ('talent__category', 'club__school__country', 'club__school__zone', 'club__school')
+    search_fields = ('club__name', 'club__school__name', 'talent__name')
+    autocomplete_fields = ('club', 'talent')
+    readonly_fields = ('added_at',)
+
+    @admin.display(description='School')
+    def school(self, obj):
+        return obj.club.school
+
+
+@admin.register(StudentClubMembership)
+class StudentClubMembershipAdmin(admin.ModelAdmin):
+    list_display = ('student', 'club', 'school', 'is_active', 'joined_at', 'left_at')
+    list_filter = ('is_active', 'club__school__country', 'club__school__zone', 'club__school__region', 'club__school')
+    search_fields = (
+        'student__first_name', 'student__last_name', 'student__student_id',
+        'club__name', 'club__school__name',
+    )
+    autocomplete_fields = ('student', 'club')
+    readonly_fields = ('joined_at',)
+
+    @admin.display(description='School')
+    def school(self, obj):
+        return obj.club.school
 
 
 class AnnouncementAdminForm(forms.ModelForm):
