@@ -409,18 +409,112 @@ class StudentTalentAdmin(admin.ModelAdmin):
     readonly_fields = ('added_at',)
 
 
+class AnnouncementAdminForm(forms.ModelForm):
+    ward = forms.ModelChoiceField(
+        queryset=Ward.objects.none(),
+        required=False,
+        label='Ward (school filter)',
+    )
+
+    class Meta:
+        model = Announcement
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields['zone'].queryset = Zone.objects.none()
+        self.fields['region'].queryset = Region.objects.none()
+        self.fields['district'].queryset = District.objects.none()
+        self.fields['ward'].queryset = Ward.objects.none()
+        self.fields['school'].queryset = School.objects.none()
+
+        country_id = self.data.get('country') if self.data else None
+        zone_id = self.data.get('zone') if self.data else None
+        region_id = self.data.get('region') if self.data else None
+        district_id = self.data.get('district') if self.data else None
+        ward_id = self.data.get('ward') if self.data else None
+
+        if self.instance and self.instance.pk:
+            country_id = country_id or self.instance.country_id
+            zone_id = zone_id or self.instance.zone_id
+            region_id = region_id or self.instance.region_id
+            district_id = district_id or self.instance.district_id
+            if self.instance.school_id:
+                ward_id = ward_id or self.instance.school.ward_id
+
+        if ward_id and not self.data:
+            self.initial['ward'] = ward_id
+
+        if country_id:
+            self.fields['zone'].queryset = Zone.objects.filter(country_id=country_id).order_by('name')
+        if zone_id:
+            self.fields['region'].queryset = Region.objects.filter(zone_id=zone_id).order_by('name')
+        if region_id:
+            self.fields['district'].queryset = District.objects.filter(region_id=region_id).order_by('name')
+        if district_id:
+            self.fields['ward'].queryset = Ward.objects.filter(district_id=district_id).order_by('name')
+        if ward_id:
+            self.fields['school'].queryset = School.objects.filter(ward_id=ward_id).order_by('name')
+
+
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
+    form = AnnouncementAdminForm
     list_display = ('title', 'scope', 'is_active', 'created_at', 'expires_at')
     list_filter = ('scope', 'is_active', 'created_at')
     search_fields = ('title', 'content')
     readonly_fields = ('created_at', 'updated_at')
+    class Media:
+        js = ('admin/js/jquery.init.js', 'core/js/announcement_geography.js')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('geography/', self.admin_site.admin_view(self.geography_data), name='core_announcement_geography'),
+        ]
+        return custom_urls + urls
+
+    def geography_data(self, request):
+        country_id = request.GET.get('country_id')
+        zone_id = request.GET.get('zone_id')
+        region_id = request.GET.get('region_id')
+        district_id = request.GET.get('district_id')
+        ward_id = request.GET.get('ward_id')
+
+        zones = Zone.objects.filter(country_id=country_id) if country_id else Zone.objects.none()
+        regions = Region.objects.filter(zone_id=zone_id) if zone_id else Region.objects.none()
+        districts = District.objects.filter(region_id=region_id) if region_id else District.objects.none()
+        wards = Ward.objects.filter(district_id=district_id) if district_id else Ward.objects.none()
+        schools = School.objects.filter(ward_id=ward_id) if ward_id else School.objects.none()
+
+        if country_id and zone_id:
+            zones = zones.filter(pk=zone_id)
+            regions = regions.filter(zone__country_id=country_id)
+        if zone_id and region_id:
+            regions = regions.filter(pk=region_id)
+            districts = districts.filter(region__zone_id=zone_id)
+        if region_id and district_id:
+            districts = districts.filter(pk=district_id)
+            wards = wards.filter(district__region_id=region_id)
+        if district_id and ward_id:
+            wards = wards.filter(pk=ward_id)
+            schools = schools.filter(ward__district_id=district_id)
+
+        return JsonResponse({
+            'zones': [{'id': item.pk, 'name': str(item)} for item in zones.order_by('name')],
+            'regions': [{'id': item.pk, 'name': str(item)} for item in regions.order_by('name')],
+            'districts': [{'id': item.pk, 'name': str(item)} for item in districts.order_by('name')],
+            'wards': [{'id': item.pk, 'name': str(item)} for item in wards.order_by('name')],
+            'schools': [{'id': item.pk, 'name': str(item)} for item in schools.order_by('name')],
+        })
+
     fieldsets = (
         ('Content', {
             'fields': ('title', 'content')
         }),
         ('Scope & Targeting', {
-            'fields': ('scope', 'country', 'zone', 'region', 'district', 'school')
+            'fields': ('scope', 'country', 'zone', 'region', 'district', 'ward', 'school')
         }),
         ('Publishing', {
             'fields': ('is_active', 'published_at', 'expires_at')
