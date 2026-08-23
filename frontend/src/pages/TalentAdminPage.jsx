@@ -24,6 +24,25 @@ export default function TalentAdminPage() {
   const [demographicForm, setDemographicForm] = useState({});
   const [demographicSearch, setDemographicSearch] = useState('');
   const [editingTalentId, setEditingTalentId] = useState(null);
+  const [clubsData, setClubsData] = useState([]);
+  const [clubTeachersData, setClubTeachersData] = useState([]);
+  const [clubTalentsData, setClubTalentsData] = useState([]);
+  const [clubMembershipsData, setClubMembershipsData] = useState([]);
+  const [selectedClubId, setSelectedClubId] = useState('');
+  const [clubForm, setClubForm] = useState({ name: '', focus: '', description: '', school: '' });
+  const [clubTeacherForm, setClubTeacherForm] = useState({ teacher: '' });
+  const [clubTalentForm, setClubTalentForm] = useState({ talent: '' });
+  const [editingClubId, setEditingClubId] = useState(null);
+  const [clubsPage, setClubsPage] = useState(0);
+  const [clubSearch, setClubSearch] = useState('');
+  const [clubFilters, setClubFilters] = useState({
+    country: '',
+    zone: '',
+    region: '',
+    district: '',
+    ward: '',
+    school: '',
+  });
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -161,18 +180,28 @@ export default function TalentAdminPage() {
           apiService.getUsers(),
           apiService.getUserStats(),
           apiService.getStudents(),
-          apiService.getCountries(),
-          apiService.getZones(),
-          apiService.getRegions(),
-          apiService.getDistricts(),
-          apiService.getWards(),
-          apiService.getSchools(),
+          apiService.getAllCountries(),
+          apiService.getAllZones(),
+          apiService.getAllRegions(),
+          apiService.getAllDistricts(),
+          apiService.getAllWards(),
+          apiService.getAllSchools(),
+        ]);
+        const [clubsRes, clubTeachersRes, clubTalentsRes, clubMembershipsRes] = await Promise.all([
+          apiService.getClubs(),
+          apiService.getClubTeachers(),
+          apiService.getClubTalents(),
+          apiService.getClubMemberships(),
         ]);
 
         setTalentsData(talentsRes.data.results || []);
         setCompetitionsData(competitionsRes.data.results || []);
         setStudentsData(studentsRes.data.results || []);
         setUsersData(usersRes.data.results || []);
+        setClubsData(clubsRes.data.results || []);
+        setClubTeachersData(clubTeachersRes.data.results || []);
+        setClubTalentsData(clubTalentsRes.data.results || []);
+        setClubMembershipsData(clubMembershipsRes.data.results || []);
         setReportStats({
           ...userStatsRes.data,
           students: studentsRes.data.count ?? (studentsRes.data.results || []).length,
@@ -606,6 +635,151 @@ export default function TalentAdminPage() {
     }
   };
 
+  const handleCreateClub = async (event) => {
+    event.preventDefault();
+    if (!clubForm.name.trim() || !clubForm.school) {
+      alert('Club name and school are required.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await apiService.createClub({
+        ...clubForm,
+        name: clubForm.name.trim(),
+      });
+      setClubsData((current) => [...current, response.data]);
+      setClubForm({ name: '', focus: '', description: '', school: '' });
+      alert('Club created successfully.');
+    } catch (err) {
+      const detail = err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || err.message;
+      alert(`Failed to create club: ${detail}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteClub = async (clubId) => {
+    if (!window.confirm('Delete this club and its assignments?')) return;
+    try {
+      await apiService.deleteClub(clubId);
+      setClubsData((current) => current.filter((club) => club.id !== clubId));
+      setClubTeachersData((current) => current.filter((assignment) => assignment.club !== clubId));
+      setClubTalentsData((current) => current.filter((assignment) => assignment.club !== clubId));
+      setClubMembershipsData((current) => current.filter((membership) => membership.club !== clubId));
+      setClubsPage((currentPage) => Math.min(currentPage, Math.max(0, Math.ceil((clubsData.length - 1) / clubsPageSize) - 1)));
+      if (selectedClubId === clubId) setSelectedClubId('');
+    } catch (err) {
+      alert(`Failed to delete club: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const openEditClub = (club) => {
+    setEditingClubId(club.id);
+    setClubForm({
+      name: club.name || '',
+      focus: club.focus || '',
+      description: club.description || '',
+      school: club.school || '',
+      is_active: club.is_active !== false,
+    });
+  };
+
+  const handleUpdateClub = async (event) => {
+    event.preventDefault();
+    if (!editingClubId || !clubForm.name.trim()) return;
+
+    setSubmitting(true);
+    try {
+      const response = await apiService.updateClub(editingClubId, {
+        name: clubForm.name.trim(),
+        focus: clubForm.focus,
+        description: clubForm.description,
+        school: clubForm.school,
+        is_active: clubForm.is_active,
+      });
+      setClubsData((current) => current.map((club) => club.id === editingClubId ? response.data : club));
+      setEditingClubId(null);
+    } catch (err) {
+      alert(`Failed to update club: ${err.response?.data?.detail || err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAssignClubTeacher = async (event) => {
+    event.preventDefault();
+    if (!selectedClubId || !clubTeacherForm.teacher) return;
+    try {
+      const response = await apiService.createClubTeacher({ club: selectedClubId, teacher: clubTeacherForm.teacher });
+      setClubTeachersData((current) => [...current, response.data]);
+      setClubTeacherForm({ teacher: '' });
+    } catch (err) {
+      alert(`Failed to assign teacher: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const handleAssignClubTalent = async (event) => {
+    event.preventDefault();
+    if (!selectedClubId || !clubTalentForm.talent) return;
+    try {
+      const response = await apiService.createClubTalent({ club: selectedClubId, talent: clubTalentForm.talent });
+      setClubTalentsData((current) => [...current, response.data]);
+      setClubTalentForm({ talent: '' });
+    } catch (err) {
+      alert(`Failed to assign talent: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const selectedClub = clubsData.find((club) => String(club.id) === String(selectedClubId));
+  const selectedClubTeachers = clubTeachersData.filter((assignment) => String(assignment.club) === String(selectedClubId));
+  const selectedClubTalents = clubTalentsData.filter((assignment) => String(assignment.club) === String(selectedClubId));
+  const selectedClubMembers = clubMembershipsData.filter((membership) => String(membership.club) === String(selectedClubId) && membership.is_active);
+  const clubsPageSize = 4;
+  const filterSchools = demographicData.schools.filter((school) => {
+    const matchesCountry = !clubFilters.country || String(school.country) === String(clubFilters.country);
+    const matchesZone = !clubFilters.zone || String(school.zone) === String(clubFilters.zone);
+    const matchesRegion = !clubFilters.region || String(school.region) === String(clubFilters.region);
+    const matchesDistrict = !clubFilters.district || String(school.district) === String(clubFilters.district);
+    const matchesWard = !clubFilters.ward || String(school.ward) === String(clubFilters.ward);
+    return matchesCountry && matchesZone && matchesRegion && matchesDistrict && matchesWard;
+  });
+  const filterSchoolIds = new Set(filterSchools.map((school) => school.id));
+  const filterWards = demographicData.wards.filter((ward) => {
+    const district = demographicData.districts.find((item) => item.id === ward.district);
+    const region = demographicData.regions.find((item) => item.id === district?.region);
+    const zone = demographicData.zones.find((item) => item.id === region?.zone);
+    return (!clubFilters.country || String(zone?.country) === String(clubFilters.country))
+      && (!clubFilters.zone || String(zone?.id) === String(clubFilters.zone))
+      && (!clubFilters.region || String(region?.id) === String(clubFilters.region))
+      && (!clubFilters.district || String(district?.id) === String(clubFilters.district));
+  });
+  const filterDistricts = demographicData.districts.filter((district) => {
+    const region = demographicData.regions.find((item) => item.id === district.region);
+    const zone = demographicData.zones.find((item) => item.id === region?.zone);
+    return (!clubFilters.country || String(zone?.country) === String(clubFilters.country))
+      && (!clubFilters.zone || String(zone?.id) === String(clubFilters.zone))
+      && (!clubFilters.region || String(region?.id) === String(clubFilters.region));
+  });
+  const filterRegions = demographicData.regions.filter((region) => {
+    const zone = demographicData.zones.find((item) => item.id === region.zone);
+    return (!clubFilters.country || String(zone?.country) === String(clubFilters.country))
+      && (!clubFilters.zone || String(zone?.id) === String(clubFilters.zone));
+  });
+  const filterZones = demographicData.zones.filter((zone) => !clubFilters.country || String(zone.country) === String(clubFilters.country));
+  const filteredClubs = clubsData.filter((club) => {
+    const school = demographicData.schools.find((item) => item.id === club.school);
+    const searchValue = clubSearch.trim().toLowerCase();
+    const matchesSearch = !searchValue || [club.name, club.focus, school?.name]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(searchValue));
+    const matchesLocation = !clubFilters.school || String(club.school) === String(clubFilters.school);
+    const hasLocationFilter = Object.values(clubFilters).some(Boolean);
+    return matchesSearch && matchesLocation && (!hasLocationFilter || filterSchoolIds.has(club.school));
+  });
+  const clubsPageCount = Math.max(1, Math.ceil(filteredClubs.length / clubsPageSize));
+  const displayedClubs = filteredClubs.slice(clubsPage * clubsPageSize, (clubsPage + 1) * clubsPageSize);
+
   return (
     <div className="page-container">
       <Header title="Talent Management" />
@@ -682,6 +856,61 @@ export default function TalentAdminPage() {
                 >
                   View more
                 </button>
+              </div>
+            )}
+          </section>
+
+          <section className="admin-section" id="clubs">
+            <div className="section-header">
+              <h2>Club Management ({clubsData.length})</h2>
+              <p>Clubs registered across schools.</p>
+            </div>
+            <div className="club-filter-bar">
+              <select className="form-input" value={clubFilters.country} onChange={(event) => { setClubFilters({ country: event.target.value, zone: '', region: '', district: '', ward: '', school: '' }); setClubsPage(0); }} aria-label="Filter clubs by country">
+                <option value="">Country</option>
+                {demographicData.countries.map((country) => <option key={country.id} value={country.id}>{country.name}</option>)}
+              </select>
+              <select className="form-input" value={clubFilters.zone} onChange={(event) => { setClubFilters({ ...clubFilters, zone: event.target.value, region: '', district: '', ward: '', school: '' }); setClubsPage(0); }} aria-label="Filter clubs by zone">
+                <option value="">Zone</option>
+                {filterZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
+              </select>
+              <select className="form-input" value={clubFilters.region} onChange={(event) => { setClubFilters({ ...clubFilters, region: event.target.value, district: '', ward: '', school: '' }); setClubsPage(0); }} aria-label="Filter clubs by region">
+                <option value="">Region</option>
+                {filterRegions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}
+              </select>
+              <select className="form-input" value={clubFilters.district} onChange={(event) => { setClubFilters({ ...clubFilters, district: event.target.value, ward: '', school: '' }); setClubsPage(0); }} aria-label="Filter clubs by district">
+                <option value="">District</option>
+                {filterDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}
+              </select>
+              <select className="form-input" value={clubFilters.ward} onChange={(event) => { setClubFilters({ ...clubFilters, ward: event.target.value, school: '' }); setClubsPage(0); }} aria-label="Filter clubs by ward">
+                <option value="">Ward</option>
+                {filterWards.map((ward) => <option key={ward.id} value={ward.id}>{ward.name}</option>)}
+              </select>
+              <select className="form-input" value={clubFilters.school} onChange={(event) => { setClubFilters({ ...clubFilters, school: event.target.value }); setClubsPage(0); }} aria-label="Filter clubs by school">
+                <option value="">School</option>
+                {filterSchools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+              </select>
+              <input type="search" className="form-input" value={clubSearch} onChange={(event) => { setClubSearch(event.target.value); setClubsPage(0); }} placeholder="Search" aria-label="Search clubs" />
+            </div>
+
+            <div className="table-container">
+              <table className="data-table">
+                <thead><tr><th>Club</th><th>School</th><th>Focus</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {displayedClubs.map((club) => {
+                    const school = demographicData.schools.find((item) => item.id === club.school);
+                    const members = clubMembershipsData.filter((membership) => membership.club === club.id && membership.is_active).length;
+                    return <tr key={club.id} className={!club.is_active ? 'club-row-inactive' : ''}><td>{club.name} ({members})</td><td>{school?.name || club.school_name || 'N/A'}</td><td>{club.focus || 'N/A'}</td><td><button type="button" className="btn-action btn-edit" onClick={() => openEditClub(club)}>Edit</button> <button type="button" className="btn-action" onClick={() => handleDeleteClub(club.id)}>Delete</button></td></tr>;
+                  })}
+                  {clubsData.length === 0 && <tr><td colSpan="4">No clubs found</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            {clubsPageCount > 1 && (
+              <div className="club-pagination" aria-label="Club pages">
+                <button type="button" className="btn-action" onClick={() => setClubsPage((page) => Math.max(0, page - 1))} disabled={clubsPage === 0}>Previous</button>
+                <span>Page {clubsPage + 1} of {clubsPageCount}</span>
+                <button type="button" className="btn-action" onClick={() => setClubsPage((page) => Math.min(clubsPageCount - 1, page + 1))} disabled={clubsPage === clubsPageCount - 1}>Next</button>
               </div>
             )}
           </section>
@@ -810,6 +1039,24 @@ export default function TalentAdminPage() {
           </section>
         </div>
       </main>
+      )}
+
+      {editingClubId && (
+        <div className="modal-backdrop" onClick={() => setEditingClubId(null)}>
+          <div className="compact-modal club-edit-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-heading">
+              <h3>Edit Club</h3>
+              <button type="button" className="modal-close-action" onClick={() => setEditingClubId(null)} aria-label="Close club editor">×</button>
+            </div>
+            <form className="club-edit-form" onSubmit={handleUpdateClub}>
+              <input className="form-input" value={clubForm.name} onChange={(event) => setClubForm({ ...clubForm, name: event.target.value })} placeholder="Club name" required />
+              <input className="form-input" value={clubForm.focus} onChange={(event) => setClubForm({ ...clubForm, focus: event.target.value })} placeholder="Focus" />
+              <textarea className="form-input" value={clubForm.description} onChange={(event) => setClubForm({ ...clubForm, description: event.target.value })} placeholder="Description" />
+              <label className="club-active-toggle"><input type="checkbox" checked={clubForm.is_active} onChange={(event) => setClubForm({ ...clubForm, is_active: event.target.checked })} /> Active club</label>
+              <div className="modal-actions"><button type="button" className="btn-action" onClick={() => setEditingClubId(null)}>Cancel</button><button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Saving...' : 'Save changes'}</button></div>
+            </form>
+          </div>
+        </div>
       )}
 
       {showDemographicModal && (

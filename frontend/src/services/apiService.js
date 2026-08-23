@@ -7,6 +7,23 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+const getAllRecords = async (path, params = {}) => {
+  const records = [];
+  let page = 1;
+  let total = null;
+
+  do {
+    const response = await api.get(path, { params: { ...params, page } });
+    const pageRecords = response.data.results || [];
+    records.push(...pageRecords);
+    total = response.data.count ?? records.length;
+    page += 1;
+    if (!pageRecords.length) break;
+  } while (records.length < total);
+
+  return { data: { count: records.length, results: records } };
+};
+
 // Automatically add JWT token to all requests
 api.interceptors.request.use(
   (config) => {
@@ -94,6 +111,12 @@ export const createWard = (data) => api.post('/wards/', data);
 export const updateWard = (id, data) => api.put(`/wards/${id}/`, data);
 export const deleteWard = (id) => api.delete(`/wards/${id}/`);
 export const getSchools = (params = {}) => api.get('/schools/', { params });
+export const getAllCountries = (params = {}) => getAllRecords('/countries/', params);
+export const getAllZones = (params = {}) => getAllRecords('/zones/', params);
+export const getAllRegions = (params = {}) => getAllRecords('/regions/', params);
+export const getAllDistricts = (params = {}) => getAllRecords('/districts/', params);
+export const getAllWards = (params = {}) => getAllRecords('/wards/', params);
+export const getAllSchools = (params = {}) => getAllRecords('/schools/', params);
 export const createSchool = (data) => api.post('/schools/', data);
 export const updateSchool = (id, data) => api.put(`/schools/${id}/`, data);
 export const deleteSchool = (id) => api.delete(`/schools/${id}/`);
@@ -125,6 +148,14 @@ export const deleteStudentTalent = (id) => api.delete(`/student-talents/${id}/`)
 
 export const getClubs = (params = {}) => api.get('/clubs/', { params });
 export const createClub = (data) => api.post('/clubs/', data);
+export const updateClub = (id, data) => api.put(`/clubs/${id}/`, data);
+export const deleteClub = (id) => api.delete(`/clubs/${id}/`);
+export const getClubTeachers = (params = {}) => api.get('/club-teachers/', { params });
+export const createClubTeacher = (data) => api.post('/club-teachers/', data);
+export const deleteClubTeacher = (id) => api.delete(`/club-teachers/${id}/`);
+export const getClubTalents = (params = {}) => api.get('/club-talents/', { params });
+export const createClubTalent = (data) => api.post('/club-talents/', data);
+export const deleteClubTalent = (id) => api.delete(`/club-talents/${id}/`);
 export const getClubMemberships = (params = {}) => api.get('/club-memberships/', { params });
 export const createClubMembership = (data) => api.post('/club-memberships/', data);
 export const getEvaluations = (params = {}) => api.get('/evaluations/', { params });
