@@ -1,53 +1,155 @@
 # Talent in School Management System
 
-A comprehensive management platform designed to track, manage, and promote student talents across schools in the East African region. The system facilitates role-based access for stakeholders ranging from Parents and Students to National-level administrators.
+A Django-based school talent management platform for tracking student talent, clubs, competitions, results, announcements, and geographic administration across a school network.
 
-## Key Features
+## Project overview
 
-*   **Multi-Tier Governance**: Support for Country, Region, District, and Ward level management.
-*   **Role-Based Dashboards**: Tailored experiences for 8 distinct user roles including Super Admin, Sport Teachers, Parents, and Students.
-*   **Talent Tracking**: Manage up to 5 unique talents per student across categories like Music, Technology, and Sports.
-*   **Competition Hierarchy**: Progress results through School, District, Zone, and National levels.
-*   **Result Management**: Automated grading (A+ to F), grade point calculation, and "Top 3" award recognition.
-*   **Announcement System**: Targeted communication based on geographic scope with automated lifecycle management.
-*   **Security First**: CSRF protection, session hardening (2-minute timeout), and XSS mitigation.
+This system is designed for schools and education administrators to manage:
 
-## 🛠 Tech Stack
+- geographic hierarchy data such as country, zone, region, district, and ward
+- school records and user access
+- student profiles and associated talent records
+- school clubs and club memberships
+- competitions and participation
+- result entry, grading, promotion, and awards
+- announcements scoped to a country, zone, region, district, or school
 
-*   **Backend**: Django (djagorestframework, djangorestframework-simplejwt)
-*   **Database**: MySQL/MariaDB (Normalized schema)
-*   **Frontend**: React (Device-Responsive Design)
+The application currently focuses on the backend and API layer. The codebase includes Django models, admin configuration, serializers, viewsets, and JWT authentication.
 
-## 📂 Project Structure
+## Tech stack
+
+- Backend: Django
+- API: Django REST Framework
+- Authentication: djangorestframework-simplejwt
+- Database: MySQL / MariaDB compatible schema
+- Admin: Django admin
+
+## Current repository structure
 
 ```text
-├── backend/          # Django application and API implementation
-├── frontend/         # React application
-├── docs/             # Documentation
-├── populate/        # populating scripts
+├── backend/              # Django project and API code
+│   ├── config/           # Django settings and URL config
+│   ├── core/             # geography, School, User, Talent, Club, Announcement models
+│   ├── students/         # Student and Parent models and serializers/views
+│   ├── competitions/     # Competition, participation, and judge models
+│   ├── results/          # Result, ranking, and result promotion models
+│   ├── manage.py         # Django project entry point
+│   └── README.md         # backend-specific setup notes
+├── docs/                 # project documentation
+│   ├── SRS.md            # software requirements specification
+│   └── requirements.txt  # project documentation dependencies
+├── populate/             # data population scripts
+├── README.md             # project overview
 ├── .gitignore
-└── vee/              # The virtual env
+└── vee/                  # local Python virtual environment
 ```
 
-> Note: The Django backend implements the API routes, viewsets, and serializers in `backend/`; the previous top-level `api/` package was only a small shared connector placeholder and has been removed.
+## Primary user roles
 
+The project currently defines these roles in the custom user model:
 
-## 👥 User Roles
+| Role | Purpose |
+| --- | --- |
+| talent_admin | overall administrative access |
+| region_manager | manages a region scope |
+| zone_manager | manages a zone scope |
+| district_manager | manages a district scope |
+| ward_manager | manages a ward scope |
+| head_teacher | manages a school-level operation |
+| sport_teacher | manages student registration, clubs, and results |
+| student | views own profile and records |
+| parent | views linked children data |
 
-| Role | Responsibility |
-| :--- | :--- |
-| **Super Admin** | Full system control and administrative user management. |
-| **District/Ward Manager** | Oversight and result promotion within their geographic scope. |
-| **Head Teacher** | School-level oversight and teacher management. |
-| **Sport Teacher** | Student registration, club management, and result entry. |
-| **Student** | Participate in competitions and view personal results. |
-| **Parent** | Monitor performance for one or more linked children. |
+## Core domain modules
 
-## 🛡 Security
+### Core
 
-*   **Session Management**: Automatic logout after 120 seconds of inactivity to protect user data.
-*   **Data Integrity**: Normalized database with foreign key constraints and strict cascade policies for geographic data.
-*   **CSRF Protection**: Security tokens enforced on critical state-changing operations.
+The `core` app defines the geographic hierarchy and the main school/account objects.
 
----
-*Developed for the enhancement of talent recognition in the education sector.*
+Entities include:
+
+- Country
+- Zone
+- Region
+- District
+- Ward
+- School
+- User
+- Parent
+- Talent
+- StudentTalent
+- Announcement
+- Club
+- ClubTeacher
+- ClubTalent
+- StudentClubMembership
+
+### Students
+
+The `students` app stores:
+
+- Student personal information
+- school enrollment
+- optional parent linkage
+- student_id and date of birth
+
+### Competitions
+
+The `competitions` app supports:
+
+- competitions scoped by geography using a generic foreign key
+- competition participation records with score and status
+- judges assigned to competitions
+
+### Results
+
+The `results` app stores:
+
+- grade outcomes with A+ to F grading
+- grade points and award categorization
+- ranking and approvals
+- detailed talent-level breakdowns
+- result promotion records across competition levels
+
+## API endpoints
+
+The project exposes REST routes under `/api/` through a DRF router.
+
+Examples include:
+
+- `/api/countries/`
+- `/api/schools/`
+- `/api/students/`
+- `/api/parents/`
+- `/api/talents/`
+- `/api/competitions/`
+- `/api/participants/` and `/api/participations/`
+- `/api/results/`
+- `/api/clubs/`
+- `/api/announcements/`
+
+Authentication endpoints are also included:
+
+- `/api/token/`
+- `/api/token/refresh/`
+
+## Quick start
+
+```bash
+cd backend
+python -m venv vee
+source vee/bin/activate   # Windows: vee\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+Then open:
+
+- admin: http://127.0.0.1:8000/admin/
+- API: http://127.0.0.1:8000/api/
+
+## Notes
+
+This project is currently a backend-first implementation. The codebase includes the underlying data model and API foundations for a broader talent management system, but the frontend application is not present in this workspace as a separate app at this stage.

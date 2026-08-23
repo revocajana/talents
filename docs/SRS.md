@@ -1,112 +1,216 @@
-# Software Requirements Specification (SRS)
+# Software Requirements Specification
 
 ## 1. Introduction
 
 ### 1.1 Purpose
-This document describes the requirements and implementation of the **Talent in School Management System**, a web platform for managing student talents, results, clubs, and administrative activities across Tanzanian schools.
+This document describes the current implementation and requirements of the Talent in School Management System. The application is built as a Django backend for managing school talent records, competitions, results, and administrative roles across a geographic school network.
 
-### 1.1.1 Technology Stack
-- **Backend**: Django 6.x, Django REST Framework, SimpleJWT
-- **Database**: MySQL / MariaDB
-- **Frontend**: React (future API consumption)
+### 1.2 Project scope
+The system supports:
 
-### 1.2 Scope
-The system provides:
-- Role‑based user management (Super Admin, Admin, Region Manager, Zone Manager, District Manager, Ward Manager, Head Teacher, Sport Teacher, Student, Parent)
-- Geographic hierarchy (Country → Zone → Region → District → Ward)
-- School management linked to the hierarchy
-- Student enrollment and talent tracking (up to 5 talents per student)
-- Competition management scoped to any geographic level using a GenericForeignKey
-- Participation tracking via a through model (`CompetitionParticipation`)
-- Result aggregation and promotion through School → District → Zone → National levels
-- Announcements scoped by geography
+- geographic administration through country, zone, region, district, and ward records
+- school registration and school-linked users
+- student profiles and talent tracking
+- school clubs and club membership management
+- competition setup, participation, and judging
+- results with grading, ranking, promotion, and award logic
+- announcement management by geographic scope
+- REST API access for integration and downstream clients
 
-## 2. Overall Description
+## 2. Current system overview
 
-### 2.1 Product Perspective
-The platform is a multi‑tier web application where each role has a dedicated dashboard. Data visibility follows the geographic hierarchy; a manager only sees records belonging to their scope.
+The project currently implements a backend-first system with a layered Django architecture:
 
-### 2.2 User Roles & Permissions
-| Role | Description |
-|------|-------------|
-| **Super Admin** | Full system access, can create any other user. |
-| **Admin** | Manages regional structures and can create managers. |
-| **Region Manager** | Oversees all zones, districts, wards, schools within a region. |
-| **Zone Manager** | Oversees districts and wards within a zone. |
-| **District Manager** | Oversees wards and schools within a district. |
-| **Ward Manager** | Oversees schools within a ward. |
-| **Head Teacher** | Manages a single school (users, students, competitions). |
-| **Sport Teacher** | Registers students, creates clubs, uploads results. |
-| **Student** | Views own profile, talents, results, and announcements. |
-| **Parent** | Views results and announcements for linked children (one‑to‑many). |
+- `core` handles geography, schools, users, and shared administrative data
+- `students` handles student and parent records
+- `competitions` handles competition lifecycle and participation
+- `results` handles scoring, ranking, and promotion
+- `config` contains the Django project settings and URL routing
 
-### 2.3 Operating Environment
-- Modern web browser (Chrome/Firefox/Edge/Safari)
-- MySQL server reachable from the Django container
+## 3. Functional requirements
 
-## 3. System Features
+### 3.1 Geographic hierarchy
+The application defines a hierarchical geographic model:
 
-### 3.1 Authentication & Authorization
-- JWT‑based stateless authentication.
-- Role‑based permissions enforced in the API and admin UI.
+- Country
+- Zone
+- Region
+- District
+- Ward
+- School
 
-### 3.2 Competition Management
-- `Competition` can be linked to any geographic entity using a `GenericForeignKey` (`content_type`, `object_id`).
-- `CompetitionParticipation` links a `Student` to a `Competition` with additional fields (`joined_at`, `score`, `status`).
-- Status choices: `registered`, `finished`, `disqualified`.
+Each school is required to be linked to all relevant geographic levels, which supports scoped visibility and administrative controls.
 
-### 3.3 Result Management
-- Results are stored per competition level (School, District, Zone, National).
-- Automatic promotion logic moves results up the hierarchy.
-- Top‑3 talent recognition per competition, awarded only to grades **B+** or higher.
+### 3.2 Role model
+The custom `User` model extends Django's default user object and includes role-based access with the following choices:
 
-### 3.4 Announcement System
-- Announcements are created at any geographic level and visible to users within that scope.
-- End‑date cleanup removes stale announcements.
+- `talent_admin`
+- `region_manager`
+- `zone_manager`
+- `district_manager`
+- `ward_manager`
+- `head_teacher`
+- `sport_teacher`
+- `student`
+- `parent`
 
-## 4. Data Model
+The app also includes a separate `Parent` model and a linked `Student.parent` relationship for guardian access to child records.
 
-### 4.1 Entities
-- **Country** – `name`, `code`
-- **Zone** – `country` (FK), `name`
-- **Region** – `zone` (FK), `name`
-- **District** – `region` (FK), `name`
-- **Ward** – `district` (FK), `name`
-- **School** – `registry_number`, `name`, `ownership_type`, FK to each geographic level, `phone`, `email`
-- **User** – extends `AbstractUser`; fields: `role` (includes new `region_manager` and `zone_manager`), optional FK to `School`
-- **Parent** – custom model with login credentials, linked to many `Student`s via a lookup table.
-- **Student** – `first_name`, `last_name`, `gender`, `student_id`, FK to `School`
-- **Competition** – `name`, `description`, `level` (choices), `start_date`, `end_date`, `content_type`, `object_id` (GenericForeignKey), many‑to‑many `schools`, many‑to‑many `participants` through `CompetitionParticipation`.
-- **CompetitionParticipation** – `competition` (FK), `student` (FK), `joined_at`, `score`, `status`.
-- **Result** – (future) tracks scores per competition level.
-- **Announcement** – title, description, talent category, venue, start/end datetime, creator, geographic FK fields.
+### 3.3 Student and talent management
+Students are created in the `students` app and linked to a school. Each student may be associated with one or more talent records through `StudentTalent`.
 
-## 5. Implementation & Deployment
+The talent model supports categories such as:
 
-### 5.1 Commands
+- Music
+- Sports
+- Technology
+- Arts
+- Academics
+- Other
+
+### 3.4 Club management
+The `core` app defines clubs and membership logic:
+
+- schools can have multiple clubs
+- each club can be assigned teachers and talents
+- student membership is tracked through `StudentClubMembership`
+- the model enforces a recommended club limit based on school size
+
+### 3.5 Competition management
+Competitions are stored in the `competitions` app and can be scoped to a level such as:
+
+- East Africa
+- Country
+- Zone
+- Region
+- District
+- Ward
+- School
+
+A `GenericForeignKey` is used through `content_type` and `object_id` to attach a competition to a geographic location.
+
+Participation is tracked through `CompetitionParticipation`, which records:
+
+- competition
+- student
+- joined_at
+- score
+- status (`registered`, `finished`, `disqualified`)
+
+### 3.6 Result management
+Results are captured in the `results` app and include:
+
+- score
+- grade
+- grade_points
+- award
+- rank
+- approval status
+
+The grade scale implemented in the model is:
+
+- A+
+- A
+- A-
+- B+
+- B
+- B-
+- C+
+- C
+- C-
+- D+
+- D
+- E
+- F
+
+Awards require a minimum grade of B+ in the validation logic.
+
+### 3.7 Announcement management
+The `Announcement` model supports a scope of:
+
+- national
+- zone
+- region
+- district
+- school
+
+Announcements can also be tied to a geographic entity using optional country, zone, region, district, and school foreign keys.
+
+## 4. Data model summary
+
+### 4.1 Key entities
+
+- Country
+- Zone
+- Region
+- District
+- Ward
+- School
+- User
+- Parent
+- Student
+- Talent
+- StudentTalent
+- Club
+- Competition
+- CompetitionParticipation
+- CompetitionJudge
+- Result
+- ResultDetail
+- ResultPromotion
+- Announcement
+
+### 4.2 Relationships
+
+- Each `School` belongs to a country, zone, region, district, and ward.
+- Each `Student` belongs to a school and can optionally belong to a parent.
+- Each `User` may be assigned a role and optional school/geographic scope.
+- Each `Competition` may be tied to a geographic object via GenericForeignKey.
+- Each `CompetitionParticipation` links one student to one competition.
+- Each `Result` is linked to one participation and can be promoted to a higher level.
+
+## 5. API design
+
+The project exposes a REST API using Django REST Framework and a default router. Main API prefixes include:
+
+- `/api/`
+- `/api/token/`
+- `/api/token/refresh/`
+
+The router registers endpoints for all main models, including countries, schools, students, talents, competitions, results, clubs, and announcements.
+
+## 6. Security and quality requirements
+
+Relevant implementation points include:
+
+- use of Django's built-in auth and custom role model
+- use of foreign key constraints and unique constraints
+- validation of school/zone/region/district/ward consistency in admin forms
+- restricted admin-based data references and protected related records
+- JWT authentication for API access
+
+## 7. Deployment and setup
+
+### 7.1 Local setup
+
 ```bash
-# virtualenv
-python3 -m venv vee
+cd backend
+python -m venv vee
 source vee/bin/activate
-
-# install deps
 pip install -r requirements.txt
-
-# make and apply migrations (creates all tables)
-python3 backend/manage.py makemigrations
-python3 backend/manage.py migrate
-
-# populate core geographic data (Mwanza example)
-python3 backend/core/populate_mwanza.py
-
-# populate demo students and a sample competition
-python3 backend/students/populate_students.py
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
 ```
 
-### 5.2 Future Work
-- Add API layer (`api/` app) using Django REST Framework.
-- Implement frontend consumption of the API.
-- Write unit/integration tests for competition participation.
+### 7.2 Access points
+
+- Admin dashboard: http://127.0.0.1:8000/admin/
+- API root: http://127.0.0.1:8000/api/
+
+## 8. Current project status
+
+The application is a working backend implementation for a talent management platform, with the data model and API structure already established. The next likely phase would be expanding frontend interfaces, adding stricter access policies, and increasing test coverage.
 
 ---
-*End of SRS*
+End of SRS.
