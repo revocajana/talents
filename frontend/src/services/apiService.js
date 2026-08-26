@@ -169,6 +169,7 @@ export const sendMessage = (data) => api.post('/messages/', data);
 // ==================== STUDENTS ====================
 
 export const getStudents = (params = {}) => api.get('/students/', { params });
+export const getAllStudents = (params = {}) => getAllRecords('/students/', params);
 export const getStudentById = (id) => api.get(`/students/${id}/`);
 export const createStudent = (data) => api.post('/students/', data);
 export const updateStudent = (id, data) => api.put(`/students/${id}/`, data);
