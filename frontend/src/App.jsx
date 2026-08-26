@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
@@ -13,7 +12,11 @@ import StudentPage from './pages/StudentPage';
 import './App.css';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, authReady, user } = useAuth();
+
+  if (!authReady) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Checking session...</div>;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -27,11 +30,11 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated, user, checkAuth } = useAuth();
+  const { isAuthenticated, authReady, user } = useAuth();
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  if (!authReady) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Checking session...</div>;
+  }
 
   return (
     <Routes>

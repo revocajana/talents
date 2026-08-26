@@ -4,11 +4,18 @@ const AuthContext = createContext();
 const API_BASE_URL = 'http://localhost:8000';
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState(
-    localStorage.getItem('access_token') || localStorage.getItem('token') || null
-  );
+  const storedToken = localStorage.getItem('access_token') || localStorage.getItem('token');
+  const storedUser = localStorage.getItem('user');
+  const [user, setUser] = useState(() => {
+    try {
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(storedUser && storedToken));
+  const [token, setToken] = useState(storedToken || null);
+  const [authReady, setAuthReady] = useState(true);
 
   const resolveRole = (role, isSuperuser) => {
     if (role && role.trim()) return role;
@@ -105,16 +112,22 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = () => {
     const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('access_token') || localStorage.getItem('token');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
+    try {
+      const parsedUser = storedUser ? JSON.parse(storedUser) : null;
       setUser(parsedUser);
       setToken(storedToken);
-      setIsAuthenticated(true);
+      setIsAuthenticated(Boolean(parsedUser && storedToken));
+    } catch {
+      setUser(null);
+      setToken(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('user');
     }
+    setAuthReady(true);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, token, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, authReady, token, login, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );
