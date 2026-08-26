@@ -540,11 +540,11 @@ export default function SportTeacherPage() {
             {activeModal === 'students' && (
               <div className="table-container">
                 <table className="data-table">
-                  <thead><tr><th>Name</th><th>Gender</th><th>DOB</th><th>Student ID</th></tr></thead>
+                  <thead><tr><th>Name</th><th>DOB</th><th>Student ID</th></tr></thead>
                   <tbody>
                     {schoolStudents.length > 0 ? schoolStudents.map((student) => (
-                      <tr key={student.id}><td>{student.first_name} {student.last_name}</td><td>{student.gender || 'N/A'}</td><td>{student.date_of_birth || '—'}</td><td>{student.student_id || 'N/A'}</td></tr>
-                    )) : <tr><td colSpan="4">No students found</td></tr>}
+                      <tr key={student.id}><td>{student.first_name} {student.last_name} [{student.gender || '?'}]</td><td>{student.date_of_birth || '—'}</td><td>{student.student_id || 'N/A'}</td></tr>
+                    )) : <tr><td colSpan="3">No students found</td></tr>}
                   </tbody>
                 </table>
               </div>
