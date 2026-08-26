@@ -30,6 +30,19 @@ admin.site.site_title = 'Super admin'
 admin.site.index_title = 'Super admin'
 
 
+def get_tanzania():
+    return Country.objects.filter(name__iexact='Tanzania').first() or Country.objects.filter(code__iexact='TZA').first()
+
+
+class TanzaniaDefaultCountryFormMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk and not self.data.get('country'):
+            tanzania = get_tanzania()
+            if tanzania:
+                self.initial['country'] = tanzania.pk
+
+
 class RegionInline(admin.TabularInline):
     model = Region
     fk_name = 'zone'
@@ -54,7 +67,7 @@ class ClubInline(admin.TabularInline):
     show_change_link = True
 
 
-class SchoolAdminForm(forms.ModelForm):
+class SchoolAdminForm(TanzaniaDefaultCountryFormMixin, forms.ModelForm):
     class Meta:
         model = School
         fields = '__all__'
@@ -67,7 +80,7 @@ class SchoolAdminForm(forms.ModelForm):
         self.fields['district'].queryset = District.objects.none()
         self.fields['ward'].queryset = Ward.objects.none()
 
-        country_id = self.data.get('country') if self.data else None
+        country_id = (self.data.get('country') if self.data else None) or self.initial.get('country')
         zone_id = self.data.get('zone') if self.data else None
         region_id = self.data.get('region') if self.data else None
         district_id = self.data.get('district') if self.data else None
@@ -116,8 +129,15 @@ class CountryAdmin(admin.ModelAdmin):
     search_fields = ("name", "code")
 
 
+class ZoneAdminForm(TanzaniaDefaultCountryFormMixin, forms.ModelForm):
+    class Meta:
+        model = Zone
+        fields = '__all__'
+
+
 @admin.register(Zone)
 class ZoneAdmin(admin.ModelAdmin):
+    form = ZoneAdminForm
     list_display = ("name", "country", "region_list")
     list_filter = ("country",)
     search_fields = ("name",)
@@ -128,7 +148,7 @@ class ZoneAdmin(admin.ModelAdmin):
     region_list.short_description = "Regions"
 
 
-class RegionAdminForm(forms.ModelForm):
+class RegionAdminForm(TanzaniaDefaultCountryFormMixin, forms.ModelForm):
     country = forms.ModelChoiceField(queryset=Country.objects.all().order_by('name'), label='Country')
 
     class Meta:
@@ -139,7 +159,7 @@ class RegionAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['zone'].queryset = Zone.objects.none()
 
-        country_id = self.data.get('country') if self.data else None
+        country_id = (self.data.get('country') if self.data else None) or self.initial.get('country')
         zone_id = self.data.get('zone') if self.data else None
 
         if self.instance and self.instance.pk:
@@ -204,7 +224,7 @@ class RegionAdmin(admin.ModelAdmin):
     district_count.short_description = "# Districts"
 
 
-class DistrictAdminForm(forms.ModelForm):
+class DistrictAdminForm(TanzaniaDefaultCountryFormMixin, forms.ModelForm):
     country = forms.ModelChoiceField(queryset=Country.objects.all().order_by('name'), label='Country')
     zone = forms.ModelChoiceField(queryset=Zone.objects.none(), label='Zone')
 
@@ -217,7 +237,7 @@ class DistrictAdminForm(forms.ModelForm):
         self.fields['zone'].queryset = Zone.objects.none()
         self.fields['region'].queryset = Region.objects.none()
 
-        country_id = self.data.get('country') if self.data else None
+        country_id = (self.data.get('country') if self.data else None) or self.initial.get('country')
         zone_id = self.data.get('zone') if self.data else None
         region_id = self.data.get('region') if self.data else None
 
@@ -298,7 +318,7 @@ class DistrictAdmin(admin.ModelAdmin):
     ward_count.short_description = "# Wards"
 
 
-class WardAdminForm(forms.ModelForm):
+class WardAdminForm(TanzaniaDefaultCountryFormMixin, forms.ModelForm):
     country = forms.ModelChoiceField(queryset=Country.objects.all().order_by('name'), label='Country')
     zone = forms.ModelChoiceField(queryset=Zone.objects.none(), label='Zone')
     region = forms.ModelChoiceField(queryset=Region.objects.none(), label='Region')
@@ -313,7 +333,7 @@ class WardAdminForm(forms.ModelForm):
         self.fields['region'].queryset = Region.objects.none()
         self.fields['district'].queryset = District.objects.none()
 
-        country_id = self.data.get('country') if self.data else None
+        country_id = (self.data.get('country') if self.data else None) or self.initial.get('country')
         zone_id = self.data.get('zone') if self.data else None
         region_id = self.data.get('region') if self.data else None
         district_id = self.data.get('district') if self.data else None
@@ -787,7 +807,7 @@ class StudentClubMembershipAdmin(admin.ModelAdmin):
         return obj.club.school
 
 
-class AnnouncementAdminForm(forms.ModelForm):
+class AnnouncementAdminForm(TanzaniaDefaultCountryFormMixin, forms.ModelForm):
     ward = forms.ModelChoiceField(
         queryset=Ward.objects.none(),
         required=False,
@@ -807,7 +827,7 @@ class AnnouncementAdminForm(forms.ModelForm):
         self.fields['ward'].queryset = Ward.objects.none()
         self.fields['school'].queryset = School.objects.none()
 
-        country_id = self.data.get('country') if self.data else None
+        country_id = (self.data.get('country') if self.data else None) or self.initial.get('country')
         zone_id = self.data.get('zone') if self.data else None
         region_id = self.data.get('region') if self.data else None
         district_id = self.data.get('district') if self.data else None
