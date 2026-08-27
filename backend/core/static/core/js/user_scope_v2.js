@@ -61,7 +61,7 @@
     filterField('region', 'zone', constrainedRoles);
     filterField('district', 'region', constrainedRoles);
     filterField('ward', 'district', constrainedRoles);
-    filterField('school', 'country', constrainedRoles);
+    filterField('school', 'ward', constrainedRoles);
   }
 
   function updateScopeFields() {

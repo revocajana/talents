@@ -206,3 +206,37 @@ class UserScopeAdminTests(TestCase):
 		self.assertEqual(form.initial['country'], self.country.pk)
 		self.assertIn(self.zone, form.fields['zone'].queryset)
 		self.assertNotIn(kenya_zone, form.fields['zone'].queryset)
+
+	def test_location_choices_follow_the_selected_hierarchy(self):
+		other_zone = Zone.objects.create(country=self.country, name='Other Zone')
+		other_region = Region.objects.create(zone=other_zone, name='Other Region')
+		other_district = District.objects.create(region=other_region, name='Other District')
+		other_ward = Ward.objects.create(district=other_district, name='Other Ward')
+		other_school = School.objects.create(
+			registry_number='TZ-002',
+			name='Other School',
+			ownership_type='Public',
+			country=self.country,
+			zone=other_zone,
+			region=other_region,
+			district=other_district,
+			ward=other_ward,
+		)
+		form = UserChangeFormWithPassword(data={
+			'role': 'sport_teacher',
+			'country': self.country.pk,
+			'zone': self.zone.pk,
+			'region': self.region.pk,
+			'district': self.district.pk,
+			'ward': self.ward.pk,
+			'school': self.school.pk,
+		})
+
+		self.assertIn(self.region, form.fields['region'].queryset)
+		self.assertNotIn(other_region, form.fields['region'].queryset)
+		self.assertIn(self.district, form.fields['district'].queryset)
+		self.assertNotIn(other_district, form.fields['district'].queryset)
+		self.assertIn(self.ward, form.fields['ward'].queryset)
+		self.assertNotIn(other_ward, form.fields['ward'].queryset)
+		self.assertIn(self.school, form.fields['school'].queryset)
+		self.assertNotIn(other_school, form.fields['school'].queryset)

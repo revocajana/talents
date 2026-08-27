@@ -623,6 +623,10 @@ class UserChangeFormWithPassword(UserChangeForm):
 
         if not should_filter_locations and country_id:
             self.fields['zone'].queryset = self.fields['zone'].queryset.filter(country_id=country_id)
+            self.fields['region'].queryset = Region.objects.none()
+            self.fields['district'].queryset = District.objects.none()
+            self.fields['ward'].queryset = Ward.objects.none()
+            self.fields['school'].queryset = School.objects.none()
 
         if country_id and should_filter_locations:
             self.fields['zone'].queryset = self.fields['zone'].queryset.filter(country_id=country_id)
@@ -639,12 +643,15 @@ class UserChangeFormWithPassword(UserChangeForm):
             self.fields['ward'].queryset = self.fields['ward'].queryset.filter(district__region_id=region_id)
         if district_id and should_filter_locations:
             self.fields['ward'].queryset = self.fields['ward'].queryset.filter(district_id=district_id)
+        if self.data.get('ward') and should_filter_locations:
+            self.fields['school'].queryset = self.fields['school'].queryset.filter(ward_id=self.data.get('ward'))
 
         self.fields['zone'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.country_id for item in Zone.objects.all()})
         self.fields['region'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.zone_id for item in Region.objects.all()})
         self.fields['district'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.region_id for item in District.objects.all()})
         self.fields['ward'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.district_id for item in Ward.objects.all()})
-        self.fields['school'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.country_id for item in School.objects.all()})
+        self.fields['school'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.ward_id for item in School.objects.all()})
+        self.fields['school'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.country_id for item in School.objects.all()})
         self.fields['region'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.zone.country_id for item in Region.objects.select_related('zone')})
         self.fields['district'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.region.zone.country_id for item in District.objects.select_related('region__zone')})
         self.fields['ward'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.district.region.zone.country_id for item in Ward.objects.select_related('district__region__zone')})
