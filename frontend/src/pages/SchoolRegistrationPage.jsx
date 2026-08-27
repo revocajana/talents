@@ -1,0 +1,140 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import * as apiService from '../services/apiService';
+import '../styles/login.css';
+
+const initialForm = {
+  name: '',
+  registry_number: '',
+  ownership_type: '',
+  country: '',
+  zone: '',
+  region: '',
+  district: '',
+  ward: '',
+  phone: '',
+  email: '',
+};
+
+const list = (response) => response?.data?.results || [];
+
+export default function SchoolRegistrationPage() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState(initialForm);
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [countries, setCountries] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [regions, setRegions] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [schoolsError, setSchoolsError] = useState('');
+
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const locationsResponse = await apiService.getRegistrationLocations();
+        const locations = locationsResponse.data;
+        const countryList = locations.countries || [];
+        setCountries(countryList);
+        setZones(locations.zones || []);
+        setRegions(locations.regions || []);
+        setDistricts(locations.districts || []);
+        setWards(locations.wards || []);
+        const tanzania = countryList.find((country) => country.name.toLowerCase() === 'tanzania' || country.code.toLowerCase() === 'tza');
+        if (tanzania) setForm((current) => ({ ...current, country: String(tanzania.id) }));
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Unable to load location options.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadLocations();
+  }, []);
+
+  const countryZones = zones.filter((zone) => Number(zone.country) === Number(form.country));
+  const zoneRegions = regions.filter((region) => Number(region.zone) === Number(form.zone));
+  const regionDistricts = districts.filter((district) => Number(district.region) === Number(form.region));
+  const districtWards = wards.filter((ward) => Number(ward.district) === Number(form.district));
+
+  const updateField = (event) => {
+    const { name, value } = event.target;
+    const cleared = {
+      country: { zone: '', region: '', district: '', ward: '' },
+      zone: { region: '', district: '', ward: '' },
+      region: { district: '', ward: '' },
+      district: { ward: '' },
+    }[name] || {};
+    setForm({ ...form, [name]: value, ...cleared });
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    try {
+      setSaving(true);
+      setSchoolsError('');
+      await apiService.createSchool({
+        name: form.name,
+        registry_number: form.registry_number,
+        ownership_type: form.ownership_type,
+        country: Number(form.country),
+        zone: Number(form.zone),
+        region: Number(form.region),
+        district: Number(form.district),
+        ward: Number(form.ward),
+        phone: form.phone,
+        email: form.email,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      const details = err.response?.data;
+      setSchoolsError(details?.detail || Object.values(details || {}).flat().join(' ') || 'School registration failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="login-page">
+      <div className="registration-card">
+        <div className="login-header">
+          <p className="welcome-label">Talent Management System</p>
+          <h2>Register school</h2>
+        </div>
+
+        {error && <div className="alert error">{error}</div>}
+
+        {submitted ? (
+          <div className="registration-success">
+            <h3>Registration request received</h3>
+            <p>Your school details have been recorded for review.</p>
+            <button type="button" className="primary-btn" onClick={() => navigate('/login')}>Return to login</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="registration-form">
+            {loading ? <p>Loading locations...</p> : null}
+            <div className="registration-grid">
+              <label>School name<input name="name" value={form.name} onChange={updateField} required /></label>
+              <label>Registry number<input name="registry_number" value={form.registry_number} onChange={updateField} required /></label>
+              <label>Ownership type<input name="ownership_type" value={form.ownership_type} onChange={updateField} placeholder="Public or private" required /></label>
+              <label>Country<select name="country" value={form.country} onChange={updateField} required disabled={loading}><option value="">Select country</option>{countries.map((country) => <option key={country.id} value={country.id}>{country.name}</option>)}</select></label>
+              <label>Zone<select name="zone" value={form.zone} onChange={updateField} required disabled={loading || !form.country}><option value="">Select zone</option>{countryZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}</select></label>
+              <label>Region<select name="region" value={form.region} onChange={updateField} required disabled={!form.zone}><option value="">Select region</option>{zoneRegions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label>
+              <label>District<select name="district" value={form.district} onChange={updateField} required disabled={!form.region}><option value="">Select district</option>{regionDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}</select></label>
+              <label>Ward<select name="ward" value={form.ward} onChange={updateField} required disabled={!form.district}><option value="">Select ward</option>{districtWards.map((ward) => <option key={ward.id} value={ward.id}>{ward.name}</option>)}</select></label>
+              <label>School phone<input name="phone" type="tel" value={form.phone} onChange={updateField} required /></label>
+              <label>School email<input name="email" type="email" value={form.email} onChange={updateField} required /></label>
+            </div>
+            {schoolsError && <div className="alert error">{schoolsError}</div>}
+            <div className="registration-actions">
+              <button type="button" className="secondary-btn" onClick={() => navigate('/login')}>Back</button>
+              <button type="submit" className="primary-btn" disabled={loading || saving}>{saving ? 'Saving...' : 'Register school'}</button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}

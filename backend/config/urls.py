@@ -26,6 +26,7 @@ from core.views import (
     DistrictViewSet,
     WardViewSet,
     SchoolViewSet,
+    RegistrationLocationsView,
     UserViewSet,
     TalentViewSet,
     StudentTalentViewSet,
@@ -81,6 +82,7 @@ router.register('audit-logs', AuditLogViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/registration-locations/', RegistrationLocationsView.as_view(), name='registration_locations'),
     path('api/', include(router.urls)),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

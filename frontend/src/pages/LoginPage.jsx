@@ -70,7 +70,7 @@ export default function LoginPage() {
           </div>
 
           <div className="login-action-row">
-            <a href="#register-school" className="register-school-link" onClick={(event) => event.preventDefault()}>
+            <a href="/register-school" className="register-school-link">
               Register school
             </a>
             <button type="submit" className="primary-btn" disabled={loading}>

@@ -1,7 +1,8 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.db.models import Q
 
 from .models import (
@@ -29,53 +30,67 @@ from .serializers import (
 )
 from .permissions import (
     AuthenticatedReadOnly, ConfigurationPermission, StudentDataPermission,
-    SubmissionPermission, ScopedQuerysetMixin,
+    SubmissionPermission, ScopedQuerysetMixin, PublicSchoolRegistrationPermission,
 )
 
 
 class CountryViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
-    permission_classes = [ConfigurationPermission]
+    permission_classes = [PublicSchoolRegistrationPermission]
     scope_paths = {'country': 'id'}
 
 
 class ZoneViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Zone.objects.select_related('country').all()
     serializer_class = ZoneSerializer
-    permission_classes = [ConfigurationPermission]
+    permission_classes = [PublicSchoolRegistrationPermission]
     scope_paths = {'country': 'country_id', 'zone': 'id'}
 
 
 class RegionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Region.objects.select_related('zone').all()
     serializer_class = RegionSerializer
-    permission_classes = [ConfigurationPermission]
+    permission_classes = [PublicSchoolRegistrationPermission]
     scope_paths = {'country': 'zone__country_id', 'zone': 'zone_id', 'region': 'id'}
 
 
 class DistrictViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = District.objects.select_related('region').all()
     serializer_class = DistrictSerializer
-    permission_classes = [ConfigurationPermission]
+    permission_classes = [PublicSchoolRegistrationPermission]
     scope_paths = {'country': 'region__zone__country_id', 'zone': 'region__zone_id', 'region': 'region_id', 'district': 'id'}
 
 
 class WardViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Ward.objects.select_related('district').all()
     serializer_class = WardSerializer
-    permission_classes = [ConfigurationPermission]
+    permission_classes = [PublicSchoolRegistrationPermission]
     scope_paths = {'country': 'district__region__zone__country_id', 'zone': 'district__region__zone_id', 'region': 'district__region_id', 'district': 'district_id', 'ward': 'id'}
 
 
 class SchoolViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    public_registration = True
     queryset = School.objects.select_related('country', 'zone', 'region', 'district', 'ward').all()
     serializer_class = SchoolSerializer
-    permission_classes = [ConfigurationPermission]
+    permission_classes = [PublicSchoolRegistrationPermission]
     scope_paths = {
         'country': 'country_id', 'zone': 'zone_id', 'region': 'region_id',
         'district': 'district_id', 'ward': 'ward_id', 'school': 'id',
     }
+
+
+class RegistrationLocationsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({
+            'countries': CountrySerializer(Country.objects.all(), many=True).data,
+            'zones': ZoneSerializer(Zone.objects.all(), many=True).data,
+            'regions': RegionSerializer(Region.objects.all(), many=True).data,
+            'districts': DistrictSerializer(District.objects.all(), many=True).data,
+            'wards': WardSerializer(Ward.objects.all(), many=True).data,
+        })
 
 
 class UserViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -103,8 +118,6 @@ class UserViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
             'ward_managers': User.objects.filter(role='ward_manager').count(),
             'admins': User.objects.filter(is_staff=True, is_superuser=True).count(),
         })
-
-
 class TalentViewSet(viewsets.ModelViewSet):
     queryset = Talent.objects.all()
     serializer_class = TalentSerializer

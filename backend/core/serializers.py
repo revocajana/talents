@@ -56,6 +56,25 @@ class SchoolSerializer(serializers.ModelSerializer):
             'created_at',
         ]
 
+    def validate(self, attrs):
+        country = attrs.get('country')
+        zone = attrs.get('zone')
+        region = attrs.get('region')
+        district = attrs.get('district')
+        ward = attrs.get('ward')
+
+        if zone and country and zone.country_id != country.pk:
+            raise serializers.ValidationError({'zone': 'Choose a zone belonging to the selected country.'})
+        if region and zone and region.zone_id != zone.pk:
+            raise serializers.ValidationError({'region': 'Choose a region belonging to the selected zone.'})
+        if district and region and district.region_id != region.pk:
+            raise serializers.ValidationError({'district': 'Choose a district belonging to the selected region.'})
+        if ward and district and ward.district_id != district.pk:
+            raise serializers.ValidationError({'ward': 'Choose a ward belonging to the selected district.'})
+        if ward and region and ward.district.region_id != region.pk:
+            raise serializers.ValidationError({'ward': 'Choose a ward belonging to the selected region.'})
+        return attrs
+
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)

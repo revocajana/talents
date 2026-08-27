@@ -11,6 +11,8 @@ def has_full_access(user):
 
 def scope_queryset(queryset, user, scope_paths):
     """Limit a queryset using the user's assigned geographic scope."""
+    if not user or not user.is_authenticated:
+        return queryset
     if has_full_access(user):
         return queryset
 
@@ -80,6 +82,13 @@ class ConfigurationPermission(BasePermission):
         if request.method in SAFE_METHODS:
             return True
         return has_full_access(request.user)
+
+
+class PublicSchoolRegistrationPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        return getattr(view, 'public_registration', False) and view.action == 'create'
 
 
 class StudentDataPermission(BasePermission):
