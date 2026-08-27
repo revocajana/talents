@@ -71,9 +71,14 @@ export default function LoginPage() {
             />
           </div>
 
-          <button type="submit" className="primary-btn" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
+          <div className="login-action-row">
+            <a href="#register-school" className="register-school-link" onClick={(event) => event.preventDefault()}>
+              Register school
+            </a>
+            <button type="submit" className="primary-btn" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

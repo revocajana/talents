@@ -88,6 +88,28 @@
   box-shadow: 0 12px 25px rgba(14, 29, 182, 0.24);
 }
 
+.login-action-row {
+  display: grid;
+  grid-template-columns: 30% 70%;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-action-row .primary-btn {
+  width: 100%;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.register-school-link {
+  color: #0E1DB6;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .primary-btn:hover {
   transform: translateY(-1px);
 }
