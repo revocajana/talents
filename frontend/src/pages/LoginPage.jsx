@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/login.css';
+import logo from '../assets/Logo1.png';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -41,9 +42,8 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <div className="brand-badge">🎓</div>
-          <p className="welcome-label">Tanzania Talent Platform</p>
-          <h2>Sign in</h2>
+          <p className="welcome-label">Talent Management System</p>
+          <img className="brand-logo" src={logo} alt="Conturel Education Networking Initiative" />
         </div>
 
         {error && <div className="alert error">{error}</div>}
@@ -72,7 +72,7 @@ export default function LoginPage() {
           </div>
 
           <button type="submit" className="primary-btn" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
       </div>

@@ -20,14 +20,10 @@
   margin-bottom: 24px;
 }
 
-.brand-badge {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #0E1DB6 0%, #0A1589 100%);
-  display: grid;
-  place-items: center;
-  font-size: 2rem;
+.brand-logo {
+  display: block;
+  width: min(220px, 100%);
+  height: auto;
   margin: 0 auto 18px;
 }
 
@@ -35,9 +31,9 @@
   margin: 0 0 10px;
   color: #0E1DB6;
   font-weight: 700;
-  font-size: 0.76rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 1.8rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .login-header h2 {
