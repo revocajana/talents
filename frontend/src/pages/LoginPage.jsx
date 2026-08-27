@@ -54,7 +54,6 @@ export default function LoginPage() {
             <input
               id="username"
               type="text"
-              placeholder="Enter your username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
@@ -65,7 +64,6 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
-              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
