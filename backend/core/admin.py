@@ -4,6 +4,7 @@ from django.http import JsonResponse, Http404
 from django.urls import path
 from django.contrib.auth.forms import UserChangeForm
 from django.core.exceptions import ValidationError
+import json
 
 from .models import (
     Country,
@@ -594,10 +595,73 @@ class UserChangeFormWithPassword(UserChangeForm):
 
     class Meta:
         model = User
-        fields = ('username', 'first_name', 'last_name', 'email', 'role', 'school', 'is_active', 'is_staff', 'is_superuser')
+        fields = (
+            'username', 'first_name', 'last_name', 'email', 'role',
+            'country', 'zone', 'region', 'district', 'ward', 'school',
+            'is_active', 'is_staff', 'is_superuser',
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['country'].queryset = Country.objects.all().order_by('name')
+        self.fields['zone'].queryset = Zone.objects.all().select_related('country').order_by('country__name', 'name')
+        self.fields['region'].queryset = Region.objects.all().select_related('zone__country').order_by('zone__country__name', 'zone__name', 'name')
+        self.fields['district'].queryset = District.objects.all().select_related('region__zone__country').order_by('region__zone__country__name', 'region__zone__name', 'region__name', 'name')
+        self.fields['ward'].queryset = Ward.objects.all().select_related('district__region__zone__country').order_by('district__region__zone__country__name', 'district__region__zone__name', 'district__region__name', 'district__name', 'name')
+        self.fields['school'].queryset = School.objects.all().select_related('country').order_by('country__name', 'name')
+        if not self.instance.pk and not self.data.get('country'):
+            tanzania = get_tanzania()
+            if tanzania:
+                self.initial['country'] = tanzania.pk
+
+        country_id = self.data.get('country') or self.initial.get('country')
+        zone_id = self.data.get('zone') or self.initial.get('zone')
+        region_id = self.data.get('region') or self.initial.get('region')
+        district_id = self.data.get('district') or self.initial.get('district')
+
+        should_filter_locations = bool(self.data) or self.instance.pk
+
+        if not should_filter_locations and country_id:
+            self.fields['zone'].queryset = self.fields['zone'].queryset.filter(country_id=country_id)
+
+        if country_id and should_filter_locations:
+            self.fields['zone'].queryset = self.fields['zone'].queryset.filter(country_id=country_id)
+            self.fields['region'].queryset = self.fields['region'].queryset.filter(zone__country_id=country_id)
+            self.fields['district'].queryset = self.fields['district'].queryset.filter(region__zone__country_id=country_id)
+            self.fields['ward'].queryset = self.fields['ward'].queryset.filter(district__region__zone__country_id=country_id)
+            self.fields['school'].queryset = self.fields['school'].queryset.filter(country_id=country_id)
+        if zone_id and should_filter_locations:
+            self.fields['region'].queryset = self.fields['region'].queryset.filter(zone_id=zone_id)
+            self.fields['district'].queryset = self.fields['district'].queryset.filter(region__zone_id=zone_id)
+            self.fields['ward'].queryset = self.fields['ward'].queryset.filter(district__region__zone_id=zone_id)
+        if region_id and should_filter_locations:
+            self.fields['district'].queryset = self.fields['district'].queryset.filter(region_id=region_id)
+            self.fields['ward'].queryset = self.fields['ward'].queryset.filter(district__region_id=region_id)
+        if district_id and should_filter_locations:
+            self.fields['ward'].queryset = self.fields['ward'].queryset.filter(district_id=district_id)
+
+        self.fields['zone'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.country_id for item in Zone.objects.all()})
+        self.fields['region'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.zone_id for item in Region.objects.all()})
+        self.fields['district'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.region_id for item in District.objects.all()})
+        self.fields['ward'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.district_id for item in Ward.objects.all()})
+        self.fields['school'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.country_id for item in School.objects.all()})
+        self.fields['region'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.zone.country_id for item in Region.objects.select_related('zone')})
+        self.fields['district'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.region.zone.country_id for item in District.objects.select_related('region__zone')})
+        self.fields['ward'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.district.region.zone.country_id for item in Ward.objects.select_related('district__region__zone')})
+        self.fields['zone'].widget.attrs['data-managed-map'] = json.dumps({item.pk: list(item.scoped_users.filter(role='zone_manager').values_list('role', flat=True)) for item in Zone.objects.all()})
+        self.fields['region'].widget.attrs['data-managed-map'] = json.dumps({item.pk: list(item.scoped_users.filter(role='region_manager').values_list('role', flat=True)) for item in Region.objects.all()})
+        self.fields['district'].widget.attrs['data-managed-map'] = json.dumps({item.pk: list(item.scoped_users.filter(role='district_manager').values_list('role', flat=True)) for item in District.objects.all()})
+        self.fields['ward'].widget.attrs['data-managed-map'] = json.dumps({item.pk: list(item.scoped_users.filter(role='ward_manager').values_list('role', flat=True)) for item in Ward.objects.all()})
+        self.fields['school'].widget.attrs['data-managed-map'] = json.dumps({
+            item.pk: list(item.users.filter(role__in=('head_teacher', 'sport_teacher')).values_list('role', flat=True))
+            for item in School.objects.all()
+        })
+        self.fields['zone'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in Zone.objects.all().order_by('country__name', 'name')])
+        self.fields['region'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in Region.objects.all().order_by('zone__country__name', 'zone__name', 'name')])
+        self.fields['district'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in District.objects.all().order_by('region__zone__country__name', 'region__zone__name', 'region__name', 'name')])
+        self.fields['ward'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in Ward.objects.all().order_by('district__region__zone__country__name', 'district__region__zone__name', 'district__region__name', 'district__name', 'name')])
+        self.fields['school'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in School.objects.all().order_by('country__name', 'name')])
+
         linked_student = getattr(self.instance, 'student', None)
         if linked_student:
             self.initial['student_gender'] = linked_student.gender
@@ -605,15 +669,70 @@ class UserChangeFormWithPassword(UserChangeForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if cleaned_data.get('role') == 'student':
-            if not cleaned_data.get('school'):
-                self.add_error('school', 'A school is required for a student account.')
-            if not cleaned_data.get('student_gender'):
-                self.add_error('student_gender', 'Gender is required for a student account.')
-        return cleaned_data
+        role = cleaned_data.get('role')
+        required_scope = {
+            'region_manager': ('region', 'A region is required for a region manager.'),
+            'zone_manager': ('zone', 'A zone is required for a zone manager.'),
+            'district_manager': ('district', 'A district is required for a district manager.'),
+            'ward_manager': ('ward', 'A ward is required for a ward manager.'),
+            'head_teacher': ('school', 'A school is required for a head teacher.'),
+            'sport_teacher': ('school', 'A school is required for a sport teacher.'),
+            'student': ('school', 'A school is required for a student account.'),
+        }.get(role)
+        if required_scope and not cleaned_data.get(required_scope[0]):
+            self.add_error(required_scope[0], required_scope[1])
 
-    def clean(self):
-        cleaned_data = super().clean()
+        if role == 'student' and not cleaned_data.get('student_gender'):
+            self.add_error('student_gender', 'Gender is required for a student account.')
+
+        country = cleaned_data.get('country')
+        zone = cleaned_data.get('zone')
+        region = cleaned_data.get('region')
+        district = cleaned_data.get('district')
+        ward = cleaned_data.get('ward')
+        school = cleaned_data.get('school')
+        if zone and country and zone.country_id != country.pk:
+            self.add_error('zone', 'Choose a zone belonging to the selected country.')
+        if region and zone and region.zone_id != zone.pk:
+            self.add_error('region', 'Choose a region belonging to the selected zone.')
+        if region and country and region.zone.country_id != country.pk:
+            self.add_error('region', 'Choose a region belonging to the selected country.')
+        if district and region and district.region_id != region.pk:
+            self.add_error('district', 'Choose a district belonging to the selected region.')
+        if district and country and district.region.zone.country_id != country.pk:
+            self.add_error('district', 'Choose a district belonging to the selected country.')
+        if ward and district and ward.district_id != district.pk:
+            self.add_error('ward', 'Choose a ward belonging to the selected district.')
+        if ward and country and ward.district.region.zone.country_id != country.pk:
+            self.add_error('ward', 'Choose a ward belonging to the selected country.')
+        if school and country and school.country_id != country.pk:
+            self.add_error('school', 'Choose a school belonging to the selected country.')
+
+        retained_scope = {
+            'region_manager': {'country', 'region'},
+            'zone_manager': {'country', 'zone'},
+            'district_manager': {'country', 'district'},
+            'ward_manager': {'country', 'ward'},
+            'head_teacher': {'country', 'school'},
+            'sport_teacher': {'country', 'school'},
+            'student': {'country', 'school'},
+            'talent_admin': {'country'},
+        }.get(role, set())
+        for field_name in ('zone', 'region', 'district', 'ward', 'school'):
+            if field_name not in retained_scope:
+                cleaned_data[field_name] = None
+
+        manager_scope = {
+            'region_manager': 'region',
+            'zone_manager': 'zone',
+            'district_manager': 'district',
+            'ward_manager': 'ward',
+        }.get(role)
+        if manager_scope:
+            assigned_scope = cleaned_data.get(manager_scope)
+            if assigned_scope and User.objects.filter(role=role, **{f'{manager_scope}_id': assigned_scope.pk}).exclude(pk=self.instance.pk).exists():
+                self.add_error(manager_scope, f'This {manager_scope} already has a manager.')
+
         password_new = cleaned_data.get('password_new')
         password_confirm = cleaned_data.get('password_confirm')
 
@@ -665,7 +784,7 @@ class UserAdmin(admin.ModelAdmin):
             "fields": ("username", "first_name", "last_name", "email")
         }),
         ("Role & Access", {
-            "fields": ("role", "school", "is_staff", "is_superuser", "is_active")
+            "fields": ("role", "country", "zone", "region", "district", "ward", "school", "is_staff", "is_superuser", "is_active")
         }),
         ("Student Profile", {
             "fields": ("student_gender", "student_date_of_birth"),
@@ -681,6 +800,9 @@ class UserAdmin(admin.ModelAdmin):
             "classes": ("collapse",)
         }),
     )
+
+    class Media:
+        js = ('core/js/user_scope_v2.js',)
 
 
 

@@ -3,6 +3,7 @@ from django.test import TestCase
 from students.models import Student
 from competitions.models import Competition, CompetitionParticipation
 from results.models import Result
+from .admin import UserChangeFormWithPassword
 from .models import (
 	Country, Zone, Region, District, Ward, School, User, Talent, Club,
 	StudentClubMembership, StudentTalent, EvaluationCriterion, TalentEvaluation,
@@ -131,3 +132,77 @@ class FoundationRulesTests(TestCase):
 		result.save()
 		result.refresh_from_db()
 		self.assertEqual(result.grade, 'A')
+
+
+class UserScopeAdminTests(TestCase):
+	def setUp(self):
+		self.country = Country.objects.create(name='Tanzania', code='TZA')
+		self.zone = Zone.objects.create(country=self.country, name='Lake Zone')
+		self.region = Region.objects.create(zone=self.zone, name='Mwanza')
+		self.district = District.objects.create(region=self.region, name='Mwanza District')
+		self.ward = Ward.objects.create(district=self.district, name='Mwanza Ward')
+		self.school = School.objects.create(
+			registry_number='TZ-001',
+			name='Test School',
+			ownership_type='Public',
+			country=self.country,
+			zone=self.zone,
+			region=self.region,
+			district=self.district,
+			ward=self.ward,
+		)
+
+	def test_region_manager_form_keeps_only_country_and_region(self):
+		form = UserChangeFormWithPassword(data={
+			'username': 'rmanager',
+			'first_name': 'Region',
+			'last_name': 'Manager',
+			'email': 'region@example.com',
+			'role': 'region_manager',
+			'country': self.country.pk,
+			'zone': self.zone.pk,
+			'region': self.region.pk,
+			'district': self.district.pk,
+			'ward': self.ward.pk,
+			'school': self.school.pk,
+		})
+
+		self.assertTrue(form.is_valid(), form.errors)
+		self.assertEqual(form.cleaned_data['country'], self.country)
+		self.assertEqual(form.cleaned_data['region'], self.region)
+		self.assertIsNone(form.cleaned_data['zone'])
+		self.assertIsNone(form.cleaned_data['district'])
+		self.assertIsNone(form.cleaned_data['ward'])
+		self.assertIsNone(form.cleaned_data['school'])
+
+	def test_duplicate_zone_manager_assignment_is_rejected(self):
+		User.objects.create_user(
+			username='existing-zone-manager',
+			password='secret123',
+			role='zone_manager',
+			country=self.country,
+			zone=self.zone,
+		)
+
+		form = UserChangeFormWithPassword(data={
+			'username': 'new-zone-manager',
+			'first_name': 'New',
+			'last_name': 'Zone',
+			'email': 'zone@example.com',
+			'role': 'zone_manager',
+			'country': self.country.pk,
+			'zone': self.zone.pk,
+		})
+
+		self.assertFalse(form.is_valid())
+		self.assertIn('zone', form.errors)
+		self.assertIn('already has a manager', str(form.errors['zone']))
+
+	def test_new_user_form_defaults_to_tanzania_zones(self):
+		kenya = Country.objects.create(name='Kenya', code='KEN')
+		kenya_zone = Zone.objects.create(country=kenya, name='Nairobi Zone')
+		form = UserChangeFormWithPassword()
+
+		self.assertEqual(form.initial['country'], self.country.pk)
+		self.assertIn(self.zone, form.fields['zone'].queryset)
+		self.assertNotIn(kenya_zone, form.fields['zone'].queryset)
