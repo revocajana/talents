@@ -14,7 +14,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.config.settings')
 import django
 django.setup()
 
-from core.models import Country, Zone, Region, District, Ward # type: ignore
+from core.models import Country, Zone, Region, District, Ward, School # type: ignore
 
 country = Country.objects.filter(name='Tanzania').first()
 if not country:
@@ -25,3 +25,8 @@ else:
     print('Regions:', Region.objects.filter(zone__country=country).count())
     print('Districts:', District.objects.filter(region__zone__country=country).count())
     print('Wards:', Ward.objects.filter(district__region__zone__country=country).count())
+    print('Schools:', School.objects.filter(district__region__zone__country=country).count())
+
+print("zero error")
+
+
