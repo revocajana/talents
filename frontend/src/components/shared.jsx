@@ -8,22 +8,30 @@ export const Header = ({ title, onMenuToggle }) => {
   return (
     <header className="header">
       <div className="header-content">
-        <button className="menu-toggle" onClick={onMenuToggle}>
-          ☰
-        </button>
-        <h1 className="header-title">{title}</h1>
-        <div className="header-user">
-          <span className="user-name">{user?.username}</span>
-          <button className="logout-btn" onClick={logout}>
-            Logout
-          </button>
+        <div className="header-left">
+          <h1 className="header-title">{title}</h1>
+        </div>
+
+        <div className="header-right">
+          <div className="header-user">
+            <span className="user-name">{user?.username}</span>
+            <button className="logout-btn" onClick={logout}>
+              Logout
+            </button>
+          </div>
+
+          {onMenuToggle && (
+            <button className="menu-toggle" onClick={onMenuToggle} aria-label="Open menu">
+              ☰
+            </button>
+          )}
         </div>
       </div>
     </header>
   );
 };
 
-export const Sidebar = ({ isOpen, links, onClose }) => {
+export const Sidebar = ({ isOpen, links, onClose, footerContent }) => {
   return (
     <>
       <div className={`sidebar-overlay ${isOpen ? 'active' : ''}`} onClick={onClose} />
@@ -32,14 +40,25 @@ export const Sidebar = ({ isOpen, links, onClose }) => {
           <h2>Menu</h2>
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
+
         <nav className="sidebar-nav">
           {links.map((link, idx) => (
-            <a key={idx} href={link.href} className="nav-link">
+            <button
+              key={idx}
+              type="button"
+              className={`nav-link ${link.active ? 'active' : ''}`}
+              onClick={() => {
+                link.onClick?.();
+                onClose?.();
+              }}
+            >
               {link.icon && <span className="nav-icon">{link.icon}</span>}
               {link.label}
-            </a>
+            </button>
           ))}
         </nav>
+
+        {footerContent && <div className="sidebar-footer">{footerContent}</div>}
       </aside>
     </>
   );
