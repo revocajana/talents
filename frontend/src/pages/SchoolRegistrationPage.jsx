@@ -30,12 +30,16 @@ export default function SchoolRegistrationPage() {
   const [regions, setRegions] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [wards, setWards] = useState([]);
+  const [ownershipOptions, setOwnershipOptions] = useState([]);
   const [schoolsError, setSchoolsError] = useState('');
 
   useEffect(() => {
     const loadLocations = async () => {
       try {
-        const locationsResponse = await apiService.getRegistrationLocations();
+        const [locationsResponse, ownershipResponse] = await Promise.all([
+          apiService.getRegistrationLocations(),
+          apiService.getSchoolOwnershipTypes(),
+        ]);
         const locations = locationsResponse.data;
         const countryList = locations.countries || [];
         setCountries(countryList);
@@ -43,6 +47,7 @@ export default function SchoolRegistrationPage() {
         setRegions(locations.regions || []);
         setDistricts(locations.districts || []);
         setWards(locations.wards || []);
+        setOwnershipOptions(ownershipResponse.data.results || ownershipResponse.data || []);
         const tanzania = countryList.find((country) => country.name.toLowerCase() === 'tanzania' || country.code.toLowerCase() === 'tza');
         if (tanzania) setForm((current) => ({ ...current, country: String(tanzania.id) }));
       } catch (err) {
@@ -118,7 +123,7 @@ export default function SchoolRegistrationPage() {
             <div className="registration-grid">
               <label>School name<input name="name" value={form.name} onChange={updateField} required /></label>
               <label>Registry number<input name="registry_number" value={form.registry_number} onChange={updateField} required /></label>
-              <label>Ownership type<input name="ownership_type" value={form.ownership_type} onChange={updateField} placeholder="Public or private" required /></label>
+              <label>Ownership type<select name="ownership_type" value={form.ownership_type} onChange={updateField} required disabled={loading || !ownershipOptions.length}><option value="">Select ownership type</option>{ownershipOptions.map((option) => <option key={option.id} value={option.name}>{option.name}</option>)}</select></label>
               <label>Country<select name="country" value={form.country} onChange={updateField} required disabled={loading}><option value="">Select country</option>{countries.map((country) => <option key={country.id} value={country.id}>{country.name}</option>)}</select></label>
               <label>Zone<select name="zone" value={form.zone} onChange={updateField} required disabled={loading || !form.country}><option value="">Select zone</option>{countryZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}</select></label>
               <label>Region<select name="region" value={form.region} onChange={updateField} required disabled={!form.zone}><option value="">Select region</option>{zoneRegions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label>
