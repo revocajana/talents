@@ -12,12 +12,16 @@ if BACKEND_DIR not in sys.path:
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.config.settings')
 
+# pyrefly: ignore [missing-import]
 import django
 
 django.setup()
 
+# pyrefly: ignore [missing-import]
 from django.contrib.auth.hashers import make_password
+# pyrefly: ignore [missing-import]
 from django.db import transaction
+# pyrefly: ignore [missing-import]
 from django.utils import timezone
 
 from competitions.models import Competition, CompetitionParticipation # type: ignore
