@@ -3,7 +3,18 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/shared.css';
 
 export const Header = ({ title, onMenuToggle }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleProfile = () => {
+    setMenuOpen(false);
+    console.log('Open profile');
+  };
+
+  const handleChangePassword = () => {
+    setMenuOpen(false);
+    console.log('Open change password');
+  };
 
   return (
     <header className="header">
@@ -13,11 +24,26 @@ export const Header = ({ title, onMenuToggle }) => {
         </div>
 
         <div className="header-right">
-          <div className="header-user">
-            <span className="user-name">{user?.username}</span>
-            <button className="logout-btn" onClick={logout}>
-              Logout
+          <div className="user-menu-wrapper">
+            <button
+              className="user-menu-trigger"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              aria-label="User menu"
+              title={user?.username || 'User'}
+            >
+              <span className="user-icon">👤</span>
             </button>
+
+            {menuOpen && (
+              <div className="user-menu-dropdown">
+                <button type="button" className="user-menu-item" onClick={handleProfile}>
+                  Profile
+                </button>
+                <button type="button" className="user-menu-item" onClick={handleChangePassword}>
+                  Change Password
+                </button>
+              </div>
+            )}
           </div>
 
           {onMenuToggle && (
