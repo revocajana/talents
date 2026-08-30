@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
 from .models import (
-    Country, Zone, Region, District, Ward, School, User, Talent, StudentTalent,
-    Announcement, Club, ClubTeacher, ClubTalent, StudentClubMembership,
-    EvaluationCriterion, TalentEvaluation, EvaluationScore, TalentSubmission,
-    SubmissionFeedback, Message, Notification, AuditLog,
+    Country, Zone, Region, District, Ward, School, SchoolOwnershipType, User,
+    Talent, StudentTalent, Announcement, Club, ClubTeacher, ClubTalent,
+    StudentClubMembership, EvaluationCriterion, TalentEvaluation, EvaluationScore,
+    TalentSubmission, SubmissionFeedback, Message, Notification, AuditLog,
 )
 
 
@@ -38,6 +38,12 @@ class WardSerializer(serializers.ModelSerializer):
         fields = ['id', 'district', 'name']
 
 
+class SchoolOwnershipTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SchoolOwnershipType
+        fields = ['id', 'name', 'is_active', 'created_at']
+
+
 class SchoolSerializer(serializers.ModelSerializer):
     class Meta:
         model = School
@@ -53,8 +59,14 @@ class SchoolSerializer(serializers.ModelSerializer):
             'ward',
             'phone',
             'email',
+            'is_approved',
             'created_at',
         ]
+        read_only_fields = ['is_approved']
+
+    def create(self, validated_data):
+        validated_data['is_approved'] = False
+        return super().create(validated_data)
 
     def validate(self, attrs):
         country = attrs.get('country')
@@ -62,6 +74,14 @@ class SchoolSerializer(serializers.ModelSerializer):
         region = attrs.get('region')
         district = attrs.get('district')
         ward = attrs.get('ward')
+        ownership_type = attrs.get('ownership_type')
+
+        if ownership_type:
+            active_names = set(
+                SchoolOwnershipType.objects.filter(is_active=True).values_list('name', flat=True)
+            )
+            if ownership_type not in active_names:
+                raise serializers.ValidationError({'ownership_type': 'Choose a valid school ownership type.'})
 
         if zone and country and zone.country_id != country.pk:
             raise serializers.ValidationError({'zone': 'Choose a zone belonging to the selected country.'})

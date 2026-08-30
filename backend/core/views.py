@@ -6,10 +6,10 @@ from rest_framework.views import APIView
 from django.db.models import Q
 
 from .models import (
-    Country, Zone, Region, District, Ward, School, User, Talent, StudentTalent,
-    Announcement, Club, ClubTeacher, ClubTalent, StudentClubMembership,
-    EvaluationCriterion, TalentEvaluation, EvaluationScore, TalentSubmission,
-    SubmissionFeedback, Message, Notification, AuditLog,
+    Country, Zone, Region, District, Ward, School, SchoolOwnershipType,
+    User, Talent, StudentTalent, Announcement, Club, ClubTeacher, ClubTalent,
+    StudentClubMembership, EvaluationCriterion, TalentEvaluation, EvaluationScore,
+    TalentSubmission, SubmissionFeedback, Message, Notification, AuditLog,
 )
 from .serializers import (
     CountrySerializer,
@@ -18,6 +18,7 @@ from .serializers import (
     DistrictSerializer,
     WardSerializer,
     SchoolSerializer,
+    SchoolOwnershipTypeSerializer,
     UserSerializer,
     TalentSerializer,
     StudentTalentSerializer,
@@ -69,15 +70,27 @@ class WardViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     scope_paths = {'country': 'district__region__zone__country_id', 'zone': 'district__region__zone_id', 'region': 'district__region_id', 'district': 'district_id', 'ward': 'id'}
 
 
+class SchoolOwnershipTypeViewSet(viewsets.ModelViewSet):
+    queryset = SchoolOwnershipType.objects.filter(is_active=True).order_by('name')
+    serializer_class = SchoolOwnershipTypeSerializer
+    permission_classes = [PublicSchoolRegistrationPermission]
+
+
 class SchoolViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     public_registration = True
-    queryset = School.objects.select_related('country', 'zone', 'region', 'district', 'ward').all()
+    queryset = School.objects.filter(is_approved=True).select_related('country', 'zone', 'region', 'district', 'ward')
     serializer_class = SchoolSerializer
     permission_classes = [PublicSchoolRegistrationPermission]
     scope_paths = {
         'country': 'country_id', 'zone': 'zone_id', 'region': 'region_id',
         'district': 'district_id', 'ward': 'ward_id', 'school': 'id',
     }
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user and self.request.user.is_authenticated and (self.request.user.is_staff or self.request.user.is_superuser or self.request.user.role in {'talent_admin'}):
+            return School.objects.select_related('country', 'zone', 'region', 'district', 'ward').all()
+        return qs
 
 
 class RegistrationLocationsView(APIView):

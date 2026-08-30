@@ -15,7 +15,7 @@ class StudentSerializer(serializers.ModelSerializer):
     school = SchoolSerializer(read_only=True)
     parent = ParentSerializer(read_only=True)
     school_id = serializers.PrimaryKeyRelatedField(
-        queryset=School.objects.all(), write_only=True, source='school'
+        queryset=School.objects.filter(is_approved=True), write_only=True, source='school' # only allow approved schools to be assigned to students
     )
     parent_id = serializers.PrimaryKeyRelatedField(
         queryset=Parent.objects.all(), write_only=True, source='parent', allow_null=True, required=False

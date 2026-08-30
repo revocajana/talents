@@ -62,11 +62,24 @@ class Ward(models.Model):
         return f"{self.name} – {self.district.name}"
 
 
+class SchoolOwnershipType(models.Model):
+    """Admin-managed list of values available for school ownership selection."""
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class School(models.Model):
     """Educational institution linked to geographic hierarchy."""
     registry_number = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=150)
-    ownership_type = models.CharField(max_length=100)
+    ownership_type = models.CharField(max_length=100, default='Government')
     country = models.ForeignKey(Country, on_delete=models.PROTECT, related_name="schools")
     zone = models.ForeignKey(Zone, on_delete=models.PROTECT, related_name="schools")
     region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name="schools")
@@ -75,6 +88,7 @@ class School(models.Model):
     phone = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     student_count = models.PositiveIntegerField(default=0)
+    is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property

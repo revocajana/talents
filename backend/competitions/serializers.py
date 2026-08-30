@@ -6,7 +6,7 @@ from .models import Competition, CompetitionParticipation, CompetitionJudge
 
 
 class CompetitionSerializer(serializers.ModelSerializer):
-    schools = serializers.PrimaryKeyRelatedField(queryset=School.objects.all(), many=True)
+    schools = serializers.PrimaryKeyRelatedField(queryset=School.objects.filter(is_approved=True), many=True)
     participants = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), many=True, required=False)
     location = serializers.SerializerMethodField()
     judge_ids = serializers.PrimaryKeyRelatedField(source='judges', many=True, read_only=True)

@@ -26,6 +26,7 @@ from core.views import (
     DistrictViewSet,
     WardViewSet,
     SchoolViewSet,
+    SchoolOwnershipTypeViewSet,
     RegistrationLocationsView,
     UserViewSet,
     TalentViewSet,
@@ -55,6 +56,7 @@ router.register('regions', RegionViewSet)
 router.register('districts', DistrictViewSet)
 router.register('wards', WardViewSet)
 router.register('schools', SchoolViewSet)
+router.register('school-ownership-types', SchoolOwnershipTypeViewSet)
 router.register('users', UserViewSet)
 router.register('students', StudentViewSet)
 router.register('parents', ParentViewSet)

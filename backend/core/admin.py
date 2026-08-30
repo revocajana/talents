@@ -13,6 +13,7 @@ from .models import (
     District,
     Ward,
     School,
+    SchoolOwnershipType,
     User,
     Parent,
     Talent,
@@ -72,6 +73,13 @@ class SchoolAdminForm(TanzaniaDefaultCountryFormMixin, forms.ModelForm):
     class Meta:
         model = School
         fields = '__all__'
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.is_approved = bool(self.cleaned_data.get('is_approved'))
+        if commit:
+            instance.save()
+        return instance
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -430,6 +438,14 @@ class WardAdmin(admin.ModelAdmin):
     school_count.short_description = "# Schools"
 
 
+@admin.register(SchoolOwnershipType)
+class SchoolOwnershipTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+    ordering = ('name',)
+
+
 @admin.register(School)
 class SchoolAdmin(admin.ModelAdmin):
     form = SchoolAdminForm
@@ -442,10 +458,12 @@ class SchoolAdmin(admin.ModelAdmin):
         'region',
         'district',
         'ward',
+        'is_approved',
         'student_count',
     )
     list_filter = (
         'ownership_type',
+        'is_approved',
         'country',
         'zone',
         'region',
@@ -608,7 +626,7 @@ class UserChangeFormWithPassword(UserChangeForm):
         self.fields['region'].queryset = Region.objects.all().select_related('zone__country').order_by('zone__country__name', 'zone__name', 'name')
         self.fields['district'].queryset = District.objects.all().select_related('region__zone__country').order_by('region__zone__country__name', 'region__zone__name', 'region__name', 'name')
         self.fields['ward'].queryset = Ward.objects.all().select_related('district__region__zone__country').order_by('district__region__zone__country__name', 'district__region__zone__name', 'district__region__name', 'district__name', 'name')
-        self.fields['school'].queryset = School.objects.all().select_related('country').order_by('country__name', 'name')
+        self.fields['school'].queryset = School.objects.filter(is_approved=True).select_related('country').order_by('country__name', 'name')
         if not self.instance.pk and not self.data.get('country'):
             tanzania = get_tanzania()
             if tanzania:
@@ -650,8 +668,8 @@ class UserChangeFormWithPassword(UserChangeForm):
         self.fields['region'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.zone_id for item in Region.objects.all()})
         self.fields['district'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.region_id for item in District.objects.all()})
         self.fields['ward'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.district_id for item in Ward.objects.all()})
-        self.fields['school'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.ward_id for item in School.objects.all()})
-        self.fields['school'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.country_id for item in School.objects.all()})
+        self.fields['school'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.ward_id for item in School.objects.filter(is_approved=True)})
+        self.fields['school'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.country_id for item in School.objects.filter(is_approved=True)})
         self.fields['region'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.zone.country_id for item in Region.objects.select_related('zone')})
         self.fields['district'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.region.zone.country_id for item in District.objects.select_related('region__zone')})
         self.fields['ward'].widget.attrs['data-country-map'] = json.dumps({item.pk: item.district.region.zone.country_id for item in Ward.objects.select_related('district__region__zone')})
@@ -661,13 +679,13 @@ class UserChangeFormWithPassword(UserChangeForm):
         self.fields['ward'].widget.attrs['data-managed-map'] = json.dumps({item.pk: list(item.scoped_users.filter(role='ward_manager').values_list('role', flat=True)) for item in Ward.objects.all()})
         self.fields['school'].widget.attrs['data-managed-map'] = json.dumps({
             item.pk: list(item.users.filter(role__in=('head_teacher', 'sport_teacher')).values_list('role', flat=True))
-            for item in School.objects.all()
+            for item in School.objects.filter(is_approved=True)
         })
         self.fields['zone'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in Zone.objects.all().order_by('country__name', 'name')])
         self.fields['region'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in Region.objects.all().order_by('zone__country__name', 'zone__name', 'name')])
         self.fields['district'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in District.objects.all().order_by('region__zone__country__name', 'region__zone__name', 'region__name', 'name')])
         self.fields['ward'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in Ward.objects.all().order_by('district__region__zone__country__name', 'district__region__zone__name', 'district__region__name', 'district__name', 'name')])
-        self.fields['school'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in School.objects.all().order_by('country__name', 'name')])
+        self.fields['school'].widget.attrs['data-all-options'] = json.dumps([{'value': item.pk, 'text': str(item)} for item in School.objects.filter(is_approved=True).order_by('country__name', 'name')])
 
         linked_student = getattr(self.instance, 'student', None)
         if linked_student:

@@ -5,9 +5,9 @@ from competitions.models import Competition, CompetitionParticipation
 from results.models import Result
 from .admin import UserChangeFormWithPassword
 from .models import (
-	Country, Zone, Region, District, Ward, School, User, Talent, Club,
-	StudentClubMembership, StudentTalent, EvaluationCriterion, TalentEvaluation,
-	EvaluationScore,
+	Country, Zone, Region, District, Ward, School, SchoolOwnershipType, User,
+	Talent, Club, StudentClubMembership, StudentTalent, EvaluationCriterion,
+	TalentEvaluation, EvaluationScore,
 )
 from .serializers import (
 	ClubSerializer, StudentClubMembershipSerializer, StudentTalentSerializer,
@@ -42,6 +42,37 @@ class FoundationRulesTests(TestCase):
 		self.talent = Talent.objects.create(name='Evaluated Talent', category='other')
 		self.student_talent = StudentTalent.objects.create(student=self.student, talent=self.talent)
 		self.evaluator = User.objects.create_user(username='evaluator', password='test', role='sport_teacher', school=self.school)
+
+	def test_new_school_is_unapproved_by_default(self):
+		school = School.objects.create(
+			registry_number='TEST-NEW-001',
+			name='Pending School',
+			ownership_type='government',
+			country=self.school.country,
+			zone=self.school.zone,
+			region=self.school.region,
+			district=self.school.district,
+			ward=self.school.ward,
+		)
+
+		self.assertFalse(school.is_approved)
+		self.assertFalse(School.objects.filter(is_approved=True, pk=school.pk).exists())
+
+	def test_school_ownership_type_is_admin_managed(self):
+		ownership = SchoolOwnershipType.objects.create(name='Roman Catholic')
+		school = School.objects.create(
+			registry_number='TEST-OWNERSHIP-001',
+			name='Faith School',
+			ownership_type='Roman Catholic',
+			country=self.school.country,
+			zone=self.school.zone,
+			region=self.school.region,
+			district=self.school.district,
+			ward=self.school.ward,
+		)
+
+		self.assertEqual(school.ownership_type, 'Roman Catholic')
+		self.assertIn(ownership, SchoolOwnershipType.objects.filter(is_active=True))
 
 	def test_school_allows_only_three_active_clubs_at_two_hundred_students(self):
 		for index in range(3):
