@@ -192,6 +192,10 @@ export const getCompetitionById = (id) => api.get(`/competitions/${id}/`);
 export const createCompetition = (data) => api.post('/competitions/', data);
 export const updateCompetition = (id, data) => api.put(`/competitions/${id}/`, data);
 export const deleteCompetition = (id) => api.delete(`/competitions/${id}/`);
+export const getEligibleForPromotion = (params = {}) => api.get('/competitions/eligible_for_promotion/', { params });
+export const uploadBulkResults = (formData) => api.post('/competitions/bulk-upload/', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+});
 
 // ==================== COMPETITION PARTICIPATION ====================
 
@@ -206,6 +210,7 @@ export const deleteParticipation = (id) => api.delete(`/participations/${id}/`);
 export const getResults = (params = {}) => api.get('/results/', { params });
 export const getResultById = (id) => api.get(`/results/${id}/`);
 export const createResult = (data) => api.post('/results/', data);
+export const promoteStudents = (data) => api.post('/result-promotions/promote/', data);
 
 export const getResultDetails = (params = {}) => api.get('/result-details/', { params });
 export const getResultDetailById = (id) => api.get(`/result-details/${id}/`);

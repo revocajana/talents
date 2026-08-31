@@ -127,3 +127,9 @@ class SubmissionPermission(BasePermission):
         if has_full_access(request.user) or request.user.role != 'student':
             return True
         return obj.student_id == request.user.student_id
+
+class IsSportTeacher(BasePermission):
+    """Allow only sport teachers."""
+    
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'sport_teacher'

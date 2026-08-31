@@ -286,6 +286,7 @@ body {
 @media (max-width: 768px) {
   .main-content {
     padding: 1rem;
+    margin-left: 0;
   }
 }
 
