@@ -293,7 +293,6 @@ const SportTeacherPage = () => {
     { key: 'clubs', label: 'Clubs', icon: '🏫' },
     { key: 'results', label: 'Results', icon: '🏆' },
     { key: 'upload', label: 'Upload Results', icon: '📤' },
-    { key: 'promotions', label: 'Promotions', icon: '🚀' },
   ];
 
   // Render content based on active tab
@@ -320,8 +319,6 @@ const SportTeacherPage = () => {
         return renderResults();
       case 'upload':
         return renderUpload();
-      case 'promotions':
-        return renderPromotions();
       default:
         return renderDashboard();
     }
@@ -724,8 +721,6 @@ const SportTeacherPage = () => {
         {/* User Info */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ fontSize: '14px', fontWeight: '500' }}>{user?.username || 'User'}</div>
-          <div style={{ fontSize: '12px', color: '#9ca3af' }}>{schoolName}</div>
-          <div style={{ fontSize: '11px', color: '#f6c90e', marginTop: '4px' }}>Sport Teacher</div>
         </div>
 
         {/* Navigation */}
