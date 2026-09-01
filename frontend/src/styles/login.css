@@ -3,11 +3,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: clamp(16px, 4vw, 24px);
   background: linear-gradient(135deg, #f0f4ff 0%, #e6ecff 35%, #e0e8ff 100%);
 }
 
 .login-card {
+  box-sizing: border-box;
   width: min(460px, 100%);
   background: #fff;
   border-radius: 20px;
@@ -113,9 +114,9 @@
   margin: 0 0 10px;
   color: #0E1DB6;
   font-weight: 700;
-  font-size: 1.8rem;
+  font-size: clamp(1.35rem, 5vw, 1.8rem);
   letter-spacing: 0.02em;
-  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .login-header h2 {
@@ -224,11 +225,21 @@
 
 @media (max-width: 480px) {
   .login-page {
-    padding: 14px;
+    padding: 16px;
   }
 
   .login-card {
-    padding: 24px 18px;
+    width: min(100%, 360px);
+    padding: 24px 20px;
+  }
+
+  .login-header {
+    margin-bottom: 20px;
+  }
+
+  .welcome-label {
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .registration-card {
