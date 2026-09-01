@@ -17,6 +17,7 @@
 }
 
 .registration-card {
+  box-sizing: border-box;
   width: min(760px, 100%);
   background: #fff;
   border-radius: 20px;
@@ -114,9 +115,10 @@
   margin: 0 0 10px;
   color: #0E1DB6;
   font-weight: 700;
-  font-size: clamp(1.35rem, 5vw, 1.8rem);
-  letter-spacing: 0.02em;
+  font-size: 1.5rem;
+  letter-spacing: 0;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .login-header h2 {
@@ -263,6 +265,17 @@
   border: 1px solid #fecaca;
 }
 
+.alert.error strong,
+.alert.error small {
+  display: block;
+}
+
+.alert.error small {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
 @media (max-width: 480px) {
   .login-page {
     min-height: 100dvh;
@@ -292,7 +305,9 @@
 
   .welcome-label {
     max-width: 100%;
-    overflow-wrap: anywhere;
+    font-size: 1.15rem;
+    letter-spacing: 0;
+    white-space: nowrap;
   }
 
   .login-action-row {
@@ -306,7 +321,36 @@
   }
 
   .registration-card {
-    padding: 24px 18px;
+    width: min(100%, 480px);
+    margin: 12px auto;
+    padding: 20px 16px;
+  }
+
+  .registration-page {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .registration-page:focus-within {
+    align-items: flex-start;
+  }
+
+  .registration-form {
+    gap: 16px;
+  }
+
+  .registration-grid {
+    gap: 12px;
+  }
+
+  .registration-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .registration-actions .primary-btn,
+  .registration-actions .secondary-btn {
+    width: 100%;
   }
 
   .registration-grid {

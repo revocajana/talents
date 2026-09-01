@@ -102,10 +102,10 @@ export default function SchoolRegistrationPage() {
   };
 
   return (
-    <div className="login-page">
+    <div className="login-page registration-page">
       <div className="registration-card">
         <div className="login-header">
-          <p className="welcome-label">Talent Management System</p>
+          <p className="welcome-label">Talanta Management System</p>
           <h2>Register school</h2>
         </div>
 

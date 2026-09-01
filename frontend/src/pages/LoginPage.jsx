@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [errorHint, setErrorHint] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setErrorHint('');
 
     if (!username || !password) {
       setError('Please enter both username and password.');
@@ -32,8 +34,12 @@ export default function LoginPage() {
       navigate(`/dashboard/${userData.role.replace('_', '-')}`);
     } catch (err) {
       console.error('Login error caught in component:', err);
-      const errorMessage = err?.message || 'Login failed. Please check your credentials and try again.';
-      setError(errorMessage);
+      if (err?.message === 'Failed to fetch' || err?.name === 'TypeError') {
+        setError('Unable to connect to Talanta');
+        setErrorHint('Please check your network connection and try again.');
+      } else {
+        setError(err?.message || 'Login failed. Please check your credentials and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -43,11 +49,16 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <p className="welcome-label">Talent Management System</p>
+          <p className="welcome-label">Talanta Management System</p>
           <img className="brand-logo" src={logo} alt="Conturel Education Networking Initiative" />
         </div>
 
-        {error && <div className="alert error">{error}</div>}
+        {error && (
+          <div className="alert error">
+            <strong>{error}</strong>
+            {errorHint && <small>{errorHint}</small>}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="field-group">

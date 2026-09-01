@@ -899,7 +899,7 @@ const SportTeacherPage = () => {
         {/* Logo */}
         <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ fontSize: '20px', fontWeight: '700', color: '#f6c90e' }}>Kagoye</div>
-          <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Talent Management System</div>
+          <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Talanta Management System</div>
         </div>
 
         {/* User Info */}
