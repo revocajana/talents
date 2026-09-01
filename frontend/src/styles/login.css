@@ -226,7 +226,8 @@
 
 @media (max-width: 480px) {
   .login-page {
-    padding: 16px;
+    min-height: 100dvh;
+    padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
   }
 
   .login-card {
