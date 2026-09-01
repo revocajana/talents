@@ -267,11 +267,23 @@
   .login-page {
     min-height: 100dvh;
     padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    scroll-padding-block: 16px;
+  }
+
+  .login-page:focus-within {
+    align-items: flex-start;
+    justify-content: flex-start;
   }
 
   .login-card {
     width: min(100%, 360px);
+    margin-block: auto;
     padding: 24px 20px;
+  }
+
+  .login-page:focus-within .login-card {
+    margin-block: 12px;
   }
 
   .login-header {
