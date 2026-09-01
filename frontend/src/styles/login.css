@@ -344,13 +344,17 @@
   }
 
   .registration-actions {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
 
   .registration-actions .primary-btn,
   .registration-actions .secondary-btn {
     width: 100%;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    white-space: nowrap;
   }
 
   .registration-grid {

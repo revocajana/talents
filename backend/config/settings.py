@@ -29,12 +29,16 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-1ei$yz9$7!@ypc@%)%^
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',') if host.strip()]
+configured_hosts = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',') if host.strip()]
+ALLOWED_HOSTS = ['*'] if DEBUG else configured_hosts
 
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv(
     'CORS_ALLOWED_ORIGINS',
     'http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173,http://127.0.0.1:4173',
 ).split(',') if origin.strip()]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}):(5173|4173)$',
+]
 
 CORS_ALLOW_CREDENTIALS = True
 

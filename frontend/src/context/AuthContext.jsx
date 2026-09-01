@@ -1,7 +1,17 @@
 import { createContext, useState, useContext } from 'react';
 
 const AuthContext = createContext();
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL
+  || `${window.location.protocol}//${window.location.hostname}:8000`;
+const LOGIN_REQUEST_TIMEOUT = 10000;
+
+const fetchWithTimeout = (url, options) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LOGIN_REQUEST_TIMEOUT);
+
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timeoutId));
+};
 
 export const AuthProvider = ({ children }) => {
   const storedToken = localStorage.getItem('access_token') || localStorage.getItem('token');
@@ -26,14 +36,15 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       console.log('Attempting login with username:', username);
+      const tokenStartedAt = performance.now();
       
-      const tokenResponse = await fetch(`${API_BASE_URL}/api/token/`, {
+      const tokenResponse = await fetchWithTimeout(`${API_BASE_URL}/api/token/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
 
-      console.log('Token response status:', tokenResponse.status);
+      console.log('Token response status:', tokenResponse.status, `(${Math.round(performance.now() - tokenStartedAt)} ms)`);
 
       if (!tokenResponse.ok) {
         const errorData = await tokenResponse.json().catch(() => ({}));
@@ -52,14 +63,15 @@ export const AuthProvider = ({ children }) => {
       }
       localStorage.setItem('token', accessToken);
 
-      const profileResponse = await fetch(`${API_BASE_URL}/api/users/current/`, {
+      const profileStartedAt = performance.now();
+      const profileResponse = await fetchWithTimeout(`${API_BASE_URL}/api/users/current/`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       });
 
-      console.log('Profile response status:', profileResponse.status);
+      console.log('Profile response status:', profileResponse.status, `(${Math.round(performance.now() - profileStartedAt)} ms)`);
 
       let userProfile = {
         username,

@@ -34,7 +34,7 @@ export default function LoginPage() {
       navigate(`/dashboard/${userData.role.replace('_', '-')}`);
     } catch (err) {
       console.error('Login error caught in component:', err);
-      if (err?.message === 'Failed to fetch' || err?.name === 'TypeError') {
+      if (err?.message === 'Failed to fetch' || err?.name === 'TypeError' || err?.name === 'AbortError') {
         setError('Unable to connect to Talanta');
         setErrorHint('Please check your network connection and try again.');
       } else {

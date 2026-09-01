@@ -36,28 +36,51 @@ export default function SchoolRegistrationPage() {
   useEffect(() => {
     const loadLocations = async () => {
       try {
-        const [locationsResponse, ownershipResponse] = await Promise.all([
-          apiService.getRegistrationLocations(),
+        const [countriesResponse, ownershipResponse] = await Promise.all([
+          apiService.getAllCountries(),
           apiService.getSchoolOwnershipTypes(),
         ]);
-        const locations = locationsResponse.data;
-        const countryList = locations.countries || [];
+        const countryList = list(countriesResponse);
         setCountries(countryList);
-        setZones(locations.zones || []);
-        setRegions(locations.regions || []);
-        setDistricts(locations.districts || []);
-        setWards(locations.wards || []);
         setOwnershipOptions(ownershipResponse.data.results || ownershipResponse.data || []);
         const tanzania = countryList.find((country) => country.name.toLowerCase() === 'tanzania' || country.code.toLowerCase() === 'tza');
         if (tanzania) setForm((current) => ({ ...current, country: String(tanzania.id) }));
       } catch (err) {
-        setError(err.response?.data?.detail || 'Unable to load location options.');
+        setError(err.response?.data?.detail || 'Unable to load location options. Please check your network connection and try again.');
       } finally {
         setLoading(false);
       }
     };
     loadLocations();
   }, []);
+
+  useEffect(() => {
+    if (!form.country) return;
+    apiService.getAllZones({ country: form.country })
+      .then((response) => setZones(list(response)))
+      .catch(() => setError('Unable to load location options. Please check your network connection and try again.'));
+  }, [form.country]);
+
+  useEffect(() => {
+    if (!form.zone) return;
+    apiService.getAllRegions({ zone: form.zone })
+      .then((response) => setRegions(list(response)))
+      .catch(() => setError('Unable to load location options. Please check your network connection and try again.'));
+  }, [form.zone]);
+
+  useEffect(() => {
+    if (!form.region) return;
+    apiService.getAllDistricts({ region: form.region })
+      .then((response) => setDistricts(list(response)))
+      .catch(() => setError('Unable to load location options. Please check your network connection and try again.'));
+  }, [form.region]);
+
+  useEffect(() => {
+    if (!form.district) return;
+    apiService.getAllWards({ district: form.district })
+      .then((response) => setWards(list(response)))
+      .catch(() => setError('Unable to load location options. Please check your network connection and try again.'));
+  }, [form.district]);
 
   const countryZones = zones.filter((zone) => Number(zone.country) === Number(form.country));
   const zoneRegions = regions.filter((region) => Number(region.zone) === Number(form.zone));
