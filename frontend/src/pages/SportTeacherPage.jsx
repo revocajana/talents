@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as apiService from '../services/apiService';
 import './SportTeacherPage.css';
+import logo from '../assets/Logo1.png';
 
 const SportTeacherPage = () => {
   const { user, logout } = useAuth();
@@ -46,6 +47,7 @@ const SportTeacherPage = () => {
   
   // Sidebar state
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   const schoolId = user?.school;
   const schoolName = user?.school_name || 'Your School';
@@ -872,6 +874,38 @@ const SportTeacherPage = () => {
     transition: 'all 0.2s',
   };
 
+  return (
+    <div className="sport-teacher-page">
+      <header className="sport-teacher-app-bar">
+        <div className="sport-teacher-brand">
+          <img src={logo} alt="Talanta logo" />
+          <span>Talanta Management System</span>
+        </div>
+        <div className="sport-teacher-profile">
+          <button
+            type="button"
+            className="sport-teacher-profile-button"
+            onClick={() => setProfileMenuOpen((open) => !open)}
+            aria-label="Open profile menu"
+            aria-expanded={profileMenuOpen}
+            title={user?.username || 'Profile'}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M4.5 20c.8-3.5 3.5-5.5 7.5-5.5s6.7 2 7.5 5.5" />
+            </svg>
+          </button>
+          {profileMenuOpen && (
+            <div className="sport-teacher-profile-menu">
+              <button type="button" onClick={() => setProfileMenuOpen(false)}>Profile</button>
+              <button type="button" onClick={() => setProfileMenuOpen(false)}>Change password</button>
+            </div>
+          )}
+        </div>
+      </header>
+    </div>
+  );
+
   // CSS for spinner animation
   const spinnerStyle = `
     @keyframes spin {
@@ -880,8 +914,38 @@ const SportTeacherPage = () => {
   `;
 
   return (
-    <div className="sport-teacher-page" style={{ display: 'flex', minHeight: '100vh', background: '#f8faff' }}>
+    <div className="sport-teacher-page">
       <style>{spinnerStyle}</style>
+
+      <header className="sport-teacher-app-bar">
+        <div className="sport-teacher-brand">
+          <img src={logo} alt="Talanta logo" />
+          <span>Talanta Management System</span>
+        </div>
+        <div className="sport-teacher-profile">
+          <button
+            type="button"
+            className="sport-teacher-profile-button"
+            onClick={() => setProfileMenuOpen((open) => !open)}
+            aria-label="Open profile menu"
+            aria-expanded={profileMenuOpen}
+            title={user?.username || 'Profile'}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M4.5 20c.8-3.5 3.5-5.5 7.5-5.5s6.7 2 7.5 5.5" />
+            </svg>
+          </button>
+          {profileMenuOpen && (
+            <div className="sport-teacher-profile-menu">
+              <button type="button" onClick={() => setProfileMenuOpen(false)}>Profile</button>
+              <button type="button" onClick={() => setProfileMenuOpen(false)}>Change password</button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <div className="sport-teacher-layout">
 
       {/* ====== SIDEBAR ====== */}
       <div className="sport-teacher-sidebar" style={{
@@ -985,6 +1049,7 @@ const SportTeacherPage = () => {
 
         {/* Content */}
         {renderContent()}
+      </div>
       </div>
 
       {/* ====== MODALS ====== */}

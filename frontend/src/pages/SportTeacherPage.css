@@ -1,7 +1,101 @@
 .sport-teacher-page {
-  display: flex;
+  display: block;
   min-height: 100vh;
   background: #f8faff;
+}
+
+.sport-teacher-app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  width: 100%;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #0E1DB6 0%, #0A1589 100%);
+  color: white;
+  box-shadow: 0 8px 20px rgba(14, 29, 182, 0.2);
+}
+
+.sport-teacher-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+  font-size: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sport-teacher-brand img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.sport-teacher-profile {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sport-teacher-profile-button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+}
+
+.sport-teacher-profile-button svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.sport-teacher-profile-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  min-width: 170px;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+.sport-teacher-profile-menu button {
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sport-teacher-profile-menu button:hover,
+.sport-teacher-profile-menu button:focus-visible {
+  background: #eef2ff;
+  color: #0E1DB6;
+}
+
+.sport-teacher-layout {
+  display: flex;
+  min-height: calc(100vh - 72px);
 }
 
 .sport-teacher-sidebar {
@@ -132,8 +226,23 @@
 }
 
 @media (max-width: 980px) {
-  .sport-teacher-page {
+  .sport-teacher-layout {
     flex-direction: column;
+  }
+
+  .sport-teacher-app-bar {
+    min-height: 64px;
+    padding: 8px 16px;
+  }
+
+  .sport-teacher-brand {
+    gap: 10px;
+    font-size: 16px;
+  }
+
+  .sport-teacher-brand img {
+    width: 40px;
+    height: 40px;
   }
 
   .sport-teacher-sidebar {
