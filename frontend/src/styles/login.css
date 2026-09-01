@@ -197,6 +197,7 @@
   font-weight: 600;
   text-align: center;
   text-decoration: underline;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -240,6 +241,16 @@
   .welcome-label {
     max-width: 100%;
     overflow-wrap: anywhere;
+  }
+
+  .login-action-row {
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .login-action-row .primary-btn {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
   }
 
   .registration-card {
