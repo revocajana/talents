@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import * as apiService from '../services/apiService';
+import './SportTeacherPage.css';
 
 const SportTeacherPage = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -14,6 +13,7 @@ const SportTeacherPage = () => {
   const [students, setStudents] = useState([]);
   const [studentTalents, setStudentTalents] = useState([]);
   const [clubs, setClubs] = useState([]);
+  const [clubTalents, setClubTalents] = useState([]);
   const [clubMemberships, setClubMemberships] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
   const [competitions, setCompetitions] = useState([]);
@@ -28,13 +28,14 @@ const SportTeacherPage = () => {
     createClub: false,
     recordResult: false,
     uploadExcel: false,
-    promoteStudents: false,
+    assignStudentClub: false,
   });
   
   // Form states
   const [studentForm, setStudentForm] = useState({
     first_name: '', last_name: '', gender: 'M', date_of_birth: '', student_id: '', password: ''
   });
+  const [clubMembershipForm, setClubMembershipForm] = useState({ student: '', club: '' });
   const [talentForm, setTalentForm] = useState({ student: '', talent: '', proficiency_level: 1, notes: '' });
   const [clubForm, setClubForm] = useState({ name: '', focus: '', description: '' });
   const [resultForm, setResultForm] = useState({ student: '', competition: '', score: '', status: 'finished' });
@@ -45,13 +46,18 @@ const SportTeacherPage = () => {
   
   // Sidebar state
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const schoolId = user?.school;
   const schoolName = user?.school_name || 'Your School';
 
   // Load data
   const loadData = useCallback(async () => {
+    if (!schoolId) {
+      setLoading(false);
+      setError('No school is assigned to this account.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -61,6 +67,7 @@ const SportTeacherPage = () => {
         talentsRes,
         studentTalentsRes,
         clubsRes,
+        clubTalentsRes,
         membershipsRes,
         evaluationsRes,
         competitionsRes,
@@ -71,6 +78,7 @@ const SportTeacherPage = () => {
         apiService.getTalents(),
         apiService.getStudentTalents({ school: schoolId }),
         apiService.getClubs({ school: schoolId }),
+        apiService.getClubTalents({ school: schoolId }),
         apiService.getClubMemberships({ school: schoolId }),
         apiService.getEvaluations({ school: schoolId }),
         apiService.getCompetitions({ school: schoolId }),
@@ -82,6 +90,7 @@ const SportTeacherPage = () => {
       setTalents(talentsRes.data.results || []);
       setStudentTalents(studentTalentsRes.data.results || []);
       setClubs(clubsRes.data.results || []);
+      setClubTalents(clubTalentsRes.data.results || []);
       setClubMemberships(membershipsRes.data.results || []);
       setEvaluations(evaluationsRes.data.results || []);
       setCompetitions(competitionsRes.data.results || []);
@@ -96,8 +105,19 @@ const SportTeacherPage = () => {
   }, [schoolId]);
 
   useEffect(() => {
-    if (schoolId) loadData();
-  }, [schoolId, loadData]);
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    if (!schoolId) {
+      setLoading(false);
+      setError('No school is assigned to this account.');
+      return;
+    }
+
+    loadData();
+  }, [user, schoolId, loadData]);
 
   // Modal handlers
   const openModal = (name) => setModals(prev => ({ ...prev, [name]: true }));
@@ -174,6 +194,60 @@ const SportTeacherPage = () => {
       showSuccess('Club created successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create club');
+    }
+  };
+
+  // Assign student to club
+  const handleAssignStudentClub = async (e) => {
+    e.preventDefault();
+    if (!clubMembershipForm.student || !clubMembershipForm.club) {
+      setError('Please select a student and a club.');
+      return;
+    }
+
+    const selectedStudent = students.find((student) => student.id === Number(clubMembershipForm.student));
+    const selectedClub = clubs.find((club) => club.id === Number(clubMembershipForm.club));
+    const studentSchoolId = selectedStudent?.school ?? selectedStudent?.school_id;
+    const clubSchoolId = selectedClub?.school ?? selectedClub?.school_id;
+
+    if (
+      studentSchoolId != null &&
+      clubSchoolId != null &&
+      Number(studentSchoolId) !== Number(clubSchoolId)
+    ) {
+      setError('A student can only join a club in their school.');
+      return;
+    }
+
+    try {
+      await apiService.createClubMembership({
+        student: Number(clubMembershipForm.student),
+        club: Number(clubMembershipForm.club),
+        is_active: true,
+      });
+      setClubMembershipForm({ student: '', club: '' });
+      closeModal('assignStudentClub');
+      loadData();
+      showSuccess('Student assigned to club successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to assign club');
+    }
+  };
+
+  // Delete student
+  const handleDeleteStudent = async (studentId) => {
+    const student = students.find((item) => item.id === studentId);
+    if (!student) return;
+
+    const confirmed = window.confirm(`Delete ${student.first_name} ${student.last_name}? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      await apiService.deleteStudent(studentId);
+      loadData();
+      showSuccess('Student deleted successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete student');
     }
   };
 
@@ -272,6 +346,23 @@ const SportTeacherPage = () => {
     return 'Not assigned';
   };
 
+  const getClubTalentNames = (clubId) => {
+    const assignedTalentIds = new Set(
+      clubTalents
+        .filter((assignment) => Number(assignment.club) === Number(clubId))
+        .map((assignment) => Number(assignment.talent))
+    );
+
+    const names = talents
+      .filter((talent) => assignedTalentIds.has(Number(talent.id)))
+      .map((talent) => talent.name)
+      .filter(Boolean);
+
+    return names.length ? [...new Set(names)].join(', ') : 'No talent assigned';
+  };
+
+  const uniqueClubs = Array.from(new Map((clubs || []).map((club) => [String(club.id), club])).values());
+
   const getStatusBadge = (status, score) => {
     if (status === 'disqualified') {
       return <span className="badge badge-danger">Disqualified</span>;
@@ -289,8 +380,7 @@ const SportTeacherPage = () => {
   const menuItems = [
     { key: 'dashboard', label: 'Dashboard', icon: '📊' },
     { key: 'students', label: 'Students', icon: '👨‍🎓' },
-    { key: 'talents', label: 'Talents', icon: '⭐' },
-    { key: 'clubs', label: 'Clubs', icon: '🏫' },
+    { key: 'talents', label: 'Talents & Clubs', icon: '⭐' },
     { key: 'results', label: 'Results', icon: '🏆' },
     { key: 'upload', label: 'Upload Results', icon: '📤' },
   ];
@@ -312,9 +402,7 @@ const SportTeacherPage = () => {
       case 'students':
         return renderStudents();
       case 'talents':
-        return renderTalents();
-      case 'clubs':
-        return renderClubs();
+        return renderTalentClubManagement();
       case 'results':
         return renderResults();
       case 'upload':
@@ -328,7 +416,7 @@ const SportTeacherPage = () => {
   const renderDashboard = () => (
     <>
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
           <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Students</div>
           <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827', marginTop: '4px' }}>{students.length}</div>
@@ -350,20 +438,17 @@ const SportTeacherPage = () => {
       {/* Quick Actions */}
       <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', marginBottom: '24px' }}>
         <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Quick Actions</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+        <div className="quick-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
           <button onClick={() => openModal('registerStudent')} style={actionBtnStyle}>Register Student</button>
           <button onClick={() => openModal('assignTalent')} style={actionBtnStyle}>Assign Talent</button>
           <button onClick={() => openModal('createClub')} style={actionBtnStyle}>Create Club</button>
           <button onClick={() => openModal('recordResult')} style={actionBtnStyle}>Record Result</button>
           <button onClick={() => openModal('uploadExcel')} style={actionBtnStyle}>Upload Excel</button>
-          <button onClick={() => openModal('promoteStudents')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>
-            Promote ({eligibleStudents.length})
-          </button>
         </div>
       </div>
 
       {/* Two-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         {/* Students List */}
         <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -441,7 +526,7 @@ const SportTeacherPage = () => {
   // STUDENTS VIEW
   const renderStudents = () => (
     <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>All Students</span>
         <button onClick={() => openModal('registerStudent')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Register Student</button>
       </div>
@@ -454,6 +539,7 @@ const SportTeacherPage = () => {
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Gender</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Talents</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Club</th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -468,10 +554,31 @@ const SportTeacherPage = () => {
                     {getStudentClub(student.id)}
                   </span>
                 </td>
+                <td style={{ padding: '10px 16px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClubMembershipForm({ student: String(student.id), club: '' });
+                        openModal('assignStudentClub');
+                      }}
+                      style={{ ...actionBtnStyle, background: '#ecfdf5', color: '#15803d', borderColor: '#bbf7d0' }}
+                    >
+                      Assign Club
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteStudent(student.id)}
+                      style={{ ...actionBtnStyle, background: '#fef2f2', color: '#b91c1c', borderColor: '#fecaca' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
             {students.length === 0 && (
-              <tr><td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No students registered</td></tr>
+              <tr><td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No students registered</td></tr>
             )}
           </tbody>
         </table>
@@ -527,16 +634,18 @@ const SportTeacherPage = () => {
             <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Club Name</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Focus</th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Talents</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Students</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Status</th>
             </tr>
           </thead>
           <tbody>
-            {clubs.map((club) => (
+            {uniqueClubs.map((club) => (
               <tr key={club.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                 <td style={{ padding: '10px 16px', fontWeight: '500' }}>{club.name}</td>
                 <td style={{ padding: '10px 16px' }}>{club.focus || '—'}</td>
-                <td style={{ padding: '10px 16px' }}>{clubMemberships.filter(m => m.club === club.id && m.is_active).length}</td>
+                <td style={{ padding: '10px 16px' }}>{getClubTalentNames(club.id)}</td>
+                <td style={{ padding: '10px 16px' }}>{clubMemberships.filter(m => Number(m.club) === Number(club.id) && m.is_active).length}</td>
                 <td style={{ padding: '10px 16px' }}>
                   <span style={{ display: 'inline-block', padding: '2px 10px', background: club.is_active ? '#dcfce7' : '#f3f4f6', color: club.is_active ? '#15803d' : '#6b7280', borderRadius: '12px', fontSize: '12px' }}>
                     {club.is_active ? 'Active' : 'Inactive'}
@@ -544,11 +653,86 @@ const SportTeacherPage = () => {
                 </td>
               </tr>
             ))}
-            {clubs.length === 0 && (
+            {uniqueClubs.length === 0 && (
               <tr><td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No clubs created</td></tr>
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+
+  // TALENTS & CLUBS MANAGEMENT VIEW
+  const renderTalentClubManagement = () => (
+    <div style={{ display: 'grid', gap: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Clubs</span>
+          <button onClick={() => openModal('createClub')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Create Club</button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Club Name</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Focus</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Talents</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Students</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {uniqueClubs.map((club) => (
+                <tr key={club.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={{ padding: '10px 16px', fontWeight: '500' }}>{club.name}</td>
+                  <td style={{ padding: '10px 16px' }}>{club.focus || '—'}</td>
+                  <td style={{ padding: '10px 16px' }}>{getClubTalentNames(club.id)}</td>
+                  <td style={{ padding: '10px 16px' }}>{clubMemberships.filter(m => Number(m.club) === Number(club.id) && m.is_active).length}</td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <span style={{ display: 'inline-block', padding: '2px 10px', background: club.is_active ? '#dcfce7' : '#f3f4f6', color: club.is_active ? '#15803d' : '#6b7280', borderRadius: '12px', fontSize: '12px' }}>
+                      {club.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {uniqueClubs.length === 0 && (
+                <tr><td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No clubs created</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Talent Assignments</span>
+          <button onClick={() => openModal('assignTalent')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Assign Talent</button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Student</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Talent</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Level</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {studentTalents.map((st) => (
+                <tr key={st.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={{ padding: '10px 16px' }}>{getStudentName(st.student)}</td>
+                  <td style={{ padding: '10px 16px' }}>{st.talent_name || 'Talent'}</td>
+                  <td style={{ padding: '10px 16px' }}>{['Beginner', 'Intermediate', 'Advanced', 'Expert'][st.proficiency_level - 1] || 'Beginner'}</td>
+                  <td style={{ padding: '10px 16px', color: '#6b7280' }}>{st.notes || '—'}</td>
+                </tr>
+              ))}
+              {studentTalents.length === 0 && (
+                <tr><td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No talents assigned</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -696,11 +880,11 @@ const SportTeacherPage = () => {
   `;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8faff' }}>
+    <div className="sport-teacher-page" style={{ display: 'flex', minHeight: '100vh', background: '#f8faff' }}>
       <style>{spinnerStyle}</style>
 
       {/* ====== SIDEBAR ====== */}
-      <div style={{
+      <div className="sport-teacher-sidebar" style={{
         width: '240px',
         background: '#1a1a2e',
         color: 'white',
@@ -728,7 +912,7 @@ const SportTeacherPage = () => {
           {menuItems.map((item) => (
             <button
               key={item.key}
-              onClick={() => { setActiveTab(item.key); setSidebarOpen(false); }}
+              onClick={() => setActiveTab(item.key)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -775,13 +959,13 @@ const SportTeacherPage = () => {
       </div>
 
       {/* ====== MAIN CONTENT ====== */}
-      <div style={{ flex: 1, padding: '24px', overflowX: 'hidden' }}>
+      <div className="sport-teacher-main" style={{ flex: 1, padding: '24px', overflowX: 'hidden' }}>
         {/* Header */}
-        <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>
+        <div className="page-header">
+          <h1 className="page-title">
             Sport Teacher Dashboard
           </h1>
-          <p style={{ color: '#6b7280', margin: '4px 0 0', fontSize: '14px' }}>
+          <p className="page-subtitle">
             {schoolName} • {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
           </p>
         </div>
@@ -1009,82 +1193,63 @@ const SportTeacherPage = () => {
         </div>
       )}
 
-      {/* Promote Students Modal */}
-      {modals.promoteStudents && (
+      {/* Assign Student Club Modal */}
+      {modals.assignStudentClub && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', maxWidth: '640px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', maxWidth: '480px', width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111827', margin: 0 }}>Promote Students</h2>
-              <button onClick={() => closeModal('promoteStudents')} style={{ background: 'none', border: 'none', fontSize: '24px', color: '#6b7280', cursor: 'pointer' }}>✕</button>
+              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111827', margin: 0 }}>Assign Club</h2>
+              <button onClick={() => closeModal('assignStudentClub')} style={{ background: 'none', border: 'none', fontSize: '24px', color: '#6b7280', cursor: 'pointer' }}>✕</button>
             </div>
-            {eligibleStudents.length === 0 ? (
-              <p style={{ color: '#6b7280', textAlign: 'center', padding: '30px 0' }}>No students eligible for promotion</p>
-            ) : (
-              <>
-                <div style={{ marginBottom: '16px' }}>
-                  <button
-                    onClick={() => {
-                      if (selectedStudents.length === eligibleStudents.length) {
-                        setSelectedStudents([]);
-                      } else {
-                        setSelectedStudents(eligibleStudents.map(s => s.student_id));
-                      }
-                    }}
-                    style={{ padding: '4px 12px', border: '1px solid #e5e7eb', borderRadius: '4px', background: 'white', fontSize: '13px', cursor: 'pointer' }}
+            <form onSubmit={handleAssignStudentClub}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Student *</label>
+                  <select
+                    value={clubMembershipForm.student}
+                    onChange={(e) => setClubMembershipForm({ ...clubMembershipForm, student: e.target.value, club: '' })}
+                    required
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
                   >
-                    {selectedStudents.length === eligibleStudents.length ? 'Deselect All' : 'Select All'}
-                  </button>
-                  <span style={{ marginLeft: '12px', fontSize: '14px', color: '#6b7280' }}>{selectedStudents.length} selected</span>
+                    <option value="">Select student</option>
+                    {students.map((student) => (
+                      <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                    <thead>
-                      <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}></th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Student</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Competition</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Score</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {eligibleStudents.map((item) => (
-                        <tr key={item.student_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                          <td style={{ padding: '8px 12px' }}>
-                            <input
-                              type="checkbox"
-                              checked={selectedStudents.includes(item.student_id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedStudents([...selectedStudents, item.student_id]);
-                                } else {
-                                  setSelectedStudents(selectedStudents.filter(id => id !== item.student_id));
-                                }
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '8px 12px', fontWeight: '500' }}>{item.student_name}</td>
-                          <td style={{ padding: '8px 12px' }}>{item.competition_name}</td>
-                          <td style={{ padding: '8px 12px', fontWeight: '600', color: '#15803d' }}>{item.score}%</td>
-                        </tr>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Club *</label>
+                  <select
+                    value={clubMembershipForm.club}
+                    onChange={(e) => setClubMembershipForm({ ...clubMembershipForm, club: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+                  >
+                    <option value="">Select club</option>
+                    {clubs
+                      .filter((club) => {
+                        if (!clubMembershipForm.student) return true;
+                        const selectedStudent = students.find((student) => student.id === Number(clubMembershipForm.student));
+                        const studentSchoolId = selectedStudent?.school ?? selectedStudent?.school_id;
+                        const clubSchoolId = club.school ?? club.school_id;
+                        if (studentSchoolId == null || clubSchoolId == null) return true;
+                        return Number(studentSchoolId) === Number(clubSchoolId);
+                      })
+                      .map((club) => (
+                        <option key={club.id} value={club.id}>{club.name}</option>
                       ))}
-                    </tbody>
-                  </table>
+                  </select>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
-                  <button type="button" onClick={() => closeModal('promoteStudents')} style={{ padding: '8px 20px', border: '1px solid #e5e7eb', borderRadius: '6px', background: 'white', color: '#6b7280', cursor: 'pointer' }}>Cancel</button>
-                  <button
-                    onClick={handlePromoteStudents}
-                    disabled={promoting || selectedStudents.length === 0}
-                    style={{ padding: '8px 20px', border: 'none', borderRadius: '6px', background: '#0E1DB6', color: 'white', cursor: promoting || selectedStudents.length === 0 ? 'not-allowed' : 'pointer', opacity: promoting || selectedStudents.length === 0 ? 0.6 : 1 }}
-                  >
-                    {promoting ? 'Promoting...' : `Promote Selected (${selectedStudents.length})`}
-                  </button>
-                </div>
-              </>
-            )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+                <button type="button" onClick={() => closeModal('assignStudentClub')} style={{ padding: '8px 20px', border: '1px solid #e5e7eb', borderRadius: '6px', background: 'white', color: '#6b7280', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" style={{ padding: '8px 20px', border: 'none', borderRadius: '6px', background: '#0E1DB6', color: 'white', cursor: 'pointer' }}>Assign</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { createContext, useState, useContext } from 'react';
 
 const AuthContext = createContext();
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const AuthProvider = ({ children }) => {
   const storedToken = localStorage.getItem('access_token') || localStorage.getItem('token');
