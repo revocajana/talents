@@ -15,7 +15,7 @@
   justify-content: space-between;
   padding: 10px 24px;
   box-sizing: border-box;
-  background: linear-gradient(135deg, #0E1DB6 0%, #0A1589 100%);
+  background: linear-gradient(135deg, #0E1DB6 0%, #1e90ff 100%);
   color: white;
   box-shadow: 0 8px 20px rgba(14, 29, 182, 0.2);
 }
@@ -40,6 +40,12 @@
 .sport-teacher-profile {
   position: relative;
   flex-shrink: 0;
+}
+
+.sport-teacher-app-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .sport-teacher-profile-button {
@@ -91,6 +97,78 @@
 .sport-teacher-profile-menu button:focus-visible {
   background: #eef2ff;
   color: #0E1DB6;
+}
+
+.sport-teacher-navigation-toggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sport-teacher-navigation-toggle span {
+  display: block;
+  height: 2px;
+  margin: 5px 0;
+  border-radius: 2px;
+  background: white;
+}
+
+.sport-teacher-navigation {
+  position: fixed;
+  top: 72px;
+  left: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: max-content;
+  height: calc(100vh - 72px);
+  max-height: calc(100vh - 72px);
+  overflow-y: auto;
+  padding: 12px 8px;
+  box-sizing: border-box;
+  background: #4682b4;
+  box-shadow: 8px 0 22px rgba(15, 23, 42, 0.16);
+}
+
+.sport-teacher-navigation-heading {
+  padding: 0 10px 8px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sport-teacher-navigation button {
+  display: flex;
+  width: max-content;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: white;
+  font-size: 14px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sport-teacher-logout-button {
+  margin-top: 8px;
+}
+
+.sport-teacher-navigation button:hover,
+.sport-teacher-navigation button:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .sport-teacher-layout {
@@ -243,6 +321,24 @@
   .sport-teacher-brand img {
     width: 40px;
     height: 40px;
+  }
+
+  .sport-teacher-navigation-toggle {
+    display: block;
+  }
+
+  .sport-teacher-navigation {
+    top: 64px;
+    width: max-content;
+    max-width: calc(100vw - 24px);
+    height: calc(100vh - 64px);
+    max-height: calc(100vh - 64px);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .sport-teacher-navigation.is-open {
+    transform: translateX(0);
   }
 
   .sport-teacher-sidebar {

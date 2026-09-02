@@ -380,12 +380,13 @@ const SportTeacherPage = () => {
 
   // Sidebar menu items
   const menuItems = [
-    { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { key: 'students', label: 'Students', icon: '👨‍🎓' },
-    { key: 'talents', label: 'Talents & Clubs', icon: '⭐' },
-    { key: 'results', label: 'Results', icon: '🏆' },
-    { key: 'upload', label: 'Upload Results', icon: '📤' },
+    { key: 'dashboard', label: 'Home' },
+    { key: 'talents', label: 'Clubs' },
+    { key: 'students', label: 'Students' },
+    { key: 'results', label: 'Results' },
+    { key: 'announcements', label: 'Announcements' },
   ];
+  const [navigationOpen, setNavigationOpen] = useState(false);
 
   // Render content based on active tab
   const renderContent = () => {
@@ -881,7 +882,8 @@ const SportTeacherPage = () => {
           <img src={logo} alt="Talanta logo" />
           <span>Talanta Management System</span>
         </div>
-        <div className="sport-teacher-profile">
+        <div className="sport-teacher-app-actions">
+          <div className="sport-teacher-profile">
           <button
             type="button"
             className="sport-teacher-profile-button"
@@ -901,8 +903,39 @@ const SportTeacherPage = () => {
               <button type="button" onClick={() => setProfileMenuOpen(false)}>Change password</button>
             </div>
           )}
+          </div>
+          <button
+            type="button"
+            className="sport-teacher-navigation-toggle"
+            onClick={() => setNavigationOpen((open) => !open)}
+            aria-label="Open navigation menu"
+            aria-expanded={navigationOpen}
+            title="Open navigation menu"
+          >
+            <span />
+            <span />
+            <span />
+          </button>
         </div>
       </header>
+      <aside className={`sport-teacher-navigation ${navigationOpen ? 'is-open' : ''}`}>
+        <div className="sport-teacher-navigation-heading">Navigation</div>
+        {menuItems.map((item) => (
+          <button
+            type="button"
+            key={item.key}
+            onClick={() => {
+              setActiveTab(item.key);
+              setNavigationOpen(false);
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+        <button type="button" className="sport-teacher-logout-button" onClick={logout}>
+          Logout
+        </button>
+      </aside>
     </div>
   );
 
