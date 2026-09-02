@@ -14,7 +14,6 @@ const SportTeacherPage = () => {
   const [students, setStudents] = useState([]);
   const [studentTalents, setStudentTalents] = useState([]);
   const [clubs, setClubs] = useState([]);
-  const [clubTalents, setClubTalents] = useState([]);
   const [clubMemberships, setClubMemberships] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
   const [competitions, setCompetitions] = useState([]);
@@ -48,6 +47,7 @@ const SportTeacherPage = () => {
   // Sidebar state
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [selectedClub, setSelectedClub] = useState(null);
 
   const schoolId = user?.school;
   const schoolName = user?.school_name || 'Your School';
@@ -69,7 +69,6 @@ const SportTeacherPage = () => {
         talentsRes,
         studentTalentsRes,
         clubsRes,
-        clubTalentsRes,
         membershipsRes,
         evaluationsRes,
         competitionsRes,
@@ -80,7 +79,6 @@ const SportTeacherPage = () => {
         apiService.getTalents(),
         apiService.getStudentTalents({ school: schoolId }),
         apiService.getClubs({ school: schoolId }),
-        apiService.getClubTalents({ school: schoolId }),
         apiService.getClubMemberships({ school: schoolId }),
         apiService.getEvaluations({ school: schoolId }),
         apiService.getCompetitions({ school: schoolId }),
@@ -92,7 +90,6 @@ const SportTeacherPage = () => {
       setTalents(talentsRes.data.results || []);
       setStudentTalents(studentTalentsRes.data.results || []);
       setClubs(clubsRes.data.results || []);
-      setClubTalents(clubTalentsRes.data.results || []);
       setClubMemberships(membershipsRes.data.results || []);
       setEvaluations(evaluationsRes.data.results || []);
       setCompetitions(competitionsRes.data.results || []);
@@ -346,21 +343,6 @@ const SportTeacherPage = () => {
       return club?.name || 'Unknown';
     }
     return 'Not assigned';
-  };
-
-  const getClubTalentNames = (clubId) => {
-    const assignedTalentIds = new Set(
-      clubTalents
-        .filter((assignment) => Number(assignment.club) === Number(clubId))
-        .map((assignment) => Number(assignment.talent))
-    );
-
-    const names = talents
-      .filter((talent) => assignedTalentIds.has(Number(talent.id)))
-      .map((talent) => talent.name)
-      .filter(Boolean);
-
-    return names.length ? [...new Set(names)].join(', ') : 'No talent assigned';
   };
 
   const uniqueClubs = Array.from(new Map((clubs || []).map((club) => [String(club.id), club])).values());
@@ -944,8 +926,74 @@ const SportTeacherPage = () => {
         </button>
       </aside>
       <main className="sport-teacher-prototype-content">
-        <p>{prototypeMessages[activeTab]}</p>
+        {loading ? (
+          <p>Loading sport teacher workspace...</p>
+        ) : (
+          <>
+            {activeTab === 'dashboard' ? (
+              <div className="sport-teacher-home">
+                <div className="sport-teacher-home-heading">
+                  <div>
+                    <p className="sport-teacher-eyebrow">Home</p>
+                    <h1>{schoolName}</h1>
+                    <p>Here is your school sports overview.</p>
+                  </div>
+                  <span className="sport-teacher-date">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                </div>
+                <div className="sport-teacher-stat-grid">
+                  <div><span>Students</span><strong>{students.length}</strong></div>
+                  <div><span>Clubs</span><strong>{clubs.filter((club) => club.is_active).length}</strong></div>
+                  <div><span>Talents assigned</span><strong>{studentTalents.length}</strong></div>
+                  <div><span>Results recorded</span><strong>{participations.length}</strong></div>
+                </div>
+                <div className="sport-teacher-home-section">
+                  <h2>Recent students</h2>
+                  {students.length ? (
+                    <div className="sport-teacher-student-list">
+                      {students.slice(0, 5).map((student) => (
+                        <div key={student.id}>
+                          <span>{student.first_name} {student.last_name}</span>
+                          <small>{student.student_id || 'Student record'}</small>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p>No students registered yet.</p>}
+                </div>
+              </div>
+            ) : activeTab === 'talents' ? (
+              <div className="sport-teacher-prototype-page">
+                <div className="sport-teacher-prototype-page-heading">
+                  <h1>Clubs</h1>
+                  <p>{schoolName}</p>
+                </div>
+                {uniqueClubs.filter((club) => club.is_active).length ? (
+                  <div className="sport-teacher-club-list">
+                    {uniqueClubs.filter((club) => club.is_active).map((club) => (
+                      <button type="button" key={club.id} onClick={() => setSelectedClub(club)}>
+                        <strong>{club.name}</strong>
+                        <span>{club.focus || 'Sports club'}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : <p className="sport-teacher-empty-message">No clubs registered in this school yet.</p>}
+              </div>
+            ) : <p>{prototypeMessages[activeTab] || pageMessages[activeTab]}</p>}
+          </>
+        )}
       </main>
+      {selectedClub && (
+        <>
+          <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close club management" onClick={() => setSelectedClub(null)} />
+          <aside className="sport-teacher-search-drawer" aria-label={`${selectedClub.name} management panel`}>
+            <div className="sport-teacher-search-drawer-header">
+              <h2>{selectedClub.name}</h2>
+              <button type="button" onClick={() => setSelectedClub(null)} aria-label="Close club management">&times;</button>
+            </div>
+            <p className="sport-teacher-drawer-kicker">Club management</p>
+            <p>{selectedClub.focus || 'Manage this club and its sports activities.'}</p>
+          </aside>
+        </>
+      )}
     </div>
   );
 

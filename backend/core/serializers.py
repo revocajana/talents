@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from .models import (
     Country, Zone, Region, District, Ward, School, SchoolOwnershipType, User,
-    Talent, StudentTalent, Announcement, Club, ClubTeacher, ClubTalent,
+    Talent, StudentTalent, Announcement, CountryClub, SchoolClub, ClubTeacher,
     StudentClubMembership, EvaluationCriterion, TalentEvaluation, EvaluationScore,
     TalentSubmission, SubmissionFeedback, Message, Notification, AuditLog,
 )
@@ -192,19 +192,33 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         ]
 
 
-class ClubSerializer(serializers.ModelSerializer):
+class CountryClubSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Club
-        fields = ['id', 'name', 'focus', 'description', 'school', 'is_active', 'created_at', 'updated_at']
+        model = CountryClub
+        fields = ['id', 'name', 'focus', 'description', 'country', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
+
+
+class SchoolClubSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='country_club.name', read_only=True)
+    focus = serializers.CharField(source='country_club.focus', read_only=True)
+    description = serializers.CharField(source='country_club.description', read_only=True)
+    country = serializers.IntegerField(source='country_club.country_id', read_only=True)
+
+    class Meta:
+        model = SchoolClub
+        fields = ['id', 'name', 'focus', 'description', 'school', 'country_club', 'country', 'is_active', 'selected_at']
+        read_only_fields = ['selected_at']
 
     def validate(self, attrs):
         school = attrs.get('school', getattr(self.instance, 'school', None))
-        is_active = attrs.get('is_active', getattr(self.instance, 'is_active', True))
-        if school and is_active:
-            existing = Club.objects.filter(school=school, is_active=True).exclude(pk=getattr(self.instance, 'pk', None)).count()
+        country_club = attrs.get('country_club', getattr(self.instance, 'country_club', None))
+        if school and country_club and school.country_id != country_club.country_id:
+            raise serializers.ValidationError('A school can only select clubs from its country.')
+        if school and attrs.get('is_active', getattr(self.instance, 'is_active', True)):
+            existing = SchoolClub.objects.filter(school=school, is_active=True).exclude(pk=getattr(self.instance, 'pk', None)).count()
             if existing >= school.recommended_club_count:
-                raise serializers.ValidationError('This school has reached its recommended club limit.')
+                raise serializers.ValidationError('This school has reached its maximum club limit.')
         return attrs
 
 
@@ -212,13 +226,6 @@ class ClubTeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClubTeacher
         fields = '__all__'
-
-
-class ClubTalentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ClubTalent
-        fields = ['id', 'club', 'talent', 'added_at']
-        read_only_fields = ['added_at']
 
 
 class StudentClubMembershipSerializer(serializers.ModelSerializer):

@@ -19,9 +19,9 @@ from .models import (
     Talent,
     StudentTalent,
     Announcement,
-    Club,
+    CountryClub,
+    SchoolClub,
     ClubTeacher,
-    ClubTalent,
     StudentClubMembership,
 )
 from students.models import Student
@@ -63,9 +63,9 @@ class SchoolInline(admin.TabularInline):
 
 
 class ClubInline(admin.TabularInline):
-    model = Club
+    model = SchoolClub
     extra = 0
-    fields = ('name', 'focus', 'is_active')
+    fields = ('country_club', 'is_active')
     show_change_link = True
 
 
@@ -871,41 +871,69 @@ class ClubTeacherInline(admin.TabularInline):
     readonly_fields = ('assigned_at',)
 
 
-class ClubTalentInline(admin.TabularInline):
-    model = ClubTalent
-    extra = 0
-    autocomplete_fields = ('talent',)
-    readonly_fields = ('added_at',)
+class ClubTeacherAdminForm(forms.ModelForm):
+    class Meta:
+        model = ClubTeacher
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['teacher'].queryset = User.objects.filter(
+            role='sport_teacher',
+        ).select_related('school').order_by('first_name', 'last_name', 'username')
+        self.fields['teacher'].label = 'Sport teacher'
+        self.fields['club'].label = 'School club'
 
 
-@admin.register(Club)
-class ClubAdmin(admin.ModelAdmin):
-    list_display = ('name', 'school_location', 'focus', 'is_active', 'teacher_count', 'talent_count', 'member_count')
-    list_filter = ('is_active', 'school__country', 'school__zone', 'school__region', 'school__district', 'school__ward')
-    search_fields = ('name', 'focus', 'school__name', 'school__registry_number')
-    autocomplete_fields = ('school',)
+@admin.register(CountryClub)
+class CountryClubAdmin(admin.ModelAdmin):
+    list_display = ('name', 'country', 'is_active', 'school_count')
+    list_filter = ('country', 'is_active')
+    search_fields = ('name', 'country__name')
+    autocomplete_fields = ('country',)
     readonly_fields = ('created_at', 'updated_at')
-    inlines = (ClubTeacherInline, ClubTalentInline)
+    fieldsets = (
+        ('Country club', {'fields': ('name', 'country', 'is_active')}),
+        ('Description', {'fields': ('focus', 'description')}),
+        ('Dates', {'fields': ('created_at', 'updated_at')}),
+    )
 
-    @admin.display(description='School')
-    def school_location(self, obj):
-        school = obj.school
-        return f'{school.name} - {school.ward.name} - {school.district.name} - {school.region.name}'
+    @admin.display(description='Schools')
+    def school_count(self, obj):
+        return obj.school_selections.filter(is_active=True).count()
+
+
+@admin.register(SchoolClub)
+class SchoolClubAdmin(admin.ModelAdmin):
+    list_display = ('club_name', 'school', 'country', 'is_active', 'teacher_count', 'member_count')
+    list_filter = ('is_active', 'school__country', 'school__zone', 'school__region', 'school__district', 'school__ward')
+    search_fields = ('country_club__name', 'school__name', 'school__registry_number')
+    autocomplete_fields = ('school', 'country_club')
+    readonly_fields = ('selected_at',)
+    inlines = (ClubTeacherInline,)
+    fieldsets = (
+        ('School club selection', {'fields': ('school', 'country_club', 'is_active')}),
+        ('Selection details', {'fields': ('selected_at',)}),
+    )
+
+    @admin.display(description='Club')
+    def club_name(self, obj):
+        return obj.country_club.name
+
+    @admin.display(description='Country')
+    def country(self, obj):
+        return obj.country_club.country.name
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'school__ward__district__region__zone__country'
+            'school__ward__district__region__zone__country', 'country_club'
         ).prefetch_related(
-            'teacher_assignments', 'talent_assignments', 'memberships'
+            'teacher_assignments', 'memberships'
         )
 
     @admin.display(description='Teachers')
     def teacher_count(self, obj):
         return len(obj.teacher_assignments.all())
-
-    @admin.display(description='Talents')
-    def talent_count(self, obj):
-        return len(obj.talent_assignments.all())
 
     @admin.display(description='Members')
     def member_count(self, obj):
@@ -914,28 +942,33 @@ class ClubAdmin(admin.ModelAdmin):
 
 @admin.register(ClubTeacher)
 class ClubTeacherAdmin(admin.ModelAdmin):
-    list_display = ('club', 'teacher', 'teacher_school', 'assigned_at')
+    form = ClubTeacherAdminForm
+    list_display = ('teacher_name', 'school', 'club_name', 'assigned_at')
     list_filter = ('club__school__country', 'club__school__zone', 'club__school__region', 'club__school')
-    search_fields = ('club__name', 'club__school__name', 'teacher__username', 'teacher__first_name', 'teacher__last_name')
+    search_fields = ('club__country_club__name', 'club__school__name', 'teacher__username', 'teacher__first_name', 'teacher__last_name')
     autocomplete_fields = ('club', 'teacher')
     readonly_fields = ('assigned_at',)
+    fieldsets = (
+        ('Assignment', {'fields': ('teacher', 'club')}),
+        ('Assignment details', {'fields': ('assigned_at',)}),
+    )
+
+    @admin.display(description='Teacher')
+    def teacher_name(self, obj):
+        name = f'{obj.teacher.first_name} {obj.teacher.last_name}'.strip()
+        return name or obj.teacher.username
+
+    @admin.display(description='School')
+    def school(self, obj):
+        return obj.club.school.name
+
+    @admin.display(description='Selected club')
+    def club_name(self, obj):
+        return obj.club.country_club.name
 
     @admin.display(description='Teacher school')
     def teacher_school(self, obj):
         return obj.teacher.school or 'Not assigned'
-
-
-@admin.register(ClubTalent)
-class ClubTalentAdmin(admin.ModelAdmin):
-    list_display = ('club', 'talent', 'school', 'added_at')
-    list_filter = ('talent__category', 'club__school__country', 'club__school__zone', 'club__school')
-    search_fields = ('club__name', 'club__school__name', 'talent__name')
-    autocomplete_fields = ('club', 'talent')
-    readonly_fields = ('added_at',)
-
-    @admin.display(description='School')
-    def school(self, obj):
-        return obj.club.school
 
 
 @admin.register(StudentClubMembership)
@@ -944,7 +977,7 @@ class StudentClubMembershipAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'club__school__country', 'club__school__zone', 'club__school__region', 'club__school')
     search_fields = (
         'student__first_name', 'student__last_name', 'student__student_id',
-        'club__name', 'club__school__name',
+        'club__country_club__name', 'club__school__name',
     )
     autocomplete_fields = ('student', 'club')
     readonly_fields = ('joined_at',)

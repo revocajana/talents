@@ -6,11 +6,11 @@ from results.models import Result
 from .admin import UserChangeFormWithPassword
 from .models import (
 	Country, Zone, Region, District, Ward, School, SchoolOwnershipType, User,
-	Talent, Club, StudentClubMembership, StudentTalent, EvaluationCriterion,
+	Talent, CountryClub, SchoolClub, StudentClubMembership, StudentTalent, EvaluationCriterion,
 	TalentEvaluation, EvaluationScore,
 )
 from .serializers import (
-	ClubSerializer, StudentClubMembershipSerializer, StudentTalentSerializer,
+	SchoolClubSerializer, StudentClubMembershipSerializer, StudentTalentSerializer,
 	EvaluationScoreSerializer,
 )
 
@@ -76,16 +76,20 @@ class FoundationRulesTests(TestCase):
 
 	def test_school_allows_only_three_active_clubs_at_two_hundred_students(self):
 		for index in range(3):
-			Club.objects.create(name=f'Club {index}', school=self.school)
+			country_club = CountryClub.objects.create(name=f'Club {index}', country=self.school.country)
+			SchoolClub.objects.create(country_club=country_club, school=self.school)
 
-		serializer = ClubSerializer(data={'name': 'Club 4', 'school': self.school.id})
+		country_club = CountryClub.objects.create(name='Club 4', country=self.school.country)
+		serializer = SchoolClubSerializer(data={'country_club': country_club.id, 'school': self.school.id})
 
 		self.assertFalse(serializer.is_valid())
 		self.assertIn('non_field_errors', serializer.errors)
 
 	def test_student_cannot_have_two_active_clubs(self):
-		first_club = Club.objects.create(name='First Club', school=self.school)
-		second_club = Club.objects.create(name='Second Club', school=self.school)
+		first_club_type = CountryClub.objects.create(name='First Club', country=self.school.country)
+		second_club_type = CountryClub.objects.create(name='Second Club', country=self.school.country)
+		first_club = SchoolClub.objects.create(country_club=first_club_type, school=self.school)
+		second_club = SchoolClub.objects.create(country_club=second_club_type, school=self.school)
 		StudentClubMembership.objects.create(student=self.student, club=first_club)
 
 		serializer = StudentClubMembershipSerializer(data={

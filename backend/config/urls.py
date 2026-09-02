@@ -34,9 +34,9 @@ from core.views import (
     TalentViewSet,
     StudentTalentViewSet,
     AnnouncementViewSet,
-    ClubViewSet,
+    CountryClubViewSet,
+    SchoolClubViewSet,
     ClubTeacherViewSet,
-    ClubTalentViewSet,
     StudentClubMembershipViewSet,
     EvaluationCriterionViewSet,
     TalentEvaluationViewSet,
@@ -71,9 +71,9 @@ router.register('competition-judges', CompetitionJudgeViewSet)
 router.register('results', ResultViewSet)
 router.register('result-details', ResultDetailViewSet)
 router.register('result-promotions', ResultPromotionViewSet)
-router.register('clubs', ClubViewSet)
+router.register('country-clubs', CountryClubViewSet)
+router.register('clubs', SchoolClubViewSet)
 router.register('club-teachers', ClubTeacherViewSet)
-router.register('club-talents', ClubTalentViewSet)
 router.register('club-memberships', StudentClubMembershipViewSet)
 router.register('evaluation-criteria', EvaluationCriterionViewSet)
 router.register('evaluations', TalentEvaluationViewSet)

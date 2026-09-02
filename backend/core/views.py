@@ -7,7 +7,7 @@ from django.db.models import Q
 
 from .models import (
     Country, Zone, Region, District, Ward, School, SchoolOwnershipType,
-    User, Talent, StudentTalent, Announcement, Club, ClubTeacher, ClubTalent,
+    User, Talent, StudentTalent, Announcement, CountryClub, SchoolClub, ClubTeacher,
     StudentClubMembership, EvaluationCriterion, TalentEvaluation, EvaluationScore,
     TalentSubmission, SubmissionFeedback, Message, Notification, AuditLog,
 )
@@ -23,7 +23,7 @@ from .serializers import (
     TalentSerializer,
     StudentTalentSerializer,
     AnnouncementSerializer,
-    ClubSerializer, ClubTeacherSerializer, ClubTalentSerializer,
+    CountryClubSerializer, SchoolClubSerializer, ClubTeacherSerializer,
     StudentClubMembershipSerializer, EvaluationCriterionSerializer,
     TalentEvaluationSerializer, EvaluationScoreSerializer,
     TalentSubmissionSerializer, SubmissionFeedbackSerializer,
@@ -163,9 +163,15 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     permission_classes = [AuthenticatedReadOnly]
 
 
-class ClubViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
-    queryset = Club.objects.select_related('school').all()
-    serializer_class = ClubSerializer
+class CountryClubViewSet(viewsets.ModelViewSet):
+    queryset = CountryClub.objects.select_related('country').all()
+    serializer_class = CountryClubSerializer
+    permission_classes = [ConfigurationPermission]
+
+
+class SchoolClubViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = SchoolClub.objects.select_related('school', 'country_club').all()
+    serializer_class = SchoolClubSerializer
     permission_classes = [AuthenticatedReadOnly]
     scope_paths = {'student': 'memberships__student_id', 'school': 'school_id', 'country': 'school__country_id', 'zone': 'school__zone_id', 'region': 'school__region_id', 'district': 'school__district_id', 'ward': 'school__ward_id'}
 
@@ -173,13 +179,6 @@ class ClubViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
 class ClubTeacherViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = ClubTeacher.objects.select_related('club', 'teacher').all()
     serializer_class = ClubTeacherSerializer
-    permission_classes = [AuthenticatedReadOnly]
-    scope_paths = {'school': 'club__school_id', 'country': 'club__school__country_id', 'zone': 'club__school__zone_id', 'region': 'club__school__region_id', 'district': 'club__school__district_id', 'ward': 'club__school__ward_id'}
-
-
-class ClubTalentViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
-    queryset = ClubTalent.objects.select_related('club', 'talent').all()
-    serializer_class = ClubTalentSerializer
     permission_classes = [AuthenticatedReadOnly]
     scope_paths = {'school': 'club__school_id', 'country': 'club__school__country_id', 'zone': 'club__school__zone_id', 'region': 'club__school__region_id', 'district': 'club__school__district_id', 'ward': 'club__school__ward_id'}
 

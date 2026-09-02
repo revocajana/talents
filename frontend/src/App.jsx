@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import CommonDashboardPage from './pages/CommonDashboardPage';
+import SportTeacherPage from './pages/SportTeacherPage';
 import SchoolRegistrationPage from './pages/SchoolRegistrationPage';
 import './App.css';
 
@@ -93,7 +94,7 @@ const AppRoutes = () => {
         path="/dashboard/sport-teacher"
         element={
           <ProtectedRoute requiredRole="sport_teacher">
-            <CommonDashboardPage />
+            <SportTeacherPage />
           </ProtectedRoute>
         }
       />

@@ -93,9 +93,10 @@ class School(models.Model):
 
     @property
     def recommended_club_count(self):
-        if self.student_count <= 200:
+        enrolled_students = self.students.count() if self.pk else self.student_count
+        if enrolled_students <= 200:
             return 3
-        if self.student_count < 500:
+        if enrolled_students < 500:
             return 5
         return 10
 
@@ -225,38 +226,57 @@ class Announcement(models.Model):
         ordering = ['-created_at']
 
 
-class Club(models.Model):
-    """A school club that groups students and their related talents."""
+class CountryClub(models.Model):
+    """A country-level club option that schools can select."""
 
     name = models.CharField(max_length=150)
     focus = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='clubs')
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='clubs')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    teachers = models.ManyToManyField(User, through='ClubTeacher', related_name='managed_clubs', blank=True)
-    talents = models.ManyToManyField(Talent, through='ClubTalent', related_name='clubs', blank=True)
 
     class Meta:
-        ordering = ['school', 'name']
+        ordering = ['country', 'name']
         constraints = [
-            models.UniqueConstraint(fields=['school', 'name'], name='unique_club_name_per_school'),
+            models.UniqueConstraint(fields=['country', 'name'], name='unique_country_club_name'),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.country.name})"
+
+
+class SchoolClub(models.Model):
+    """A country club selected for use by one school."""
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='clubs')
+    country_club = models.ForeignKey(CountryClub, on_delete=models.CASCADE, related_name='school_selections')
+    is_active = models.BooleanField(default=True)
+    selected_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['school', 'country_club__name']
+        constraints = [
+            models.UniqueConstraint(fields=['school', 'country_club'], name='unique_school_club_selection'),
         ]
 
     def clean(self):
-        if not self.school_id or not self.is_active:
+        if not self.school_id or not self.country_club_id:
             return
-        active_clubs = Club.objects.filter(school_id=self.school_id, is_active=True).exclude(pk=self.pk).count()
-        if active_clubs >= self.school.recommended_club_count:
-            raise ValidationError({'school': 'This school has reached its recommended club limit.'})
+        if self.school.country_id != self.country_club.country_id:
+            raise ValidationError('A school can only select clubs from its country.')
+        if self.is_active:
+            active_clubs = SchoolClub.objects.filter(school_id=self.school_id, is_active=True).exclude(pk=self.pk).count()
+            if active_clubs >= self.school.recommended_club_count:
+                raise ValidationError({'school': 'This school has reached its maximum club limit.'})
 
     def __str__(self):
-        return f"{self.name} ({self.school.name})"
+        return f"{self.country_club.name} ({self.school.name})"
 
 
 class ClubTeacher(models.Model):
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='teacher_assignments')
+    club = models.ForeignKey(SchoolClub, on_delete=models.CASCADE, related_name='teacher_assignments')
     teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='club_assignments')
     assigned_at = models.DateTimeField(auto_now_add=True)
 
@@ -266,20 +286,9 @@ class ClubTeacher(models.Model):
         ]
 
 
-class ClubTalent(models.Model):
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='talent_assignments')
-    talent = models.ForeignKey(Talent, on_delete=models.CASCADE, related_name='club_assignments')
-    added_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['club', 'talent'], name='unique_talent_per_club'),
-        ]
-
-
 class StudentClubMembership(models.Model):
     student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='club_memberships')
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='memberships')
+    club = models.ForeignKey(SchoolClub, on_delete=models.CASCADE, related_name='memberships')
     joined_at = models.DateTimeField(auto_now_add=True)
     left_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -408,7 +417,7 @@ class TalentSubmission(models.Model):
 
     student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='talent_submissions')
     talent = models.ForeignKey(Talent, on_delete=models.PROTECT, related_name='submissions')
-    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, blank=True, related_name='submissions')
+    club = models.ForeignKey(SchoolClub, on_delete=models.SET_NULL, null=True, blank=True, related_name='submissions')
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     media = models.FileField(upload_to='talent_submissions/', blank=True)
