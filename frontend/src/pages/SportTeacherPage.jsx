@@ -48,9 +48,10 @@ const SportTeacherPage = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
+  const [schoolRecord, setSchoolRecord] = useState(null);
 
-  const schoolId = user?.school;
-  const schoolName = user?.school_name || 'Your School';
+  const schoolId = Number(user?.school?.id || user?.school_id || user?.school) || null;
+  const schoolName = schoolRecord?.name || user?.school_name || user?.school?.name || 'Your School';
 
   // Load data
   const loadData = useCallback(async () => {
@@ -74,6 +75,7 @@ const SportTeacherPage = () => {
         competitionsRes,
         participationsRes,
         eligibleRes,
+        schoolRes,
       ] = await Promise.all([
         apiService.getStudents({ school: schoolId }),
         apiService.getTalents(),
@@ -84,6 +86,7 @@ const SportTeacherPage = () => {
         apiService.getCompetitions({ school: schoolId }),
         apiService.getParticipations({ school: schoolId }),
         apiService.getEligibleForPromotion().catch(() => ({ data: [] })),
+        apiService.getSchoolById(schoolId),
       ]);
       
       setStudents(studentsRes.data.results || []);
@@ -95,6 +98,7 @@ const SportTeacherPage = () => {
       setCompetitions(competitionsRes.data.results || []);
       setParticipations(participationsRes.data.results || []);
       setEligibleStudents(eligibleRes.data || []);
+      setSchoolRecord(schoolRes.data);
       
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load data');
@@ -908,7 +912,7 @@ const SportTeacherPage = () => {
         </div>
       </header>
       <aside className={`sport-teacher-navigation ${navigationOpen ? 'is-open' : ''}`}>
-        <div className="sport-teacher-navigation-heading">Navigation</div>
+        <div className="sport-teacher-navigation-heading">{schoolName}</div>
         {menuItems.map((item) => (
           <button
             type="button"

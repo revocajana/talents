@@ -113,6 +113,7 @@ export const createWard = (data) => api.post('/wards/', data);
 export const updateWard = (id, data) => api.put(`/wards/${id}/`, data);
 export const deleteWard = (id) => api.delete(`/wards/${id}/`);
 export const getSchools = (params = {}) => api.get('/schools/', { params });
+export const getSchoolById = (id) => api.get(`/schools/${id}/`);
 export const getSchoolOwnershipTypes = (params = {}) => api.get('/school-ownership-types/', { params }); // New endpoint for school ownership types
 export const getAllCountries = (params = {}) => getAllRecords('/countries/', params);
 export const getAllZones = (params = {}) => getAllRecords('/zones/', params);
