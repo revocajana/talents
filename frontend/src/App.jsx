@@ -1,14 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
-import TalentAdminPage from './pages/TalentAdminPage';
-import RegionManagerPage from './pages/RegionManagerPage';
-import ZoneManagerPage from './pages/ZoneManagerPage';
-import DistrictManagerPage from './pages/DistrictManagerPage';
-import WardManagerPage from './pages/WardManagerPage';
-import HeadTeacherPage from './pages/HeadTeacherPage';
-import SportTeacherPage from './pages/SportTeacherPage';
-import StudentPage from './pages/StudentPage';
+import CommonDashboardPage from './pages/CommonDashboardPage';
 import SchoolRegistrationPage from './pages/SchoolRegistrationPage';
 import './App.css';
 
@@ -46,7 +39,7 @@ const AppRoutes = () => {
         path="/dashboard/talent-admin"
         element={
           <ProtectedRoute requiredRole="talent_admin">
-            <TalentAdminPage />
+            <CommonDashboardPage />
           </ProtectedRoute>
         }
       />
@@ -55,7 +48,7 @@ const AppRoutes = () => {
         path="/dashboard/region-manager"
         element={
           <ProtectedRoute requiredRole="region_manager">
-            <RegionManagerPage />
+            <CommonDashboardPage />
           </ProtectedRoute>
         }
       />
@@ -64,7 +57,7 @@ const AppRoutes = () => {
         path="/dashboard/zone-manager"
         element={
           <ProtectedRoute requiredRole="zone_manager">
-            <ZoneManagerPage />
+            <CommonDashboardPage />
           </ProtectedRoute>
         }
       />
@@ -73,7 +66,7 @@ const AppRoutes = () => {
         path="/dashboard/district-manager"
         element={
           <ProtectedRoute requiredRole="district_manager">
-            <DistrictManagerPage />
+            <CommonDashboardPage />
           </ProtectedRoute>
         }
       />
@@ -82,7 +75,7 @@ const AppRoutes = () => {
         path="/dashboard/ward-manager"
         element={
           <ProtectedRoute requiredRole="ward_manager">
-            <WardManagerPage />
+            <CommonDashboardPage />
           </ProtectedRoute>
         }
       />
@@ -91,7 +84,7 @@ const AppRoutes = () => {
         path="/dashboard/head-teacher"
         element={
           <ProtectedRoute requiredRole="head_teacher">
-            <HeadTeacherPage />
+            <CommonDashboardPage />
           </ProtectedRoute>
         }
       />
@@ -100,7 +93,7 @@ const AppRoutes = () => {
         path="/dashboard/sport-teacher"
         element={
           <ProtectedRoute requiredRole="sport_teacher">
-            <SportTeacherPage />
+            <CommonDashboardPage />
           </ProtectedRoute>
         }
       />
@@ -109,7 +102,7 @@ const AppRoutes = () => {
         path="/dashboard/student"
         element={
           <ProtectedRoute requiredRole="student">
-            <StudentPage />
+            <CommonDashboardPage />
           </ProtectedRoute>
         }
       />
