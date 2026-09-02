@@ -387,6 +387,13 @@ const SportTeacherPage = () => {
     { key: 'announcements', label: 'Announcements' },
   ];
   const [navigationOpen, setNavigationOpen] = useState(false);
+  const prototypeMessages = {
+    dashboard: 'This is home.',
+    talents: 'Here are the clubs.',
+    students: 'Here are the students.',
+    results: 'Here are the results.',
+    announcements: 'Here are the announcements.',
+  };
 
   // Render content based on active tab
   const renderContent = () => {
@@ -936,6 +943,9 @@ const SportTeacherPage = () => {
           Logout
         </button>
       </aside>
+      <main className="sport-teacher-prototype-content">
+        <p>{prototypeMessages[activeTab]}</p>
+      </main>
     </div>
   );
 

@@ -171,6 +171,17 @@
   background: rgba(255, 255, 255, 0.16);
 }
 
+.sport-teacher-prototype-content {
+  display: grid;
+  min-height: calc(100vh - 72px);
+  padding: 40px 32px;
+  place-items: start center;
+  box-sizing: border-box;
+  color: #1f2937;
+  font-size: 24px;
+  font-weight: 600;
+}
+
 .sport-teacher-layout {
   display: flex;
   min-height: calc(100vh - 72px);
@@ -359,6 +370,12 @@
     max-height: calc(100vh - 64px);
     transform: translateX(-100%);
     transition: transform 0.2s ease;
+  }
+
+  .sport-teacher-prototype-content {
+    min-height: calc(100vh - 64px);
+    padding: 32px 20px;
+    font-size: 20px;
   }
 
   .sport-teacher-navigation.is-open {
