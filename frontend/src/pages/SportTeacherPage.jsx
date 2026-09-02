@@ -48,6 +48,7 @@ const SportTeacherPage = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
+  const [selectedTalentCategory, setSelectedTalentCategory] = useState(null);
   const [schoolRecord, setSchoolRecord] = useState(null);
 
   const schoolId = Number(user?.school?.id || user?.school_id || user?.school) || null;
@@ -350,6 +351,18 @@ const SportTeacherPage = () => {
   };
 
   const uniqueClubs = Array.from(new Map((clubs || []).map((club) => [String(club.id), club])).values());
+  const schoolClubs = uniqueClubs.filter((club) => {
+    const clubSchoolId = club.school?.id ?? club.school_id ?? club.school;
+    return Number(clubSchoolId) === schoolId;
+  });
+  const selectedClubs = Array.from(new Map(
+    schoolClubs
+      .filter((club) => club.is_active)
+      .map((club) => [
+        String(club.country_club ?? club.country_club_id ?? club.name).toLowerCase(),
+        club,
+      ])
+  ).values());
 
   const getStatusBadge = (status, score) => {
     if (status === 'disqualified') {
@@ -367,7 +380,7 @@ const SportTeacherPage = () => {
   // Sidebar menu items
   const menuItems = [
     { key: 'dashboard', label: 'Home' },
-    { key: 'talents', label: 'Clubs' },
+    { key: 'talents', label: 'Clubs & Talents' },
     { key: 'students', label: 'Students' },
     { key: 'results', label: 'Results' },
     { key: 'announcements', label: 'Announcements' },
@@ -967,19 +980,44 @@ const SportTeacherPage = () => {
             ) : activeTab === 'talents' ? (
               <div className="sport-teacher-prototype-page">
                 <div className="sport-teacher-prototype-page-heading">
-                  <h1>Clubs</h1>
+                  <h1>Clubs & Talents</h1>
                   <p>{schoolName}</p>
                 </div>
-                {uniqueClubs.filter((club) => club.is_active).length ? (
-                  <div className="sport-teacher-club-list">
-                    {uniqueClubs.filter((club) => club.is_active).map((club) => (
-                      <button type="button" key={club.id} onClick={() => setSelectedClub(club)}>
-                        <strong>{club.name}</strong>
-                        <span>{club.focus || 'Sports club'}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : <p className="sport-teacher-empty-message">No clubs registered in this school yet.</p>}
+                <div className="sport-teacher-management-grid">
+                  <section className="sport-teacher-management-card">
+                    <div className="sport-teacher-card-heading">
+                      <h2>Clubs</h2>
+                    </div>
+                    {selectedClubs.length ? (
+                      <div className="sport-teacher-club-list">
+                        {selectedClubs.map((club) => (
+                          <button type="button" key={club.id} onClick={() => setSelectedClub(club)}>
+                            <strong>{club.name}</strong>
+                          </button>
+                        ))}
+                      </div>
+                    ) : <p className="sport-teacher-empty-message">No clubs selected for this school yet.</p>}
+                  </section>
+
+                  <section className="sport-teacher-management-card">
+                    <div className="sport-teacher-card-heading">
+                      <div>
+                        <h2>Talents</h2>
+                        <p>Talent categories in the system</p>
+                      </div>
+                      <strong>{new Set(talents.map((talent) => talent.category)).size}</strong>
+                    </div>
+                    <div className="sport-teacher-category-list">
+                      {[...new Set(talents.map((talent) => talent.category).filter(Boolean))].sort().map((category) => (
+                        <button type="button" key={category} onClick={() => setSelectedTalentCategory(category)}>
+                          <strong>{category.replace(/(^|_)\w/g, (letter) => letter.toUpperCase())}</strong>
+                          <span>{talents.filter((talent) => talent.category === category).length} talents</span>
+                        </button>
+                      ))}
+                      {!talents.some((talent) => talent.category) && <p className="sport-teacher-empty-message">No talent categories available.</p>}
+                    </div>
+                  </section>
+                </div>
               </div>
             ) : <p>{prototypeMessages[activeTab] || pageMessages[activeTab]}</p>}
           </>
@@ -988,13 +1026,34 @@ const SportTeacherPage = () => {
       {selectedClub && (
         <>
           <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close club management" onClick={() => setSelectedClub(null)} />
-          <aside className="sport-teacher-search-drawer" aria-label={`${selectedClub.name} management panel`}>
+          <aside className="sport-teacher-search-drawer" aria-label={`${selectedClub.name} club details`}>
             <div className="sport-teacher-search-drawer-header">
               <h2>{selectedClub.name}</h2>
               <button type="button" onClick={() => setSelectedClub(null)} aria-label="Close club management">&times;</button>
             </div>
-            <p className="sport-teacher-drawer-kicker">Club management</p>
-            <p>{selectedClub.focus || 'Manage this club and its sports activities.'}</p>
+            <p className="sport-teacher-drawer-kicker">Club details</p>
+            <p>{selectedClub.focus || 'This club is selected for the school.'}</p>
+            <p className="sport-teacher-drawer-note">Club editing and deletion are managed by the administrator.</p>
+          </aside>
+        </>
+      )}
+      {selectedTalentCategory && (
+        <>
+          <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close talent category" onClick={() => setSelectedTalentCategory(null)} />
+          <aside className="sport-teacher-search-drawer" aria-label={`${selectedTalentCategory} talents`}>
+            <div className="sport-teacher-search-drawer-header">
+              <h2>{selectedTalentCategory.replace(/(^|_)\w/g, (letter) => letter.toUpperCase())}</h2>
+              <button type="button" onClick={() => setSelectedTalentCategory(null)} aria-label="Close talent category">&times;</button>
+            </div>
+            <p className="sport-teacher-drawer-kicker">Talents in this category</p>
+            <div className="sport-teacher-drawer-list">
+              {talents.filter((talent) => talent.category === selectedTalentCategory).map((talent) => (
+                <div key={talent.id}>
+                  <strong>{talent.name}</strong>
+                  <span>{talent.description || 'Talent record'}</span>
+                </div>
+              ))}
+            </div>
           </aside>
         </>
       )}
