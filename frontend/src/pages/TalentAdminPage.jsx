@@ -53,6 +53,7 @@ export default function TalentAdminPage() {
   const [competitionsData, setCompetitionsData] = useState([]);
   const [studentsData, setStudentsData] = useState([]);
   const [usersData, setUsersData] = useState([]);
+    const [talentCategories, setTalentCategories] = useState([]);
   const [reportStats, setReportStats] = useState({
     region_managers: 0,
     district_managers: 0,

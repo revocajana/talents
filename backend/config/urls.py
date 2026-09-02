@@ -31,6 +31,7 @@ from core.views import (
     SchoolOwnershipTypeViewSet,
     RegistrationLocationsView,
     UserViewSet,
+    TalentCategoryViewSet,
     TalentViewSet,
     StudentTalentViewSet,
     AnnouncementViewSet,
@@ -62,6 +63,7 @@ router.register('school-ownership-types', SchoolOwnershipTypeViewSet)
 router.register('users', UserViewSet)
 router.register('students', StudentViewSet)
 router.register('parents', ParentViewSet)
+router.register('talent-categories', TalentCategoryViewSet)
 router.register('talents', TalentViewSet)
 router.register('student-talents', StudentTalentViewSet)
 router.register('announcements', AnnouncementViewSet)

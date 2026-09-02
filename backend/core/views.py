@@ -7,7 +7,7 @@ from django.db.models import Q
 
 from .models import (
     Country, Zone, Region, District, Ward, School, SchoolOwnershipType,
-    User, Talent, StudentTalent, Announcement, CountryClub, SchoolClub, ClubTeacher,
+    User, Talent, TalentCategory, StudentTalent, Announcement, CountryClub, SchoolClub, ClubTeacher,
     StudentClubMembership, EvaluationCriterion, TalentEvaluation, EvaluationScore,
     TalentSubmission, SubmissionFeedback, Message, Notification, AuditLog,
 )
@@ -21,6 +21,7 @@ from .serializers import (
     SchoolOwnershipTypeSerializer,
     UserSerializer,
     TalentSerializer,
+    TalentCategorySerializer,
     StudentTalentSerializer,
     AnnouncementSerializer,
     CountryClubSerializer, SchoolClubSerializer, ClubTeacherSerializer,
@@ -131,12 +132,23 @@ class UserViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
             'ward_managers': User.objects.filter(role='ward_manager').count(),
             'admins': User.objects.filter(is_staff=True, is_superuser=True).count(),
         })
+
+
+class TalentCategoryViewSet(viewsets.ModelViewSet):
+    queryset = TalentCategory.objects.all()
+    serializer_class = TalentCategorySerializer
+    filterset_fields = ['is_active']
+    search_fields = ['name', 'description']
+    permission_classes = [ConfigurationPermission]
+
+
 class TalentViewSet(viewsets.ModelViewSet):
-    queryset = Talent.objects.all()
+    queryset = Talent.objects.select_related('category').all()
     serializer_class = TalentSerializer
     filterset_fields = ['category']
     search_fields = ['name', 'description']
     permission_classes = [ConfigurationPermission]
+
 
 
 class StudentTalentViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):

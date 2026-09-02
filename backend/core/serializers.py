@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from .models import (
     Country, Zone, Region, District, Ward, School, SchoolOwnershipType, User,
-    Talent, StudentTalent, Announcement, CountryClub, SchoolClub, ClubTeacher,
+    Talent, TalentCategory, StudentTalent, Announcement, CountryClub, SchoolClub, ClubTeacher,
     StudentClubMembership, EvaluationCriterion, TalentEvaluation, EvaluationScore,
     TalentSubmission, SubmissionFeedback, Message, Notification, AuditLog,
 )
@@ -125,12 +125,19 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
+class TalentCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TalentCategory
+        fields = ['id', 'name', 'description', 'is_active', 'created_at']
+
+
 class TalentSerializer(serializers.ModelSerializer):
     student_count = serializers.SerializerMethodField()
+    category_name = serializers.CharField(source='category.name', read_only=True)
 
     class Meta:
         model = Talent
-        fields = ['id', 'name', 'category', 'description', 'student_count', 'created_at']
+        fields = ['id', 'name', 'category', 'category_name', 'description', 'student_count', 'created_at']
 
     def get_student_count(self, obj):
         return obj.students.count()
@@ -138,7 +145,7 @@ class TalentSerializer(serializers.ModelSerializer):
 
 class StudentTalentSerializer(serializers.ModelSerializer):
     talent_name = serializers.CharField(source='talent.name', read_only=True)
-    talent_category = serializers.CharField(source='talent.get_category_display', read_only=True)
+    talent_category = serializers.CharField(source='talent.category.name', read_only=True)
     student_name = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -322,69 +329,4 @@ class AuditLogSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['actor', 'created_at']
 
-
-class TalentSerializer(serializers.ModelSerializer):
-    student_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Talent
-        fields = ['id', 'name', 'category', 'description', 'student_count', 'created_at']
-
-    def get_student_count(self, obj):
-        return obj.students.count()
-
-
-class StudentTalentSerializer(serializers.ModelSerializer):
-    talent_name = serializers.CharField(source='talent.name', read_only=True)
-    talent_category = serializers.CharField(source='talent.get_category_display', read_only=True)
-    student_name = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = StudentTalent
-        fields = [
-            'id',
-            'student',
-            'student_name',
-            'talent',
-            'talent_name',
-            'talent_category',
-            'proficiency_level',
-            'notes',
-            'added_at',
-        ]
-
-    def validate(self, attrs):
-        student = attrs.get('student', getattr(self.instance, 'student', None))
-        if student:
-            existing = StudentTalent.objects.filter(student=student).exclude(pk=getattr(self.instance, 'pk', None)).count()
-            if existing >= 5:
-                raise serializers.ValidationError('A student may have at most five talents.')
-        return attrs
-
-    def get_student_name(self, obj):
-        return f"{obj.student.first_name} {obj.student.last_name}"
-
-
-class AnnouncementSerializer(serializers.ModelSerializer):
-    scope_display = serializers.CharField(source='get_scope_display', read_only=True)
-
-    class Meta:
-        model = Announcement
-        fields = [
-            'id',
-            'title',
-            'content',
-            'scope',
-            'scope_display',
-            'country',
-            'zone',
-            'region',
-            'district',
-            'school',
-            'is_active',
-            'published_at',
-            'expires_at',
-            'created_at',
-            'updated_at',
-        ]
 

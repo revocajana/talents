@@ -17,6 +17,7 @@ from .models import (
     User,
     Parent,
     Talent,
+    TalentCategory,
     StudentTalent,
     Announcement,
     CountryClub,
@@ -845,11 +846,24 @@ class StudentAdmin(admin.ModelAdmin):
     autocomplete_fields = ('school', 'parent')
 
 
+@admin.register(TalentCategory)
+class TalentCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'talent_count', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description')
+    readonly_fields = ('created_at',)
+
+    def talent_count(self, obj):
+        return obj.talents.count()
+    talent_count.short_description = '# Talents'
+
+
 @admin.register(Talent)
 class TalentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'student_count')
-    list_filter = ('category',)
+    list_display = ('name', 'category', 'student_count', 'created_at')
+    list_filter = ('category', 'created_at')
     search_fields = ('name', 'description')
+    readonly_fields = ('created_at',)
 
     def student_count(self, obj):
         return obj.students.count()

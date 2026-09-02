@@ -144,27 +144,33 @@ class Parent(models.Model):
         return self.full_name
 
 
-class Talent(models.Model):
-    """Represents a talent category (e.g., Music, Sports, Technology)."""
-    CATEGORY_CHOICES = [
-        ('music', 'Music'),
-        ('sports', 'Sports'),
-        ('technology', 'Technology'),
-        ('arts', 'Arts'),
-        ('academics', 'Academics'),
-        ('other', 'Other'),
-    ]
-
+class TalentCategory(models.Model):
+    """Admin-managed list of talent categories."""
     name = models.CharField(max_length=100, unique=True)
-    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = "Talent Categories"
+
+    def __str__(self):
+        return self.name
+
+
+class Talent(models.Model):
+    """Represents a talent (e.g., Piano, Basketball, Python Programming)."""
+    name = models.CharField(max_length=100, unique=True)
+    category = models.ForeignKey(TalentCategory, on_delete=models.PROTECT, related_name="talents")
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.get_category_display()})"
+        return f"{self.name} ({self.category.name})"
 
     class Meta:
-        ordering = ['category', 'name']
+        ordering = ['category__name', 'name']
 
 
 class StudentTalent(models.Model):

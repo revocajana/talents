@@ -407,10 +407,13 @@
 }
 
 .sport-teacher-drawer-list > div {
-  display: grid;
-  gap: 4px;
+  display: block;
   padding-bottom: 12px;
   border-bottom: 1px solid #eef2f7;
+}
+
+.sport-teacher-drawer-list strong {
+  color: #0f172a;
 }
 
 .sport-teacher-drawer-list span {
@@ -437,7 +440,7 @@
   right: 0;
   z-index: 201;
   display: grid;
-  width: min(380px, 92vw);
+  width: min(var(--drawer-width, 380px), 92vw);
   height: 100vh;
   align-content: start;
   gap: 10px;
@@ -470,6 +473,16 @@
   cursor: pointer;
 }
 
+.sport-teacher-drawer-resize-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -6px;
+  width: 12px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
 .sport-teacher-search-drawer label {
   color: #334155;
   font-size: 13px;
@@ -496,6 +509,79 @@
   margin: 0;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.sport-teacher-drawer-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+}
+
+.sport-teacher-search-input,
+.sport-teacher-sort-select {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: #0f172a;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.sport-teacher-search-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.sport-teacher-sort-select {
+  flex-shrink: 0;
+  min-width: 140px;
+}
+
+.sport-teacher-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.sport-teacher-sort-select {
+  background-color: white;
+  cursor: pointer;
+}
+
+.sport-teacher-sort-select:hover {
+  border-color: #94a3b8;
+}
+
+.sport-teacher-drawer-talent-item {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  color: #0f172a;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sport-teacher-drawer-talent-item:hover {
+  border-color: #4682b4;
+  background: #f8fafc;
+  box-shadow: 0 2px 8px rgba(70, 130, 180, 0.1);
+}
+
+.sport-teacher-drawer-talent-item strong {
+  color: #0f172a;
+}
+
+.sport-teacher-drawer-talent-item span {
+  color: #64748b;
+  margin-left: 6px;
 }
 
 @keyframes sport-teacher-drawer-in {

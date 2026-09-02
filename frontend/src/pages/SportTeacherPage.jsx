@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as apiService from '../services/apiService';
 import './SportTeacherPage.css';
@@ -19,6 +19,7 @@ const SportTeacherPage = () => {
   const [competitions, setCompetitions] = useState([]);
   const [participations, setParticipations] = useState([]);
   const [talents, setTalents] = useState([]);
+  const [talentCategories, setTalentCategories] = useState([]);
   const [eligibleStudents, setEligibleStudents] = useState([]);
   
   // Modal states
@@ -49,10 +50,32 @@ const SportTeacherPage = () => {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
   const [selectedTalentCategory, setSelectedTalentCategory] = useState(null);
+  const [drawerWidth, setDrawerWidth] = useState(380);
+  const [isResizingDrawer, setIsResizingDrawer] = useState(false);
+  const [selectedTalent, setSelectedTalent] = useState(null);
+  const [talentSearchQuery, setTalentSearchQuery] = useState('');
+  const [talentSortBy, setTalentSortBy] = useState('name');
   const [schoolRecord, setSchoolRecord] = useState(null);
 
   const schoolId = Number(user?.school?.id || user?.school_id || user?.school) || null;
   const schoolName = schoolRecord?.name || user?.school_name || user?.school?.name || 'Your School';
+
+  useEffect(() => {
+    if (!isResizingDrawer) return undefined;
+
+    const handlePointerMove = (event) => {
+      const nextWidth = window.innerWidth - event.clientX;
+      setDrawerWidth(Math.max(280, Math.min(nextWidth, Math.min(760, window.innerWidth - 24))));
+    };
+    const stopResizing = () => setIsResizingDrawer(false);
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResizing);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResizing);
+    };
+  }, [isResizingDrawer]);
 
   // Load data
   const loadData = useCallback(async () => {
@@ -69,6 +92,7 @@ const SportTeacherPage = () => {
       const [
         studentsRes,
         talentsRes,
+        talentCategoriesRes,
         studentTalentsRes,
         clubsRes,
         membershipsRes,
@@ -79,7 +103,8 @@ const SportTeacherPage = () => {
         schoolRes,
       ] = await Promise.all([
         apiService.getStudents({ school: schoolId }),
-        apiService.getTalents(),
+        apiService.getAllTalents ? apiService.getAllTalents() : apiService.getTalents(),
+        apiService.getTalentCategories ? apiService.getTalentCategories().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         apiService.getStudentTalents({ school: schoolId }),
         apiService.getClubs({ school: schoolId }),
         apiService.getClubMemberships({ school: schoolId }),
@@ -92,6 +117,7 @@ const SportTeacherPage = () => {
       
       setStudents(studentsRes.data.results || []);
       setTalents(talentsRes.data.results || []);
+      setTalentCategories(talentCategoriesRes.data.results || talentCategoriesRes.data || []);
       setStudentTalents(studentTalentsRes.data.results || []);
       setClubs(clubsRes.data.results || []);
       setClubMemberships(membershipsRes.data.results || []);
@@ -100,6 +126,7 @@ const SportTeacherPage = () => {
       setParticipations(participationsRes.data.results || []);
       setEligibleStudents(eligibleRes.data || []);
       setSchoolRecord(schoolRes.data);
+
       
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load data');
@@ -363,6 +390,22 @@ const SportTeacherPage = () => {
         club,
       ])
   ).values());
+
+  const categoriesList = useMemo(() => {
+    if (talentCategories && talentCategories.length > 0) {
+      return talentCategories.map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        count: talents.filter((t) => t.category_name === cat.name || Number(t.category) === Number(cat.id)).length,
+      }));
+    }
+    const setNames = [...new Set(talents.map((t) => t.category_name).filter(Boolean))];
+    return setNames.sort().map((name) => ({
+      name,
+      count: talents.filter((t) => t.category_name === name).length,
+    }));
+  }, [talentCategories, talents]);
+
 
   const getStatusBadge = (status, score) => {
     if (status === 'disqualified') {
@@ -1005,16 +1048,16 @@ const SportTeacherPage = () => {
                         <h2>Talents</h2>
                         <p>Talent categories in the system</p>
                       </div>
-                      <strong>{new Set(talents.map((talent) => talent.category)).size}</strong>
+                      <strong>{categoriesList.length}</strong>
                     </div>
                     <div className="sport-teacher-category-list">
-                      {[...new Set(talents.map((talent) => talent.category).filter(Boolean))].sort().map((category) => (
-                        <button type="button" key={category} onClick={() => setSelectedTalentCategory(category)}>
-                          <strong>{category.replace(/(^|_)\w/g, (letter) => letter.toUpperCase())}</strong>
-                          <span>{talents.filter((talent) => talent.category === category).length} talents</span>
+                      {categoriesList.map((category) => (
+                        <button type="button" key={category.name} onClick={() => setSelectedTalentCategory(category.name)}>
+                          <strong>{category.name.replace(/(^|_)\w/g, (letter) => letter.toUpperCase())}</strong>
+                          <span>{category.count} talents</span>
                         </button>
                       ))}
-                      {!talents.some((talent) => talent.category) && <p className="sport-teacher-empty-message">No talent categories available.</p>}
+                      {!categoriesList.length && <p className="sport-teacher-empty-message">No talent categories available.</p>}
                     </div>
                   </section>
                 </div>
@@ -1026,10 +1069,11 @@ const SportTeacherPage = () => {
       {selectedClub && (
         <>
           <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close club management" onClick={() => setSelectedClub(null)} />
-          <aside className="sport-teacher-search-drawer" aria-label={`${selectedClub.name} club details`}>
+          <aside className="sport-teacher-search-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label={`${selectedClub.name} club details`}>
+            <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
             <div className="sport-teacher-search-drawer-header">
               <h2>{selectedClub.name}</h2>
-              <button type="button" onClick={() => setSelectedClub(null)} aria-label="Close club management">&times;</button>
+              <button type="button" onClick={() => { setSelectedClub(null); setDrawerWidth(380); }} aria-label="Close club management">&times;</button>
             </div>
             <p className="sport-teacher-drawer-kicker">Club details</p>
             <p>{selectedClub.focus || 'This club is selected for the school.'}</p>
@@ -1037,22 +1081,77 @@ const SportTeacherPage = () => {
           </aside>
         </>
       )}
-      {selectedTalentCategory && (
+      {selectedTalentCategory && !selectedTalent && (
         <>
           <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close talent category" onClick={() => setSelectedTalentCategory(null)} />
-          <aside className="sport-teacher-search-drawer" aria-label={`${selectedTalentCategory} talents`}>
+          <aside className="sport-teacher-search-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label={`${selectedTalentCategory} talents`}>
+            <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
             <div className="sport-teacher-search-drawer-header">
               <h2>{selectedTalentCategory.replace(/(^|_)\w/g, (letter) => letter.toUpperCase())}</h2>
-              <button type="button" onClick={() => setSelectedTalentCategory(null)} aria-label="Close talent category">&times;</button>
+              <button type="button" onClick={() => { setSelectedTalentCategory(null); setDrawerWidth(380); setTalentSearchQuery(''); }} aria-label="Close talent category">&times;</button>
             </div>
-            <p className="sport-teacher-drawer-kicker">Talents in this category</p>
+            <div className="sport-teacher-drawer-controls">
+              <input type="text" placeholder="Search talents..." value={talentSearchQuery} onChange={(e) => setTalentSearchQuery(e.target.value)} className="sport-teacher-search-input" aria-label="Search talents" />
+              <select value={talentSortBy} onChange={(e) => setTalentSortBy(e.target.value)} className="sport-teacher-sort-select" aria-label="Sort talents">
+                <option value="name">Sort by name</option>
+                <option value="students">Sort by students</option>
+              </select>
+            </div>
             <div className="sport-teacher-drawer-list">
-              {talents.filter((talent) => talent.category === selectedTalentCategory).map((talent) => (
-                <div key={talent.id}>
-                  <strong>{talent.name}</strong>
+              {talents
+                .filter((talent) => {
+                  const matchesCategory =
+                    talent.category_name === selectedTalentCategory ||
+                    talentCategories.some(
+                      (c) => c.name === selectedTalentCategory && (Number(talent.category) === Number(c.id) || talent.category === c.name)
+                    );
+                  const matchesSearch = talent.name.toLowerCase().includes(talentSearchQuery.toLowerCase());
+                  return matchesCategory && matchesSearch;
+                })
+
+                .sort((a, b) => {
+                  if (talentSortBy === 'students') {
+                    const aCount = studentTalents.filter((st) => st.talent === a.id).length;
+                    const bCount = studentTalents.filter((st) => st.talent === b.id).length;
+                    return bCount - aCount;
+                  }
+                  return a.name.localeCompare(b.name);
+                })
+                .map((talent) => (
+                <button type="button" key={talent.id} onClick={() => setSelectedTalent(talent)} className="sport-teacher-drawer-talent-item">
+                  <strong>{talent.name}:</strong>{' '}
                   <span>{talent.description || 'Talent record'}</span>
-                </div>
+                </button>
               ))}
+            </div>
+          </aside>
+        </>
+      )}
+      {selectedTalent && (
+        <>
+          <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close talent details" onClick={() => setSelectedTalent(null)} />
+          <aside className="sport-teacher-search-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label={`${selectedTalent.name} students`}>
+            <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
+            <div className="sport-teacher-search-drawer-header">
+              <h2>{selectedTalent.name}</h2>
+              <button type="button" onClick={() => setSelectedTalent(null)} aria-label="Close talent details">&times;</button>
+            </div>
+            <p className="sport-teacher-drawer-kicker">Students with this talent</p>
+            <div className="sport-teacher-drawer-list">
+              {studentTalents
+                .filter((st) => st.talent === selectedTalent.id)
+                .map((st) => {
+                  const student = students.find((s) => s.id === st.student);
+                  return (
+                    <div key={st.id}>
+                      <strong>{student?.first_name} {student?.last_name}</strong>
+                      <span>{student?.student_id || 'Student record'}</span>
+                    </div>
+                  );
+                })}
+              {studentTalents.filter((st) => st.talent === selectedTalent.id).length === 0 && (
+                <p className="sport-teacher-empty-message">No student has this talent in your school.</p>
+              )}
             </div>
           </aside>
         </>

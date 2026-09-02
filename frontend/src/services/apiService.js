@@ -138,10 +138,13 @@ export const deleteUser = (id) => api.delete(`/users/${id}/`);
 // ==================== TALENT SYSTEM ====================
 
 export const getTalents = (params = {}) => api.get('/talents/', { params });
+export const getAllTalents = (params = {}) => getAllRecords('/talents/', params);
+export const getTalentCategories = (params = {}) => api.get('/talent-categories/', { params });
 export const getTalentById = (id) => api.get(`/talents/${id}/`);
 export const createTalent = (data) => api.post('/talents/', data);
 export const updateTalent = (id, data) => api.put(`/talents/${id}/`, data);
 export const deleteTalent = (id) => api.delete(`/talents/${id}/`);
+
 
 export const getStudentTalents = (params = {}) => api.get('/student-talents/', { params });
 export const getStudentTalentById = (id) => api.get(`/student-talents/${id}/`);
