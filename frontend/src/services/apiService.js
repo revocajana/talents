@@ -214,6 +214,7 @@ export const getResults = (params = {}) => api.get('/results/', { params });
 export const getResultById = (id) => api.get(`/results/${id}/`);
 export const createResult = (data) => api.post('/results/', data);
 export const promoteStudents = (data) => api.post('/result-promotions/promote/', data);
+export const getResultPromotions = (params = {}) => api.get('/result-promotions/', { params });
 
 export const getResultDetails = (params = {}) => api.get('/result-details/', { params });
 export const getResultDetailById = (id) => api.get(`/result-details/${id}/`);

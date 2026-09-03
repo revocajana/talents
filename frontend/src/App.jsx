@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import CommonDashboardPage from './pages/CommonDashboardPage';
 import SportTeacherPage from './pages/SportTeacherPage';
+import DistrictManagerPage from './pages/DistrictManagerPage';
 import SchoolRegistrationPage from './pages/SchoolRegistrationPage';
 import './App.css';
 
@@ -67,7 +68,7 @@ const AppRoutes = () => {
         path="/dashboard/district-manager"
         element={
           <ProtectedRoute requiredRole="district_manager">
-            <CommonDashboardPage />
+            <DistrictManagerPage />
           </ProtectedRoute>
         }
       />
