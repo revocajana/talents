@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import CommonDashboardPage from './pages/CommonDashboardPage';
 import SportTeacherPage from './pages/SportTeacherPage';
 import DistrictManagerPage from './pages/DistrictManagerPage';
+import TalentAdminPage from './pages/TalentAdminPage';
 import SchoolRegistrationPage from './pages/SchoolRegistrationPage';
 import './App.css';
 
@@ -41,7 +42,7 @@ const AppRoutes = () => {
         path="/dashboard/talent-admin"
         element={
           <ProtectedRoute requiredRole="talent_admin">
-            <CommonDashboardPage />
+            <TalentAdminPage />
           </ProtectedRoute>
         }
       />

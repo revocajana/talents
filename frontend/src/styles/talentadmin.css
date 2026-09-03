@@ -1,5 +1,229 @@
 /* Talent Admin Dashboard Styles */
 
+.talent-admin-page {
+  min-height: 100vh;
+}
+
+.talent-admin-page .sport-teacher-navigation button.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+  box-shadow: inset 3px 0 0 #f6c90e;
+}
+
+.talent-admin-content {
+  width: calc(100% - 240px);
+  min-width: 0;
+  margin-left: 240px;
+  padding: 40px 32px;
+  box-sizing: border-box;
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.talent-admin-inner {
+  width: min(100%, 1100px);
+  margin: 0 auto;
+}
+
+.talent-admin-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.talent-admin-page-heading h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(24px, 4vw, 36px);
+}
+
+.talent-admin-page-heading p:last-child {
+  margin: 8px 0 0;
+  color: #64748b;
+}
+
+.talent-admin-page .cards-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.talent-admin-page[data-active-tab] .cards-container > .admin-section {
+  display: none;
+}
+
+.talent-admin-page[data-active-tab="overview"] .cards-container > #reports,
+.talent-admin-page[data-active-tab="users"] .cards-container > #users,
+.talent-admin-page[data-active-tab="schools"] .cards-container > #schools-locations,
+.talent-admin-page[data-active-tab="clubs"] .cards-container > #clubs,
+.talent-admin-page[data-active-tab="talents"] .cards-container > #talents-list,
+.talent-admin-page[data-active-tab="competitions"] .cards-container > #competitions,
+.talent-admin-page[data-active-tab="results"] .cards-container > #system-results,
+.talent-admin-page[data-active-tab="announcements"] .cards-container > #system-announcements {
+  display: block;
+}
+
+.talent-admin-page .admin-section {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #dbe4ee;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.talent-admin-page .admin-section:hover {
+  transform: none;
+}
+
+.talent-admin-page .section-header h2 {
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.talent-admin-page .section-header p {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.talent-admin-data-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.talent-admin-data-grid button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+}
+
+.talent-admin-data-grid button:hover,
+.talent-admin-data-grid button:focus-visible {
+  border-color: #4682b4;
+  background: #f5f9fc;
+}
+
+.talent-admin-data-grid span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.talent-admin-data-grid strong {
+  color: #4682b4;
+  font-size: 22px;
+}
+
+.talent-admin-announcement-list {
+  display: grid;
+  gap: 12px;
+}
+
+.talent-admin-announcement-list article {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.talent-admin-announcement-list h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.talent-admin-announcement-list p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.talent-admin-announcement-list article > span {
+  flex-shrink: 0;
+  color: #4682b4;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.talent-admin-alert {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(100%, 1100px);
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  border-left: 4px solid #dc2626;
+  border-radius: 6px;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.talent-admin-alert button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.talent-admin-slide-over-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1200 !important;
+  display: block !important;
+  padding: 0 !important;
+  background: rgba(15, 23, 42, 0.32) !important;
+}
+
+.talent-admin-slide-over {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 1201 !important;
+  width: min(560px, 92vw) !important;
+  max-width: none !important;
+  max-height: 100vh !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 24px !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  box-shadow: -12px 0 30px rgba(15, 23, 42, 0.2) !important;
+  animation: talent-admin-slide-over-in 0.2s ease-out;
+}
+
+.talent-admin-slide-over::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  background: #4682b4;
+}
+
+@keyframes talent-admin-slide-over-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
 .admin-content {
   flex: 1;
   padding: 2rem;
@@ -288,6 +512,32 @@
     grid-template-columns: repeat(7, minmax(130px, 1fr));
     overflow-x: auto;
     padding-bottom: 0.25rem;
+  }
+}
+
+@media (max-width: 980px) {
+  .talent-admin-content {
+    width: 100%;
+    margin-left: 0;
+    padding: 32px 20px;
+  }
+
+  .talent-admin-data-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .talent-admin-slide-over {
+    width: min(560px, 94vw) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .talent-admin-page-heading {
+    display: block;
+  }
+
+  .talent-admin-data-grid {
+    grid-template-columns: 1fr;
   }
 }
 

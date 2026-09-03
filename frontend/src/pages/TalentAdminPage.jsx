@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Header } from '../components/shared';
+import { useAuth } from '../context/AuthContext';
 import * as apiService from '../services/apiService';
-import '../styles/dashboard.css';
+import logo from '../assets/Logo1.png';
+import './SportTeacherPage.css';
 import '../styles/talentadmin.css';
 
 export default function TalentAdminPage() {
+  const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -26,12 +28,10 @@ export default function TalentAdminPage() {
   const [editingTalentId, setEditingTalentId] = useState(null);
   const [clubsData, setClubsData] = useState([]);
   const [clubTeachersData, setClubTeachersData] = useState([]);
-  const [clubTalentsData, setClubTalentsData] = useState([]);
   const [clubMembershipsData, setClubMembershipsData] = useState([]);
   const [selectedClubId, setSelectedClubId] = useState('');
   const [clubForm, setClubForm] = useState({ name: '', focus: '', description: '', school: '' });
   const [clubTeacherForm, setClubTeacherForm] = useState({ teacher: '' });
-  const [clubTalentForm, setClubTalentForm] = useState({ talent: '' });
   const [editingClubId, setEditingClubId] = useState(null);
   const [clubsPage, setClubsPage] = useState(0);
   const [clubSearch, setClubSearch] = useState('');
@@ -53,6 +53,11 @@ export default function TalentAdminPage() {
   const [competitionsData, setCompetitionsData] = useState([]);
   const [studentsData, setStudentsData] = useState([]);
   const [usersData, setUsersData] = useState([]);
+  const [participationsData, setParticipationsData] = useState([]);
+  const [resultsData, setResultsData] = useState([]);
+  const [announcementsData, setAnnouncementsData] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [navigationOpen, setNavigationOpen] = useState(false);
   const [reportStats, setReportStats] = useState({
     region_managers: 0,
     district_managers: 0,
@@ -82,6 +87,18 @@ export default function TalentAdminPage() {
   const usersForModal = selectedUserRole
     ? usersData.filter((user) => user.role === selectedUserRole)
     : usersData;
+
+  const adminNavigation = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'users', label: 'Users & Staff' },
+    { key: 'schools', label: 'Schools & Locations' },
+    { key: 'clubs', label: 'Clubs' },
+    { key: 'talents', label: 'Talents' },
+    { key: 'competitions', label: 'Competitions' },
+    { key: 'results', label: 'Results' },
+    { key: 'announcements', label: 'Announcements' },
+  ];
+  const activeNavigationLabel = adminNavigation.find((item) => item.key === activeTab)?.label || 'Overview';
 
   const getNameById = (collection, id) => {
     if (!id || !Array.isArray(collection)) return '';
@@ -174,7 +191,7 @@ export default function TalentAdminPage() {
         setLoading(true);
         setError(null);
 
-        const [talentsRes, talentCategoriesRes, competitionsRes, usersRes, userStatsRes, studentsRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, schoolsRes] = await Promise.all([
+        const [talentsRes, talentCategoriesRes, competitionsRes, usersRes, userStatsRes, studentsRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, schoolsRes, participationsRes, resultsRes, announcementsRes] = await Promise.all([
           apiService.getTalents(),
           apiService.getTalentCategories({ is_active: true }),
           apiService.getCompetitions(),
@@ -187,11 +204,13 @@ export default function TalentAdminPage() {
           apiService.getAllDistricts(),
           apiService.getAllWards(),
           apiService.getAllSchools(),
+          apiService.getParticipations(),
+          apiService.getResults(),
+          apiService.getAnnouncements({ is_active: true }),
         ]);
-        const [clubsRes, clubTeachersRes, clubTalentsRes, clubMembershipsRes] = await Promise.all([
+        const [clubsRes, clubTeachersRes, clubMembershipsRes] = await Promise.all([
           apiService.getClubs(),
           apiService.getClubTeachers(),
-          apiService.getClubTalents(),
           apiService.getClubMemberships(),
         ]);
 
@@ -200,9 +219,11 @@ export default function TalentAdminPage() {
         setCompetitionsData(competitionsRes.data.results || []);
         setStudentsData(studentsRes.data.results || []);
         setUsersData(usersRes.data.results || []);
+        setParticipationsData(participationsRes.data.results || []);
+        setResultsData(resultsRes.data.results || []);
+        setAnnouncementsData(announcementsRes.data.results || []);
         setClubsData(clubsRes.data.results || []);
         setClubTeachersData(clubTeachersRes.data.results || []);
-        setClubTalentsData(clubTalentsRes.data.results || []);
         setClubMembershipsData(clubMembershipsRes.data.results || []);
         setReportStats({
           ...userStatsRes.data,
@@ -667,7 +688,6 @@ export default function TalentAdminPage() {
       await apiService.deleteClub(clubId);
       setClubsData((current) => current.filter((club) => club.id !== clubId));
       setClubTeachersData((current) => current.filter((assignment) => assignment.club !== clubId));
-      setClubTalentsData((current) => current.filter((assignment) => assignment.club !== clubId));
       setClubMembershipsData((current) => current.filter((membership) => membership.club !== clubId));
       setClubsPage((currentPage) => Math.min(currentPage, Math.max(0, Math.ceil((clubsData.length - 1) / clubsPageSize) - 1)));
       if (selectedClubId === clubId) setSelectedClubId('');
@@ -721,21 +741,8 @@ export default function TalentAdminPage() {
     }
   };
 
-  const handleAssignClubTalent = async (event) => {
-    event.preventDefault();
-    if (!selectedClubId || !clubTalentForm.talent) return;
-    try {
-      const response = await apiService.createClubTalent({ club: selectedClubId, talent: clubTalentForm.talent });
-      setClubTalentsData((current) => [...current, response.data]);
-      setClubTalentForm({ talent: '' });
-    } catch (err) {
-      alert(`Failed to assign talent: ${err.response?.data?.detail || err.message}`);
-    }
-  };
-
   const selectedClub = clubsData.find((club) => String(club.id) === String(selectedClubId));
   const selectedClubTeachers = clubTeachersData.filter((assignment) => String(assignment.club) === String(selectedClubId));
-  const selectedClubTalents = clubTalentsData.filter((assignment) => String(assignment.club) === String(selectedClubId));
   const selectedClubMembers = clubMembershipsData.filter((membership) => String(membership.club) === String(selectedClubId) && membership.is_active);
   const clubsPageSize = 4;
   const filterSchools = demographicData.schools.filter((school) => {
@@ -783,13 +790,40 @@ export default function TalentAdminPage() {
   const displayedClubs = filteredClubs.slice(clubsPage * clubsPageSize, (clubsPage + 1) * clubsPageSize);
 
   return (
-    <div className="page-container">
-      <Header title="Talent Management" />
-      {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+    <div className="sport-teacher-page talent-admin-page" data-active-tab={activeTab}>
+      <header className="sport-teacher-app-bar">
+        <div className="sport-teacher-brand">
+          <img src={logo} alt="Talanta logo" />
+          <span>Talanta Management System</span>
+        </div>
+        <div className="sport-teacher-app-actions">
+          <button type="button" className="sport-teacher-navigation-toggle" onClick={() => setNavigationOpen((open) => !open)} aria-label="Open navigation menu" aria-expanded={navigationOpen} title="Open navigation menu">
+            <span /><span /><span />
+          </button>
+        </div>
+      </header>
+      <aside className={`sport-teacher-navigation ${navigationOpen ? 'is-open' : ''}`}>
+        <div className="sport-teacher-navigation-heading">Talent Administration</div>
+        {adminNavigation.map((item) => (
+          <button type="button" key={item.key} className={activeTab === item.key ? 'active' : ''} aria-current={activeTab === item.key ? 'page' : undefined} onClick={() => {
+            setActiveTab(item.key);
+            setNavigationOpen(false);
+          }}>
+            {item.label}
+          </button>
+        ))}
+        <button type="button" className="sport-teacher-logout-button" onClick={logout}>Logout</button>
+      </aside>
+      <main className="sport-teacher-prototype-content talent-admin-content">
+      {error && <div className="talent-admin-alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Dismiss error">&times;</button></div>}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
       ) : (
-      <main className="admin-content">
+        <div className="talent-admin-inner">
+        <div className="talent-admin-page-heading" id="overview">
+          <div><p className="sport-teacher-eyebrow">Talent Administration</p><h1>{activeNavigationLabel}</h1><p>Manage the network and monitor activity across all locations.</p></div>
+          <span className="sport-teacher-date">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+        </div>
         <div className="cards-container">
           {/* Registered Talents Card */}
           <section className="admin-section compact-card" id="talents-list">
@@ -962,6 +996,43 @@ export default function TalentAdminPage() {
             )}
           </section>
 
+          <section className="admin-section" id="schools-locations">
+            <div className="section-header">
+              <h2>Schools &amp; Locations</h2>
+              <p>Manage the geographic structures used across the network.</p>
+            </div>
+            <div className="talent-admin-data-grid">
+              {[
+                ['Countries', reportStats.countries, 'countries'],
+                ['Zones', reportStats.zones, 'zones'],
+                ['Regions', reportStats.regions, 'regions'],
+                ['Districts', reportStats.districts, 'districts'],
+                ['Wards', reportStats.wards, 'wards'],
+                ['Schools', reportStats.schools, 'schools'],
+              ].map(([label, value, type]) => (
+                <button type="button" key={type} onClick={() => openDemographicModal(type)}>
+                  <span>{label}</span><strong>{value}</strong>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-section" id="system-results">
+            <div className="section-header"><h2>System Results</h2><p>Results and participation activity across all competition levels.</p></div>
+            <div className="table-container"><table className="data-table"><thead><tr><th>Participation</th><th>Score</th><th>Grade</th><th>Approval</th></tr></thead><tbody>
+              {resultsData.slice(0, 8).map((result) => <tr key={result.id}><td>{result.participation_details || `Participation ${result.participation}`}</td><td>{result.score ?? '—'}</td><td>{result.grade || '—'}</td><td>{result.approval_status || 'Pending'}</td></tr>)}
+              {!resultsData.length && <tr><td colSpan="4">No results recorded.</td></tr>}
+            </tbody></table></div>
+          </section>
+
+          <section className="admin-section" id="system-announcements">
+            <div className="section-header"><h2>System Announcements</h2><p>Published notices across the talent network.</p></div>
+            <div className="talent-admin-announcement-list">
+              {announcementsData.slice(0, 6).map((announcement) => <article key={announcement.id}><div><h3>{announcement.title}</h3><p>{announcement.content || 'No details available.'}</p></div><span>{announcement.scope_display || announcement.scope || 'National'}</span></article>)}
+              {!announcementsData.length && <p>No announcements published.</p>}
+            </div>
+          </section>
+
           {/* Users & Staff Card */}
           <section className="admin-section compact-card" id="users">
             <div className="section-header">
@@ -1040,12 +1111,13 @@ export default function TalentAdminPage() {
             </div>
           </section>
         </div>
-      </main>
+        </div>
       )}
+      </main>
 
       {editingClubId && (
-        <div className="modal-backdrop" onClick={() => setEditingClubId(null)}>
-          <div className="compact-modal club-edit-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-backdrop talent-admin-slide-over-backdrop" onClick={() => setEditingClubId(null)}>
+          <div className="compact-modal club-edit-modal talent-admin-slide-over" onClick={(event) => event.stopPropagation()}>
             <div className="modal-heading">
               <h3>Edit Club</h3>
               <button type="button" className="modal-close-action" onClick={() => setEditingClubId(null)} aria-label="Close club editor">×</button>
@@ -1062,7 +1134,7 @@ export default function TalentAdminPage() {
       )}
 
       {showDemographicModal && (
-        <div
+        <div className="talent-admin-slide-over-backdrop"
           onClick={closeDemographicModal}
           style={{
             position: 'fixed',
@@ -1076,7 +1148,7 @@ export default function TalentAdminPage() {
           }}
         >
           <div
-            className="compact-modal"
+            className="compact-modal talent-admin-slide-over"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
@@ -1221,7 +1293,7 @@ export default function TalentAdminPage() {
       )}
 
       {showAddTalentModal && (
-        <div
+        <div className="talent-admin-slide-over-backdrop"
           onClick={closeTalentModal}
           style={{
             position: 'fixed',
@@ -1235,7 +1307,7 @@ export default function TalentAdminPage() {
           }}
         >
           <div
-            className="compact-modal"
+            className="compact-modal talent-admin-slide-over"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
@@ -1313,7 +1385,7 @@ export default function TalentAdminPage() {
       )}
 
       {showTalentListModal && (
-        <div
+        <div className="talent-admin-slide-over-backdrop"
           onClick={() => setShowTalentListModal(false)}
           style={{
             position: 'fixed',
@@ -1327,7 +1399,7 @@ export default function TalentAdminPage() {
           }}
         >
           <div
-            className="compact-modal"
+            className="compact-modal talent-admin-slide-over"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
@@ -1402,7 +1474,7 @@ export default function TalentAdminPage() {
       )}
 
       {showCompetitionListModal && (
-        <div
+        <div className="talent-admin-slide-over-backdrop"
           onClick={() => setShowCompetitionListModal(false)}
           style={{
             position: 'fixed',
@@ -1416,7 +1488,7 @@ export default function TalentAdminPage() {
           }}
         >
           <div
-            className="compact-modal"
+            className="compact-modal talent-admin-slide-over"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
@@ -1467,7 +1539,7 @@ export default function TalentAdminPage() {
       )}
 
       {showUserListModal && (
-        <div
+        <div className="talent-admin-slide-over-backdrop"
           onClick={closeUserListModal}
           style={{
             position: 'fixed',
@@ -1481,7 +1553,7 @@ export default function TalentAdminPage() {
           }}
         >
           <div
-            className="compact-modal"
+            className="compact-modal talent-admin-slide-over"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
@@ -1571,7 +1643,7 @@ export default function TalentAdminPage() {
       )}
 
       {showUserEditModal && (
-        <div
+        <div className="talent-admin-slide-over-backdrop"
           onClick={() => setShowUserEditModal(false)}
           style={{
             position: 'fixed',
@@ -1584,7 +1656,7 @@ export default function TalentAdminPage() {
             padding: '1rem',
           }}
         >
-          <div className="compact-modal" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: '420px', background: '#fff' }}>
+          <div className="compact-modal talent-admin-slide-over" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: '420px', background: '#fff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, color: '#111827' }}>{editingUserId ? 'Edit User' : 'Add User'}</h3>
               <button type="button" className="modal-close-action" onClick={() => setShowUserEditModal(false)} aria-label="Close edit user modal">×</button>
