@@ -586,6 +586,57 @@
   margin-left: 6px;
 }
 
+.sport-teacher-registration-drawer {
+  top: 0;
+  right: 0;
+  z-index: 1201;
+  display: grid;
+  visibility: visible;
+  overflow-y: auto;
+}
+
+.sport-teacher-registration-backdrop {
+  z-index: 1200;
+}
+
+.sport-teacher-registration-drawer form {
+  color: #374151;
+}
+
+.sport-teacher-optional-label {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.sport-teacher-registration-assignment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.sport-teacher-registration-assignment-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sport-teacher-registration-assignment-grid select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  color: #111827;
+  font: inherit;
+}
+
+.sport-teacher-registration-assignment-grid select[multiple] {
+  min-height: 120px;
+}
+
 @keyframes sport-teacher-drawer-in {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
@@ -851,5 +902,9 @@
 
   .page-title {
     font-size: 22px;
+  }
+
+  .sport-teacher-registration-assignment-grid {
+    grid-template-columns: 1fr;
   }
 }
