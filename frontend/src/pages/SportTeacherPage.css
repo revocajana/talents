@@ -173,6 +173,8 @@
 
 .sport-teacher-prototype-content {
   display: block;
+  width: calc(100% - 240px);
+  margin-left: 240px;
   min-height: calc(100vh - 72px);
   padding: 40px 32px;
   box-sizing: border-box;
@@ -607,6 +609,7 @@
 .sport-teacher-layout {
   display: flex;
   min-height: calc(100vh - 72px);
+  align-items: stretch;
 }
 
 .sport-teacher-sidebar {
@@ -624,6 +627,7 @@
 
 .sport-teacher-main {
   flex: 1;
+  min-width: 0;
   padding: 24px;
   overflow-x: hidden;
 }
@@ -795,6 +799,8 @@
   }
 
   .sport-teacher-prototype-content {
+    width: 100%;
+    margin-left: 0;
     min-height: calc(100vh - 64px);
     padding: 32px 20px;
     font-size: 20px;
@@ -838,6 +844,8 @@
   }
 
   .sport-teacher-main {
+    width: 100%;
+    min-width: 0;
     padding: 16px;
   }
 

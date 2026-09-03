@@ -19,6 +19,7 @@ const SportTeacherPage = () => {
   const [competitions, setCompetitions] = useState([]);
   const [participations, setParticipations] = useState([]);
   const [talents, setTalents] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [eligibleStudents, setEligibleStudents] = useState([]);
   
   // Modal states
@@ -97,6 +98,7 @@ const SportTeacherPage = () => {
         evaluationsRes,
         competitionsRes,
         participationsRes,
+        announcementsRes,
         eligibleRes,
         schoolRes,
       ] = await Promise.all([
@@ -108,6 +110,7 @@ const SportTeacherPage = () => {
         apiService.getEvaluations({ school: schoolId }),
         apiService.getCompetitions({ school: schoolId }),
         apiService.getParticipations({ school: schoolId }),
+        apiService.getAnnouncements({ is_active: true }),
         apiService.getEligibleForPromotion().catch(() => ({ data: [] })),
         apiService.getSchoolById(schoolId),
       ]);
@@ -120,6 +123,7 @@ const SportTeacherPage = () => {
       setEvaluations(evaluationsRes.data.results || []);
       setCompetitions(competitionsRes.data.results || []);
       setParticipations(participationsRes.data.results || []);
+      setAnnouncements(announcementsRes.data.results || []);
       setEligibleStudents(eligibleRes.data || []);
       setSchoolRecord(schoolRes.data);
       
@@ -358,6 +362,18 @@ const SportTeacherPage = () => {
     return c?.name || 'Unknown';
   };
 
+  const relevantAnnouncements = announcements.filter((announcement) => {
+    if (!announcement.is_active || (announcement.expires_at && new Date(announcement.expires_at) < new Date())) return false;
+    const scopeIds = {
+      national: true,
+      school: Number(announcement.school) === schoolId,
+      district: Number(announcement.district) === Number(schoolRecord?.district),
+      region: Number(announcement.region) === Number(schoolRecord?.region),
+      zone: Number(announcement.zone) === Number(schoolRecord?.zone),
+    };
+    return scopeIds[announcement.scope] || false;
+  });
+
   const getStudentTalentNames = (studentId) => {
     const talents = studentTalents.filter(st => st.student === studentId);
     return talents.map(t => t.talent_name || 'Talent').join(', ') || 'None';
@@ -433,15 +449,55 @@ const SportTeacherPage = () => {
       case 'students':
         return renderStudents();
       case 'talents':
-        return renderTalentClubManagement();
+        return renderClubsAndTalents();
       case 'results':
         return renderResults();
+      case 'announcements':
+        return renderAnnouncements();
       case 'upload':
         return renderUpload();
       default:
         return renderDashboard();
     }
   };
+
+  const renderClubsAndTalents = () => (
+    <div className="sport-teacher-prototype-page">
+      <div className="sport-teacher-prototype-page-heading">
+        <h1>Clubs &amp; Talents</h1>
+        <p>{schoolName}</p>
+      </div>
+      <div className="sport-teacher-management-grid">
+        <section className="sport-teacher-management-card">
+          <div className="sport-teacher-card-heading"><h2>Clubs</h2></div>
+          {selectedClubs.length ? (
+            <div className="sport-teacher-club-list">
+              {selectedClubs.map((club) => (
+                <button type="button" key={club.id} onClick={() => setSelectedClub(club)}>
+                  <strong>{club.name}</strong>
+                </button>
+              ))}
+            </div>
+          ) : <p className="sport-teacher-empty-message">No clubs selected for this school yet.</p>}
+        </section>
+        <section className="sport-teacher-management-card">
+          <div className="sport-teacher-card-heading">
+            <div><h2>Talents</h2><p>Talent categories in the system</p></div>
+            <strong>{new Set(talents.map((talent) => talent.category_name).filter(Boolean)).size}</strong>
+          </div>
+          <div className="sport-teacher-category-list">
+            {[...new Set(talents.map((talent) => talent.category_name).filter(Boolean))].sort().map((category) => (
+              <button type="button" key={category} onClick={() => setSelectedTalentCategory(category)}>
+                <strong>{category}</strong>
+                <span>{talents.filter((talent) => talent.category_name === category).length} talents</span>
+              </button>
+            ))}
+            {!talents.some((talent) => talent.category_name) && <p className="sport-teacher-empty-message">No talent categories available.</p>}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
 
   // DASHBOARD VIEW
   const renderDashboard = () => (
@@ -472,7 +528,6 @@ const SportTeacherPage = () => {
         <div className="quick-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
           <button onClick={() => openModal('registerStudent')} style={actionBtnStyle}>Register Student</button>
           <button onClick={() => openModal('assignTalent')} style={actionBtnStyle}>Assign Talent</button>
-          <button onClick={() => openModal('createClub')} style={actionBtnStyle}>Create Club</button>
           <button onClick={() => openModal('recordResult')} style={actionBtnStyle}>Record Result</button>
           <button onClick={() => openModal('uploadExcel')} style={actionBtnStyle}>Upload Excel</button>
         </div>
@@ -657,7 +712,6 @@ const SportTeacherPage = () => {
     <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>School Clubs</span>
-        <button onClick={() => openModal('createClub')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Create Club</button>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
@@ -665,17 +719,15 @@ const SportTeacherPage = () => {
             <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Club Name</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Focus</th>
-              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Talents</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Students</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Status</th>
             </tr>
           </thead>
           <tbody>
-            {uniqueClubs.map((club) => (
+            {schoolClubs.map((club) => (
               <tr key={club.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                 <td style={{ padding: '10px 16px', fontWeight: '500' }}>{club.name}</td>
                 <td style={{ padding: '10px 16px' }}>{club.focus || '—'}</td>
-                <td style={{ padding: '10px 16px' }}>{getClubTalentNames(club.id)}</td>
                 <td style={{ padding: '10px 16px' }}>{clubMemberships.filter(m => Number(m.club) === Number(club.id) && m.is_active).length}</td>
                 <td style={{ padding: '10px 16px' }}>
                   <span style={{ display: 'inline-block', padding: '2px 10px', background: club.is_active ? '#dcfce7' : '#f3f4f6', color: club.is_active ? '#15803d' : '#6b7280', borderRadius: '12px', fontSize: '12px' }}>
@@ -684,7 +736,7 @@ const SportTeacherPage = () => {
                 </td>
               </tr>
             ))}
-            {uniqueClubs.length === 0 && (
+            {schoolClubs.length === 0 && (
               <tr><td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No clubs created</td></tr>
             )}
           </tbody>
@@ -699,7 +751,6 @@ const SportTeacherPage = () => {
       <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Clubs</span>
-          <button onClick={() => openModal('createClub')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Create Club</button>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
@@ -707,17 +758,15 @@ const SportTeacherPage = () => {
               <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
                 <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Club Name</th>
                 <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Focus</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Talents</th>
                 <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Students</th>
                 <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Status</th>
               </tr>
             </thead>
             <tbody>
-              {uniqueClubs.map((club) => (
+              {schoolClubs.map((club) => (
                 <tr key={club.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td style={{ padding: '10px 16px', fontWeight: '500' }}>{club.name}</td>
                   <td style={{ padding: '10px 16px' }}>{club.focus || '—'}</td>
-                  <td style={{ padding: '10px 16px' }}>{getClubTalentNames(club.id)}</td>
                   <td style={{ padding: '10px 16px' }}>{clubMemberships.filter(m => Number(m.club) === Number(club.id) && m.is_active).length}</td>
                   <td style={{ padding: '10px 16px' }}>
                     <span style={{ display: 'inline-block', padding: '2px 10px', background: club.is_active ? '#dcfce7' : '#f3f4f6', color: club.is_active ? '#15803d' : '#6b7280', borderRadius: '12px', fontSize: '12px' }}>
@@ -726,7 +775,7 @@ const SportTeacherPage = () => {
                   </td>
                 </tr>
               ))}
-              {uniqueClubs.length === 0 && (
+              {schoolClubs.length === 0 && (
                 <tr><td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No clubs created</td></tr>
               )}
             </tbody>
@@ -799,6 +848,31 @@ const SportTeacherPage = () => {
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+
+  // ANNOUNCEMENTS VIEW
+  const renderAnnouncements = () => (
+    <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Announcements</span>
+        <span style={{ fontSize: '14px', color: '#6b7280' }}>{relevantAnnouncements.length} available</span>
+      </div>
+      <div style={{ display: 'grid', gap: '16px', padding: '20px' }}>
+        {relevantAnnouncements.map((announcement) => (
+          <article key={announcement.id} style={{ paddingBottom: '16px', borderBottom: '1px solid #f3f4f6' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'baseline' }}>
+              <h2 style={{ margin: 0, color: '#111827', fontSize: '17px' }}>{announcement.title}</h2>
+              <span style={{ color: '#6b7280', fontSize: '12px', whiteSpace: 'nowrap' }}>{announcement.scope_display || announcement.scope}</span>
+            </div>
+            <p style={{ margin: '8px 0 0', color: '#4b5563', lineHeight: 1.6 }}>{announcement.content}</p>
+            <small style={{ display: 'block', marginTop: '8px', color: '#9ca3af' }}>
+              {announcement.published_at || announcement.created_at ? new Date(announcement.published_at || announcement.created_at).toLocaleDateString('en-GB') : 'Date unavailable'}
+            </small>
+          </article>
+        ))}
+        {relevantAnnouncements.length === 0 && <p style={{ margin: 0, color: '#6b7280' }}>No announcements for your school.</p>}
       </div>
     </div>
   );
@@ -965,85 +1039,7 @@ const SportTeacherPage = () => {
         </button>
       </aside>
       <main className="sport-teacher-prototype-content">
-        {loading ? (
-          <p>Loading sport teacher workspace...</p>
-        ) : (
-          <>
-            {activeTab === 'dashboard' ? (
-              <div className="sport-teacher-home">
-                <div className="sport-teacher-home-heading">
-                  <div>
-                    <p className="sport-teacher-eyebrow">Home</p>
-                    <h1>{schoolName}</h1>
-                    <p>Here is your school sports overview.</p>
-                  </div>
-                  <span className="sport-teacher-date">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                </div>
-                <div className="sport-teacher-stat-grid">
-                  <div><span>Students</span><strong>{students.length}</strong></div>
-                  <div><span>Clubs</span><strong>{clubs.filter((club) => club.is_active).length}</strong></div>
-                  <div><span>Talents assigned</span><strong>{studentTalents.length}</strong></div>
-                  <div><span>Results recorded</span><strong>{participations.length}</strong></div>
-                </div>
-                <div className="sport-teacher-home-section">
-                  <h2>Recent students</h2>
-                  {students.length ? (
-                    <div className="sport-teacher-student-list">
-                      {students.slice(0, 5).map((student) => (
-                        <div key={student.id}>
-                          <span>{student.first_name} {student.last_name}</span>
-                          <small>{student.student_id || 'Student record'}</small>
-                        </div>
-                      ))}
-                    </div>
-                  ) : <p>No students registered yet.</p>}
-                </div>
-              </div>
-            ) : activeTab === 'talents' ? (
-              <div className="sport-teacher-prototype-page">
-                <div className="sport-teacher-prototype-page-heading">
-                  <h1>Clubs & Talents</h1>
-                  <p>{schoolName}</p>
-                </div>
-                <div className="sport-teacher-management-grid">
-                  <section className="sport-teacher-management-card">
-                    <div className="sport-teacher-card-heading">
-                      <h2>Clubs</h2>
-                    </div>
-                    {selectedClubs.length ? (
-                      <div className="sport-teacher-club-list">
-                        {selectedClubs.map((club) => (
-                          <button type="button" key={club.id} onClick={() => setSelectedClub(club)}>
-                            <strong>{club.name}</strong>
-                          </button>
-                        ))}
-                      </div>
-                    ) : <p className="sport-teacher-empty-message">No clubs selected for this school yet.</p>}
-                  </section>
-
-                  <section className="sport-teacher-management-card">
-                    <div className="sport-teacher-card-heading">
-                      <div>
-                        <h2>Talents</h2>
-                        <p>Talent categories in the system</p>
-                      </div>
-                      <strong>{new Set(talents.map((talent) => talent.category_name).filter(Boolean)).size}</strong>
-                    </div>
-                    <div className="sport-teacher-category-list">
-                      {[...new Set(talents.map((talent) => talent.category_name).filter(Boolean))].sort().map((category) => (
-                        <button type="button" key={category} onClick={() => setSelectedTalentCategory(category)}>
-                          <strong>{category.replace(/(^|_)\w/g, (letter) => letter.toUpperCase())}</strong>
-                          <span>{talents.filter((talent) => talent.category_name === category).length} talents</span>
-                        </button>
-                      ))}
-                      {!talents.some((talent) => talent.category_name) && <p className="sport-teacher-empty-message">No talent categories available.</p>}
-                    </div>
-                  </section>
-                </div>
-              </div>
-            ) : <p>{prototypeMessages[activeTab] || pageMessages[activeTab]}</p>}
-          </>
-        )}
+        {renderContent()}
       </main>
       {selectedClub && (
         <>
