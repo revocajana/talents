@@ -115,7 +115,11 @@ const SportTeacherPage = () => {
         apiService.getSchoolById(schoolId),
       ]);
       
-      setStudents(studentsRes.data.results || []);
+      const schoolStudents = (studentsRes.data.results || []).filter((student) => {
+        const studentSchoolId = student.school?.id ?? student.school_id ?? student.school;
+        return Number(studentSchoolId) === schoolId;
+      });
+      setStudents(schoolStudents);
       setTalents(talentsRes.data.results || []);
       setStudentTalents(studentTalentsRes.data.results || []);
       setClubs(clubsRes.data.results || []);
