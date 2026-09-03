@@ -168,11 +168,12 @@ const SportTeacherPage = () => {
         last_name: studentForm.last_name,
         gender: studentForm.gender,
         date_of_birth: studentForm.date_of_birth || null,
-        student_id: studentForm.student_id,
+        // student_id is generated automatically by the backend
         school_id: schoolId,
       });
+      // Use the generated student_id for the user username
       await apiService.createUser({
-        username: studentForm.student_id,
+        username: studentRes.data.student_id,
         password: studentForm.password,
         first_name: studentForm.first_name,
         last_name: studentForm.last_name,

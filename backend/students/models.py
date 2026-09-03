@@ -3,6 +3,13 @@ from django.db import models
 from core.models import School, Parent
 
 
+def _generate_student_id():
+    """Generate a unique student identifier."""
+    import uuid
+    return f"SID-{uuid.uuid4().hex[:10].upper()}"
+
+
+
 class Student(models.Model):
     """Represents a student enrolled in a school.
 
@@ -25,7 +32,7 @@ class Student(models.Model):
     # optional parent/guardian relationship
     parent = models.ForeignKey(Parent, on_delete=models.SET_NULL, null=True, blank=True, related_name="children")
     # optional unique identifier for the student
-    student_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    student_id = models.CharField(max_length=50, unique=True, null=True, blank=True, default=_generate_student_id, editable=False)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.student_id or 'No ID'})"
