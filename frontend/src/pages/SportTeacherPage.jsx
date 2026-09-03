@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as apiService from '../services/apiService';
 import './SportTeacherPage.css';
@@ -19,7 +19,6 @@ const SportTeacherPage = () => {
   const [competitions, setCompetitions] = useState([]);
   const [participations, setParticipations] = useState([]);
   const [talents, setTalents] = useState([]);
-  const [talentCategories, setTalentCategories] = useState([]);
   const [eligibleStudents, setEligibleStudents] = useState([]);
   
   // Modal states
@@ -92,7 +91,6 @@ const SportTeacherPage = () => {
       const [
         studentsRes,
         talentsRes,
-        talentCategoriesRes,
         studentTalentsRes,
         clubsRes,
         membershipsRes,
@@ -103,8 +101,7 @@ const SportTeacherPage = () => {
         schoolRes,
       ] = await Promise.all([
         apiService.getStudents({ school: schoolId }),
-        apiService.getAllTalents ? apiService.getAllTalents() : apiService.getTalents(),
-        apiService.getTalentCategories ? apiService.getTalentCategories().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        apiService.getTalents(),
         apiService.getStudentTalents({ school: schoolId }),
         apiService.getClubs({ school: schoolId }),
         apiService.getClubMemberships({ school: schoolId }),
@@ -117,7 +114,6 @@ const SportTeacherPage = () => {
       
       setStudents(studentsRes.data.results || []);
       setTalents(talentsRes.data.results || []);
-      setTalentCategories(talentCategoriesRes.data.results || talentCategoriesRes.data || []);
       setStudentTalents(studentTalentsRes.data.results || []);
       setClubs(clubsRes.data.results || []);
       setClubMemberships(membershipsRes.data.results || []);
@@ -126,7 +122,6 @@ const SportTeacherPage = () => {
       setParticipations(participationsRes.data.results || []);
       setEligibleStudents(eligibleRes.data || []);
       setSchoolRecord(schoolRes.data);
-
       
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load data');
@@ -168,12 +163,11 @@ const SportTeacherPage = () => {
         last_name: studentForm.last_name,
         gender: studentForm.gender,
         date_of_birth: studentForm.date_of_birth || null,
-        // student_id is generated automatically by the backend
+        student_id: studentForm.student_id,
         school_id: schoolId,
       });
-      // Use the generated student_id for the user username
       await apiService.createUser({
-        username: studentRes.data.student_id,
+        username: studentForm.student_id,
         password: studentForm.password,
         first_name: studentForm.first_name,
         last_name: studentForm.last_name,
@@ -391,22 +385,6 @@ const SportTeacherPage = () => {
         club,
       ])
   ).values());
-
-  const categoriesList = useMemo(() => {
-    if (talentCategories && talentCategories.length > 0) {
-      return talentCategories.map((cat) => ({
-        id: cat.id,
-        name: cat.name,
-        count: talents.filter((t) => t.category_name === cat.name || Number(t.category) === Number(cat.id)).length,
-      }));
-    }
-    const setNames = [...new Set(talents.map((t) => t.category_name).filter(Boolean))];
-    return setNames.sort().map((name) => ({
-      name,
-      count: talents.filter((t) => t.category_name === name).length,
-    }));
-  }, [talentCategories, talents]);
-
 
   const getStatusBadge = (status, score) => {
     if (status === 'disqualified') {
@@ -1049,16 +1027,16 @@ const SportTeacherPage = () => {
                         <h2>Talents</h2>
                         <p>Talent categories in the system</p>
                       </div>
-                      <strong>{categoriesList.length}</strong>
+                      <strong>{new Set(talents.map((talent) => talent.category_name).filter(Boolean)).size}</strong>
                     </div>
                     <div className="sport-teacher-category-list">
-                      {categoriesList.map((category) => (
-                        <button type="button" key={category.name} onClick={() => setSelectedTalentCategory(category.name)}>
-                          <strong>{category.name.replace(/(^|_)\w/g, (letter) => letter.toUpperCase())}</strong>
-                          <span>{category.count} talents</span>
+                      {[...new Set(talents.map((talent) => talent.category_name).filter(Boolean))].sort().map((category) => (
+                        <button type="button" key={category} onClick={() => setSelectedTalentCategory(category)}>
+                          <strong>{category.replace(/(^|_)\w/g, (letter) => letter.toUpperCase())}</strong>
+                          <span>{talents.filter((talent) => talent.category_name === category).length} talents</span>
                         </button>
                       ))}
-                      {!categoriesList.length && <p className="sport-teacher-empty-message">No talent categories available.</p>}
+                      {!talents.some((talent) => talent.category_name) && <p className="sport-teacher-empty-message">No talent categories available.</p>}
                     </div>
                   </section>
                 </div>
@@ -1100,16 +1078,7 @@ const SportTeacherPage = () => {
             </div>
             <div className="sport-teacher-drawer-list">
               {talents
-                .filter((talent) => {
-                  const matchesCategory =
-                    talent.category_name === selectedTalentCategory ||
-                    talentCategories.some(
-                      (c) => c.name === selectedTalentCategory && (Number(talent.category) === Number(c.id) || talent.category === c.name)
-                    );
-                  const matchesSearch = talent.name.toLowerCase().includes(talentSearchQuery.toLowerCase());
-                  return matchesCategory && matchesSearch;
-                })
-
+                .filter((talent) => talent.category_name === selectedTalentCategory && talent.name.toLowerCase().includes(talentSearchQuery.toLowerCase()))
                 .sort((a, b) => {
                   if (talentSortBy === 'students') {
                     const aCount = studentTalents.filter((st) => st.talent === a.id).length;

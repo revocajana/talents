@@ -53,7 +53,6 @@ export default function TalentAdminPage() {
   const [competitionsData, setCompetitionsData] = useState([]);
   const [studentsData, setStudentsData] = useState([]);
   const [usersData, setUsersData] = useState([]);
-    const [talentCategories, setTalentCategories] = useState([]);
   const [reportStats, setReportStats] = useState({
     region_managers: 0,
     district_managers: 0,
@@ -175,8 +174,9 @@ export default function TalentAdminPage() {
         setLoading(true);
         setError(null);
 
-        const [talentsRes, competitionsRes, usersRes, userStatsRes, studentsRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, schoolsRes] = await Promise.all([
+        const [talentsRes, talentCategoriesRes, competitionsRes, usersRes, userStatsRes, studentsRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, schoolsRes] = await Promise.all([
           apiService.getTalents(),
+          apiService.getTalentCategories({ is_active: true }),
           apiService.getCompetitions(),
           apiService.getUsers(),
           apiService.getUserStats(),
@@ -196,6 +196,7 @@ export default function TalentAdminPage() {
         ]);
 
         setTalentsData(talentsRes.data.results || []);
+        setTalentCategories(talentCategoriesRes.data.results || []);
         setCompetitionsData(competitionsRes.data.results || []);
         setStudentsData(studentsRes.data.results || []);
         setUsersData(usersRes.data.results || []);
@@ -560,7 +561,7 @@ export default function TalentAdminPage() {
     setEditingTalentId(talent.id);
     setFormData({
       name: talent.name || '',
-      category: (talent.category || '').toLowerCase(),
+      category: talent.category ? String(talent.category) : '',
       description: talent.description || '',
     });
     setShowAddTalentModal(true);
@@ -581,7 +582,7 @@ export default function TalentAdminPage() {
     const payload = {
       ...formData,
       name: formData.name.trim(),
-      category: formData.category.toLowerCase(),
+      category: Number(formData.category),
     };
 
     setSubmitting(true);
@@ -826,7 +827,7 @@ export default function TalentAdminPage() {
                     <li key={talent.id}>
                       <div className="talent-summary-info">
                         <strong>{talent.name || 'N/A'}</strong>
-                        <span>{talent.category || 'N/A'}</span>
+                        <span>{talent.category_name || 'N/A'}</span>
                       </div>
                       <div className="simple-list-actions">
                         <button className="btn-action btn-edit" onClick={() => openEditTalentModal(talent)}>
@@ -1274,12 +1275,9 @@ export default function TalentAdminPage() {
                 disabled={submitting}
               >
                 <option value="">Select Category</option>
-                <option value="music">Music</option>
-                <option value="sports">Sports</option>
-                <option value="technology">Technology</option>
-                <option value="arts">Arts</option>
-                <option value="academics">Academics</option>
-                <option value="other">Other</option>
+                {talentCategories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
               </select>
               <textarea
                 placeholder="Description"
@@ -1369,7 +1367,7 @@ export default function TalentAdminPage() {
                     talentsData.map((talent) => (
                       <tr key={talent.id}>
                         <td>{talent.name || 'N/A'}</td>
-                        <td>{talent.category || 'N/A'}</td>
+                        <td>{talent.category_name || 'N/A'}</td>
                         <td>{talent.description || 'N/A'}</td>
                         <td>
                           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
