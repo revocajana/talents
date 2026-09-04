@@ -33,7 +33,7 @@ const SportTeacherPage = () => {
   
   // Form states
   const [studentForm, setStudentForm] = useState({
-    first_name: '', last_name: '', gender: 'M', date_of_birth: '', student_id: '', password: '', club: '', talents: []
+    first_name: '', last_name: '', gender: 'M', date_of_birth: '', password: '', club: '', talents: []
   });
   const [clubMembershipForm, setClubMembershipForm] = useState({ student: '', club: '' });
   const [talentForm, setTalentForm] = useState({ student: '', talent: '', proficiency_level: 1, notes: '' });
@@ -159,7 +159,6 @@ const SportTeacherPage = () => {
       last_name: '',
       gender: 'M',
       date_of_birth: '',
-      student_id: '',
       password: '',
       club: '',
       talents: [],
@@ -181,11 +180,10 @@ const SportTeacherPage = () => {
         last_name: studentForm.last_name,
         gender: studentForm.gender,
         date_of_birth: studentForm.date_of_birth || null,
-        student_id: studentForm.student_id,
         school_id: schoolId,
       });
       await apiService.createUser({
-        username: studentForm.student_id,
+        username: studentRes.data.student_id,
         password: studentForm.password,
         first_name: studentForm.first_name,
         last_name: studentForm.last_name,
@@ -206,7 +204,7 @@ const SportTeacherPage = () => {
         proficiency_level: 1,
         notes: '',
       })));
-      setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', student_id: '', password: '', club: '', talents: [] });
+      setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', password: '', club: '', talents: [] });
       closeModal('registerStudent');
       loadData();
       showSuccess('Student registered successfully');
@@ -992,7 +990,6 @@ const SportTeacherPage = () => {
             <label>Last Name *<input type="text" value={studentForm.last_name} onChange={(event) => setStudentForm({ ...studentForm, last_name: event.target.value })} required /></label>
             <label>Gender *<select value={studentForm.gender} onChange={(event) => setStudentForm({ ...studentForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option></select></label>
             <label>Date of Birth<input type="date" value={studentForm.date_of_birth} onChange={(event) => setStudentForm({ ...studentForm, date_of_birth: event.target.value })} /></label>
-            <label>Student ID *<input type="text" value={studentForm.student_id} onChange={(event) => setStudentForm({ ...studentForm, student_id: event.target.value })} required /></label>
             <label>Password *<input type="password" value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /></label>
           </div>
           <div className="sport-teacher-registration-assignment-grid">
@@ -1340,11 +1337,7 @@ const SportTeacherPage = () => {
                   <input type="date" name="date_of_birth" value={studentForm.date_of_birth} onChange={(e) => setStudentForm({ ...studentForm, date_of_birth: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Student ID *</label>
-                  <input type="text" name="student_id" value={studentForm.student_id} onChange={(e) => setStudentForm({ ...studentForm, student_id: e.target.value })} required placeholder="e.g., 2024-001" style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginTop: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Password *</label>
                   <input type="password" name="password" value={studentForm.password} onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })} required minLength="8" placeholder="Min 8 characters" style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />

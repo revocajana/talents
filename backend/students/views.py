@@ -16,6 +16,12 @@ class StudentViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         'district': 'school__district_id', 'ward': 'school__ward_id',
     }
 
+    def perform_create(self, serializer):
+        if self.request.user.role in {'head_teacher', 'sport_teacher'}:
+            serializer.save(school=self.request.user.school)
+            return
+        serializer.save()
+
 
 class ParentViewSet(viewsets.ModelViewSet):
     queryset = Parent.objects.all()
