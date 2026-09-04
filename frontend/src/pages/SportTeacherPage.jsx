@@ -988,7 +988,7 @@ const SportTeacherPage = () => {
           <div className="sport-teacher-registration-form-grid">
             <label>First Name *<input type="text" value={studentForm.first_name} onChange={(event) => setStudentForm({ ...studentForm, first_name: event.target.value })} required /></label>
             <label>Last Name *<input type="text" value={studentForm.last_name} onChange={(event) => setStudentForm({ ...studentForm, last_name: event.target.value })} required /></label>
-            <label>Gender *<select value={studentForm.gender} onChange={(event) => setStudentForm({ ...studentForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option></select></label>
+            <label>Gender *<select value={studentForm.gender} onChange={(event) => setStudentForm({ ...studentForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option></select></label>
             <label>Date of Birth<input type="date" value={studentForm.date_of_birth} onChange={(event) => setStudentForm({ ...studentForm, date_of_birth: event.target.value })} /></label>
             <label>Password *<input type="password" value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /></label>
           </div>
@@ -1329,7 +1329,6 @@ const SportTeacherPage = () => {
                   <select name="gender" value={studentForm.gender} onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })} required style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}>
                     <option value="M">Male</option>
                     <option value="F">Female</option>
-                    <option value="O">Other</option>
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
