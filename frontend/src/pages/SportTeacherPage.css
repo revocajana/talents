@@ -642,6 +642,54 @@
   outline: 3px solid rgba(70, 130, 180, 0.16);
 }
 
+.sport-teacher-registration-password-club-row {
+  margin-top: 16px;
+}
+
+.sport-teacher-registration-talents {
+  min-width: 0;
+  margin: 20px 0 0;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.sport-teacher-registration-talents legend {
+  padding: 0 6px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sport-teacher-registration-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+
+.sport-teacher-registration-checkbox-grid label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.sport-teacher-registration-checkbox-grid input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: #0e1db6;
+}
+
+.sport-teacher-registration-checkbox-grid span {
+  overflow-wrap: anywhere;
+}
+
 .sport-teacher-registration-form-actions {
   display: flex;
   justify-content: flex-end;
@@ -981,6 +1029,10 @@
   }
 
   .sport-teacher-registration-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sport-teacher-registration-checkbox-grid {
     grid-template-columns: 1fr;
   }
 

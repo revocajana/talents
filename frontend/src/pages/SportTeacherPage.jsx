@@ -990,12 +990,23 @@ const SportTeacherPage = () => {
             <label>Last Name *<input type="text" value={studentForm.last_name} onChange={(event) => setStudentForm({ ...studentForm, last_name: event.target.value })} required /></label>
             <label>Gender *<select value={studentForm.gender} onChange={(event) => setStudentForm({ ...studentForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option></select></label>
             <label>Date of Birth<input type="date" value={studentForm.date_of_birth} onChange={(event) => setStudentForm({ ...studentForm, date_of_birth: event.target.value })} /></label>
+          </div>
+          <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-club-row">
             <label>Password *<input type="password" value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /></label>
-          </div>
-          <div className="sport-teacher-registration-assignment-grid">
             <label>Assign school club <select value={studentForm.club} onChange={(event) => setStudentForm({ ...studentForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
-            <label>Assign talents <select multiple value={studentForm.talents} onChange={(event) => setStudentForm({ ...studentForm, talents: Array.from(event.target.selectedOptions, (option) => option.value) })}>{talents.map((talent) => <option key={talent.id} value={talent.id}>{talent.name}</option>)}</select></label>
           </div>
+          <fieldset className="sport-teacher-registration-talents">
+            <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
+            <div className="sport-teacher-registration-checkbox-grid">
+              {talents.map((talent) => (
+                <label key={talent.id}>
+                  <input type="checkbox" checked={studentForm.talents.includes(String(talent.id))} onChange={(event) => setStudentForm({ ...studentForm, talents: event.target.checked ? [...studentForm.talents, String(talent.id)] : studentForm.talents.filter((id) => id !== String(talent.id)) })} />
+                  <span>{talent.name}</span>
+                </label>
+              ))}
+            </div>
+            {!talents.length && <p className="sport-teacher-empty-message">No talents available.</p>}
+          </fieldset>
           <div className="sport-teacher-registration-form-actions">
             <button type="button" onClick={() => closeModal('registerStudent')}>Cancel</button>
             <button type="submit">Register Student</button>
@@ -1336,25 +1347,25 @@ const SportTeacherPage = () => {
                   <input type="date" name="date_of_birth" value={studentForm.date_of_birth} onChange={(e) => setStudentForm({ ...studentForm, date_of_birth: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginTop: '16px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Password *</label>
-                  <input type="password" name="password" value={studentForm.password} onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })} required minLength="8" placeholder="Min 8 characters" style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
+              <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-club-row">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Password *</label>
+                  <input type="password" name="password" value={studentForm.password} onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })} required minLength="8" placeholder="Min 8 characters" style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '7px', fontSize: '14px', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Assign school club <span className="sport-teacher-optional-label">Optional</span></label>
+                  <select value={studentForm.club} onChange={(e) => setStudentForm({ ...studentForm, club: e.target.value })} disabled={!registrationClubs.length} style={{ minHeight: '42px', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '7px', fontSize: '14px', boxSizing: 'border-box' }}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select>
                 </div>
               </div>
-              <div className="sport-teacher-registration-assignment-grid">
-                <label>Assign club <span className="sport-teacher-optional-label">Optional</span>
-                  <select value={studentForm.club} onChange={(e) => setStudentForm({ ...studentForm, club: e.target.value })}>
-                    <option value="">No club</option>
-                    {selectedClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}
-                  </select>
-                </label>
-                <label>Assign talents <span className="sport-teacher-optional-label">Optional</span>
-                  <select multiple value={studentForm.talents} onChange={(e) => setStudentForm({ ...studentForm, talents: Array.from(e.target.selectedOptions, (option) => option.value) })}>
-                    {talents.map((talent) => <option key={talent.id} value={talent.id}>{talent.name}{talent.category_name ? ` (${talent.category_name})` : ''}</option>)}
-                  </select>
-                </label>
-              </div>
+              <fieldset className="sport-teacher-registration-talents">
+                <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
+                <div className="sport-teacher-registration-checkbox-grid">
+                  {talents.map((talent) => (
+                    <label key={talent.id}><input type="checkbox" checked={studentForm.talents.includes(String(talent.id))} onChange={(e) => setStudentForm({ ...studentForm, talents: e.target.checked ? [...studentForm.talents, String(talent.id)] : studentForm.talents.filter((id) => id !== String(talent.id)) })} /><span>{talent.name}{talent.category_name ? ` (${talent.category_name})` : ''}</span></label>
+                  ))}
+                </div>
+                {!talents.length && <p className="sport-teacher-empty-message">No talents available.</p>}
+              </fieldset>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
                 <button type="button" onClick={() => closeModal('registerStudent')} style={{ padding: '8px 20px', border: '1px solid #e5e7eb', borderRadius: '6px', background: 'white', color: '#6b7280', cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" style={{ padding: '8px 20px', border: 'none', borderRadius: '6px', background: '#0E1DB6', color: 'white', cursor: 'pointer' }}>Register Student</button>
