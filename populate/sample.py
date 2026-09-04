@@ -23,7 +23,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils import timezone
 
-from competitions.models import Competition, CompetitionJudge, CompetitionParticipation
+from competitions.models import Competition, CompetitionJudge, CompetitionParticipation # type: ignore
 from core.models import ( # type: ignore
     Announcement,
     AuditLog,
@@ -48,8 +48,8 @@ from core.models import ( # type: ignore
     Ward,
     Zone,
 )
-from results.models import Result, ResultDetail
-from students.models import Student
+from results.models import Result, ResultDetail # type: ignore
+from students.models import Student # type: ignore
 
 
 PREFIX = 'Sample'
