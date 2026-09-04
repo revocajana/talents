@@ -410,6 +410,28 @@ const SportTeacherPage = () => {
       ])
   ).values());
   const registrationClubs = schoolClubs.filter((club) => club.is_active !== false);
+  const talentsByCategory = talents.reduce((groups, talent) => {
+    const category = talent.category_name || 'Uncategorized';
+    groups[category] = [...(groups[category] || []), talent];
+    return groups;
+  }, {});
+  const renderTalentCheckboxes = () => Object.entries(talentsByCategory)
+    .sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB))
+    .map(([category, categoryTalents]) => (
+      <section className="sport-teacher-talent-category" key={category}>
+        <h3>{category}</h3>
+        <div className="sport-teacher-registration-checkbox-grid">
+          {categoryTalents
+            .sort((talentA, talentB) => talentA.name.localeCompare(talentB.name))
+            .map((talent) => (
+              <label key={talent.id}>
+                <input type="checkbox" checked={studentForm.talents.includes(String(talent.id))} onChange={(event) => setStudentForm({ ...studentForm, talents: event.target.checked ? [...studentForm.talents, String(talent.id)] : studentForm.talents.filter((id) => id !== String(talent.id)) })} />
+                <span>{talent.name}</span>
+              </label>
+            ))}
+        </div>
+      </section>
+    ));
 
   const getStatusBadge = (status, score) => {
     if (status === 'disqualified') {
@@ -997,14 +1019,7 @@ const SportTeacherPage = () => {
           </div>
           <fieldset className="sport-teacher-registration-talents">
             <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
-            <div className="sport-teacher-registration-checkbox-grid">
-              {talents.map((talent) => (
-                <label key={talent.id}>
-                  <input type="checkbox" checked={studentForm.talents.includes(String(talent.id))} onChange={(event) => setStudentForm({ ...studentForm, talents: event.target.checked ? [...studentForm.talents, String(talent.id)] : studentForm.talents.filter((id) => id !== String(talent.id)) })} />
-                  <span>{talent.name}</span>
-                </label>
-              ))}
-            </div>
+            {renderTalentCheckboxes()}
             {!talents.length && <p className="sport-teacher-empty-message">No talents available.</p>}
           </fieldset>
           <div className="sport-teacher-registration-form-actions">
@@ -1359,11 +1374,7 @@ const SportTeacherPage = () => {
               </div>
               <fieldset className="sport-teacher-registration-talents">
                 <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
-                <div className="sport-teacher-registration-checkbox-grid">
-                  {talents.map((talent) => (
-                    <label key={talent.id}><input type="checkbox" checked={studentForm.talents.includes(String(talent.id))} onChange={(e) => setStudentForm({ ...studentForm, talents: e.target.checked ? [...studentForm.talents, String(talent.id)] : studentForm.talents.filter((id) => id !== String(talent.id)) })} /><span>{talent.name}{talent.category_name ? ` (${talent.category_name})` : ''}</span></label>
-                  ))}
-                </div>
+                {renderTalentCheckboxes()}
                 {!talents.length && <p className="sport-teacher-empty-message">No talents available.</p>}
               </fieldset>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>

@@ -667,6 +667,21 @@
   gap: 10px 16px;
 }
 
+.sport-teacher-talent-category + .sport-teacher-talent-category {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #eef2f7;
+}
+
+.sport-teacher-talent-category h3 {
+  margin: 0 0 10px;
+  color: #4682b4;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .sport-teacher-registration-checkbox-grid label {
   display: flex;
   flex-direction: row;
