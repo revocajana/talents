@@ -633,6 +633,14 @@ class UserChangeFormWithPassword(UserChangeForm):
             if tanzania:
                 self.initial['country'] = tanzania.pk
 
+        if self.instance.pk and self.instance.school_id:
+            school = self.instance.school
+            self.initial.setdefault('country', school.country_id)
+            self.initial.setdefault('zone', school.zone_id)
+            self.initial.setdefault('region', school.region_id)
+            self.initial.setdefault('district', school.district_id)
+            self.initial.setdefault('ward', school.ward_id)
+
         country_id = self.data.get('country') or self.initial.get('country')
         zone_id = self.data.get('zone') or self.initial.get('zone')
         region_id = self.data.get('region') or self.initial.get('region')
@@ -697,17 +705,6 @@ class UserChangeFormWithPassword(UserChangeForm):
     def clean(self):
         cleaned_data = super().clean()
         role = cleaned_data.get('role')
-        required_scope = {
-            'region_manager': ('region', 'A region is required for a region manager.'),
-            'zone_manager': ('zone', 'A zone is required for a zone manager.'),
-            'district_manager': ('district', 'A district is required for a district manager.'),
-            'ward_manager': ('ward', 'A ward is required for a ward manager.'),
-            'head_teacher': ('school', 'A school is required for a head teacher.'),
-            'sport_teacher': ('school', 'A school is required for a sport teacher.'),
-            'student': ('school', 'A school is required for a student account.'),
-        }.get(role)
-        if required_scope and not cleaned_data.get(required_scope[0]):
-            self.add_error(required_scope[0], required_scope[1])
 
         if role == 'student' and not cleaned_data.get('student_gender'):
             self.add_error('student_gender', 'Gender is required for a student account.')
@@ -734,31 +731,6 @@ class UserChangeFormWithPassword(UserChangeForm):
             self.add_error('ward', 'Choose a ward belonging to the selected country.')
         if school and country and school.country_id != country.pk:
             self.add_error('school', 'Choose a school belonging to the selected country.')
-
-        retained_scope = {
-            'region_manager': {'country', 'region'},
-            'zone_manager': {'country', 'zone'},
-            'district_manager': {'country', 'district'},
-            'ward_manager': {'country', 'ward'},
-            'head_teacher': {'country', 'school'},
-            'sport_teacher': {'country', 'school'},
-            'student': {'country', 'school'},
-            'talent_admin': {'country'},
-        }.get(role, set())
-        for field_name in ('zone', 'region', 'district', 'ward', 'school'):
-            if field_name not in retained_scope:
-                cleaned_data[field_name] = None
-
-        manager_scope = {
-            'region_manager': 'region',
-            'zone_manager': 'zone',
-            'district_manager': 'district',
-            'ward_manager': 'ward',
-        }.get(role)
-        if manager_scope:
-            assigned_scope = cleaned_data.get(manager_scope)
-            if assigned_scope and User.objects.filter(role=role, **{f'{manager_scope}_id': assigned_scope.pk}).exclude(pk=self.instance.pk).exists():
-                self.add_error(manager_scope, f'This {manager_scope} already has a manager.')
 
         password_new = cleaned_data.get('password_new')
         password_confirm = cleaned_data.get('password_confirm')
@@ -829,7 +801,7 @@ class UserAdmin(admin.ModelAdmin):
     )
 
     class Media:
-        js = ('core/js/user_scope_v2.js',)
+        js = ('core/js/user_geography.js',)
 
 
 
