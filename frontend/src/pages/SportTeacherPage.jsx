@@ -15,7 +15,6 @@ const SportTeacherPage = () => {
   const [studentTalents, setStudentTalents] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [clubMemberships, setClubMemberships] = useState([]);
-  const [evaluations, setEvaluations] = useState([]);
   const [competitions, setCompetitions] = useState([]);
   const [participations, setParticipations] = useState([]);
   const [talents, setTalents] = useState([]);
@@ -34,7 +33,7 @@ const SportTeacherPage = () => {
   
   // Form states
   const [studentForm, setStudentForm] = useState({
-    first_name: '', last_name: '', gender: 'M', date_of_birth: '', standard: '', form: '', phone: '', email: '', student_id: '', password: '', club: '', talents: []
+    first_name: '', last_name: '', gender: 'M', date_of_birth: '', student_id: '', password: '', club: '', talents: []
   });
   const [clubMembershipForm, setClubMembershipForm] = useState({ student: '', club: '' });
   const [talentForm, setTalentForm] = useState({ student: '', talent: '', proficiency_level: 1, notes: '' });
@@ -95,7 +94,6 @@ const SportTeacherPage = () => {
         studentTalentsRes,
         clubsRes,
         membershipsRes,
-        evaluationsRes,
         competitionsRes,
         participationsRes,
         announcementsRes,
@@ -107,7 +105,6 @@ const SportTeacherPage = () => {
         apiService.getStudentTalents({ school: schoolId }),
         apiService.getClubs({ school: schoolId }),
         apiService.getClubMemberships({ school: schoolId }),
-        apiService.getEvaluations({ school: schoolId }),
         apiService.getCompetitions({ school: schoolId }),
         apiService.getParticipations({ school: schoolId }),
         apiService.getAnnouncements({ is_active: true }),
@@ -124,7 +121,6 @@ const SportTeacherPage = () => {
       setStudentTalents(studentTalentsRes.data.results || []);
       setClubs(clubsRes.data.results || []);
       setClubMemberships(membershipsRes.data.results || []);
-      setEvaluations(evaluationsRes.data.results || []);
       setCompetitions(competitionsRes.data.results || []);
       setParticipations(participationsRes.data.results || []);
       setAnnouncements(announcementsRes.data.results || []);
@@ -156,6 +152,20 @@ const SportTeacherPage = () => {
   // Modal handlers
   const openModal = (name) => setModals(prev => ({ ...prev, [name]: true }));
   const closeModal = (name) => setModals(prev => ({ ...prev, [name]: false }));
+  const openStudentRegistration = () => {
+    setError(null);
+    setStudentForm({
+      first_name: '',
+      last_name: '',
+      gender: 'M',
+      date_of_birth: '',
+      student_id: '',
+      password: '',
+      club: '',
+      talents: [],
+    });
+    openModal('registerStudent');
+  };
 
   const showSuccess = (msg) => {
     setSuccess(msg);
@@ -171,10 +181,6 @@ const SportTeacherPage = () => {
         last_name: studentForm.last_name,
         gender: studentForm.gender,
         date_of_birth: studentForm.date_of_birth || null,
-        standard: studentForm.standard,
-        form: studentForm.form,
-        phone: studentForm.phone || null,
-        email: studentForm.email || null,
         student_id: studentForm.student_id,
         school_id: schoolId,
       });
@@ -200,7 +206,7 @@ const SportTeacherPage = () => {
         proficiency_level: 1,
         notes: '',
       })));
-      setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', standard: '', form: '', phone: '', email: '', student_id: '', password: '', club: '', talents: [] });
+      setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', student_id: '', password: '', club: '', talents: [] });
       closeModal('registerStudent');
       loadData();
       showSuccess('Student registered successfully');
@@ -282,23 +288,6 @@ const SportTeacherPage = () => {
       showSuccess('Student assigned to club successfully');
     } catch (err) {
       setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to assign club');
-    }
-  };
-
-  // Delete student
-  const handleDeleteStudent = async (studentId) => {
-    const student = students.find((item) => item.id === studentId);
-    if (!student) return;
-
-    const confirmed = window.confirm(`Delete ${student.first_name} ${student.last_name}? This action cannot be undone.`);
-    if (!confirmed) return;
-
-    try {
-      await apiService.deleteStudent(studentId);
-      loadData();
-      showSuccess('Student deleted successfully');
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to delete student');
     }
   };
 
@@ -445,13 +434,6 @@ const SportTeacherPage = () => {
     { key: 'announcements', label: 'Announcements' },
   ];
   const [navigationOpen, setNavigationOpen] = useState(false);
-  const prototypeMessages = {
-    dashboard: 'This is home.',
-    talents: 'Here are the clubs.',
-    students: 'Here are the students.',
-    results: 'Here are the results.',
-    announcements: 'Here are the announcements.',
-  };
 
   // Render content based on active tab
   const renderContent = () => {
@@ -547,7 +529,16 @@ const SportTeacherPage = () => {
       <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', marginBottom: '24px' }}>
         <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Quick Actions</div>
         <div className="quick-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-          <button onClick={() => openModal('registerStudent')} style={actionBtnStyle}>Register Student</button>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              openStudentRegistration();
+            }}
+            style={actionBtnStyle}
+          >
+            Register Student
+          </button>
           <button onClick={() => openModal('assignTalent')} style={actionBtnStyle}>Assign Talent</button>
           <button onClick={() => openModal('recordResult')} style={actionBtnStyle}>Record Result</button>
           <button onClick={() => openModal('uploadExcel')} style={actionBtnStyle}>Upload Excel</button>
@@ -635,7 +626,16 @@ const SportTeacherPage = () => {
     <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>All Students</span>
-        <button onClick={() => openModal('registerStudent')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Register Student</button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            openStudentRegistration();
+          }}
+          style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}
+        >
+          + Register Student
+        </button>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
@@ -646,7 +646,6 @@ const SportTeacherPage = () => {
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Gender</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Talents</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Club</th>
-              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -661,31 +660,10 @@ const SportTeacherPage = () => {
                     {getStudentClub(student.id)}
                   </span>
                 </td>
-                <td style={{ padding: '10px 16px' }}>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setClubMembershipForm({ student: String(student.id), club: '' });
-                        openModal('assignStudentClub');
-                      }}
-                      style={{ ...actionBtnStyle, background: '#ecfdf5', color: '#15803d', borderColor: '#bbf7d0' }}
-                    >
-                      Assign Club
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteStudent(student.id)}
-                      style={{ ...actionBtnStyle, background: '#fef2f2', color: '#b91c1c', borderColor: '#fecaca' }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
               </tr>
             ))}
             {students.length === 0 && (
-              <tr><td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No students registered</td></tr>
+              <tr><td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No students registered</td></tr>
             )}
           </tbody>
         </table>
@@ -998,7 +976,38 @@ const SportTeacherPage = () => {
     transition: 'all 0.2s',
   };
 
-  return (
+  const registrationDrawer = modals.registerStudent ? (
+    <>
+      <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close student registration" onClick={() => closeModal('registerStudent')} />
+      <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label="Register student">
+        <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
+        <div className="sport-teacher-search-drawer-header">
+          <h2>Register Student</h2>
+          <button type="button" onClick={() => closeModal('registerStudent')} aria-label="Close student registration">&times;</button>
+        </div>
+        <form onSubmit={handleRegisterStudent}>
+          <div className="sport-teacher-registration-form-grid">
+            <label>First Name *<input type="text" value={studentForm.first_name} onChange={(event) => setStudentForm({ ...studentForm, first_name: event.target.value })} required /></label>
+            <label>Last Name *<input type="text" value={studentForm.last_name} onChange={(event) => setStudentForm({ ...studentForm, last_name: event.target.value })} required /></label>
+            <label>Gender *<select value={studentForm.gender} onChange={(event) => setStudentForm({ ...studentForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option></select></label>
+            <label>Date of Birth<input type="date" value={studentForm.date_of_birth} onChange={(event) => setStudentForm({ ...studentForm, date_of_birth: event.target.value })} /></label>
+            <label>Student ID *<input type="text" value={studentForm.student_id} onChange={(event) => setStudentForm({ ...studentForm, student_id: event.target.value })} required /></label>
+            <label>Password *<input type="password" value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /></label>
+          </div>
+          <div className="sport-teacher-registration-assignment-grid">
+            <label>Assign club <select value={studentForm.club} onChange={(event) => setStudentForm({ ...studentForm, club: event.target.value })}><option value="">No club</option>{selectedClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
+            <label>Assign talents <select multiple value={studentForm.talents} onChange={(event) => setStudentForm({ ...studentForm, talents: Array.from(event.target.selectedOptions, (option) => option.value) })}>{talents.map((talent) => <option key={talent.id} value={talent.id}>{talent.name}</option>)}</select></label>
+          </div>
+          <div className="sport-teacher-registration-form-actions">
+            <button type="button" onClick={() => closeModal('registerStudent')}>Cancel</button>
+            <button type="submit">Register Student</button>
+          </div>
+        </form>
+      </aside>
+    </>
+  ) : null;
+
+  const layout = (
     <div className="sport-teacher-page">
       <header className="sport-teacher-app-bar">
         <div className="sport-teacher-brand">
@@ -1143,6 +1152,7 @@ const SportTeacherPage = () => {
           </aside>
         </>
       )}
+      {registrationDrawer}
     </div>
   );
 
@@ -1153,7 +1163,8 @@ const SportTeacherPage = () => {
     }
   `;
 
-  return (
+  return layout;
+  if (false) return (
     <div className="sport-teacher-page">
       <style>{spinnerStyle}</style>
 
@@ -1336,26 +1347,6 @@ const SportTeacherPage = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Password *</label>
                   <input type="password" name="password" value={studentForm.password} onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })} required minLength="8" placeholder="Min 8 characters" style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Standard</label>
-                  <input type="text" name="standard" value={studentForm.standard} onChange={(e) => setStudentForm({ ...studentForm, standard: e.target.value })} placeholder="e.g., Primary" style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Form</label>
-                  <input type="text" name="form" value={studentForm.form} onChange={(e) => setStudentForm({ ...studentForm, form: e.target.value })} placeholder="e.g., Form 1" style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Phone <span className="sport-teacher-optional-label">Optional</span></label>
-                  <input type="tel" name="phone" value={studentForm.phone} onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Email <span className="sport-teacher-optional-label">Optional</span></label>
-                  <input type="email" name="email" value={studentForm.email} onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
                 </div>
               </div>
               <div className="sport-teacher-registration-assignment-grid">
