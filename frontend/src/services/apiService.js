@@ -145,6 +145,8 @@ export const createTalent = (data) => api.post('/talents/', data);
 export const updateTalent = (id, data) => api.put(`/talents/${id}/`, data);
 export const deleteTalent = (id) => api.delete(`/talents/${id}/`);
 
+export const getCountryClubs = (params = {}) => api.get('/country-clubs/', { params });
+
 
 export const getStudentTalents = (params = {}) => api.get('/student-talents/', { params });
 export const getStudentTalentById = (id) => api.get(`/student-talents/${id}/`);

@@ -411,6 +411,7 @@ const SportTeacherPage = () => {
         club,
       ])
   ).values());
+  const registrationClubs = schoolClubs.filter((club) => club.is_active !== false);
 
   const getStatusBadge = (status, score) => {
     if (status === 'disqualified') {
@@ -995,7 +996,7 @@ const SportTeacherPage = () => {
             <label>Password *<input type="password" value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /></label>
           </div>
           <div className="sport-teacher-registration-assignment-grid">
-            <label>Assign club <select value={studentForm.club} onChange={(event) => setStudentForm({ ...studentForm, club: event.target.value })}><option value="">No club</option>{selectedClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
+            <label>Assign school club <select value={studentForm.club} onChange={(event) => setStudentForm({ ...studentForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
             <label>Assign talents <select multiple value={studentForm.talents} onChange={(event) => setStudentForm({ ...studentForm, talents: Array.from(event.target.selectedOptions, (option) => option.value) })}>{talents.map((talent) => <option key={talent.id} value={talent.id}>{talent.name}</option>)}</select></label>
           </div>
           <div className="sport-teacher-registration-form-actions">
