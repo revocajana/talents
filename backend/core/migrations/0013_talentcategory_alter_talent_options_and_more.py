@@ -31,7 +31,7 @@ def migrate_talent_categories(apps, schema_editor):
                 defaults={'description': f'Category for {display_name}'}
             )
             # Update talents with this category value
-            Talent.objects.filter(category=category_value).update(category_id=category_obj.id)
+            Talent.objects.filter(category=category_value).update(category_id_new=category_obj.id)
 
 
 def reverse_migrate(apps, schema_editor):

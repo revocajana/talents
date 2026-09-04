@@ -32,7 +32,7 @@
     var role = $('#id_role').val();
     var constrained = constrainedRoles.indexOf(role) !== -1;
     var countryValue = $('#id_country').val();
-    var parentValue = $('#' + parentFieldName).val();
+    var parentValue = $('#id_' + parentFieldName).val();
     var parentMap = JSON.parse(field.attr('data-parent-map') || '{}');
     var countryMap = JSON.parse(field.attr('data-country-map') || '{}');
     var managedMap = JSON.parse(field.attr('data-managed-map') || '{}');

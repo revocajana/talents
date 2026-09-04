@@ -637,6 +637,7 @@ class UserChangeFormWithPassword(UserChangeForm):
         zone_id = self.data.get('zone') or self.initial.get('zone')
         region_id = self.data.get('region') or self.initial.get('region')
         district_id = self.data.get('district') or self.initial.get('district')
+        ward_id = self.data.get('ward') or self.initial.get('ward')
 
         should_filter_locations = bool(self.data) or self.instance.pk
 
@@ -662,8 +663,8 @@ class UserChangeFormWithPassword(UserChangeForm):
             self.fields['ward'].queryset = self.fields['ward'].queryset.filter(district__region_id=region_id)
         if district_id and should_filter_locations:
             self.fields['ward'].queryset = self.fields['ward'].queryset.filter(district_id=district_id)
-        if self.data.get('ward') and should_filter_locations:
-            self.fields['school'].queryset = self.fields['school'].queryset.filter(ward_id=self.data.get('ward'))
+        if ward_id and should_filter_locations:
+            self.fields['school'].queryset = self.fields['school'].queryset.filter(ward_id=ward_id)
 
         self.fields['zone'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.country_id for item in Zone.objects.all()})
         self.fields['region'].widget.attrs['data-parent-map'] = json.dumps({item.pk: item.zone_id for item in Region.objects.all()})
