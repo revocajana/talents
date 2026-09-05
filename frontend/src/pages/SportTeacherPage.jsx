@@ -875,45 +875,82 @@ const SportTeacherPage = () => {
   );
 
   // DASHBOARD VIEW
-  const renderDashboard = () => (
+  const renderDashboard = () => {
+    const talentParticipation = Object.entries(studentTalents.reduce((counts, entry) => {
+      const talentName = entry.talent_name || 'Unassigned talent';
+      counts[talentName] = (counts[talentName] || 0) + 1;
+      return counts;
+    }, {})).sort(([, countA], [, countB]) => countB - countA).slice(0, 6);
+    const highestTalentCount = talentParticipation[0]?.[1] || 1;
+    const resultProgress = {
+      scored: schoolResultRows.filter((row) => row.hasScore).length,
+      pending: schoolResultRows.filter((row) => !row.hasScore).length,
+      passed: schoolResultRows.filter((row) => row.hasScore && Number(row.score) >= 50).length,
+      failed: schoolResultRows.filter((row) => row.hasScore && Number(row.score) < 50).length,
+    };
+    const totalResultRows = schoolResultRows.length;
+    const progressPercent = totalResultRows ? Math.round((resultProgress.scored / totalResultRows) * 100) : 0;
+    const eligibleTalentCount = schoolResultRows.filter((row) => {
+      const score = Number(row.detail?.percentage_score ?? row.detail?.raw_score);
+      return row.hasScore && Number.isFinite(score) && score >= 50;
+    }).length;
+
+    return (
     <>
-      {/* Stats */}
-      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Students</div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827', marginTop: '4px' }}>{students.length}</div>
+      <div className="sport-teacher-attention-section">
+        <div className="sport-teacher-attention-heading">
+          <div><h2>Needs attention</h2></div>
         </div>
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Talents Assigned</div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827', marginTop: '4px' }}>{studentTalents.length}</div>
-        </div>
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Clubs</div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827', marginTop: '4px' }}>{clubs.filter(c => c.is_active).length}</div>
-        </div>
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Results Recorded</div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827', marginTop: '4px' }}>{participations.length}</div>
+        <div className="sport-teacher-attention-grid">
+          <button type="button" className="sport-teacher-attention-card" onClick={() => setActiveTab('results')}>
+            <strong>{resultProgress.pending}</strong>
+            <span className="sport-teacher-attention-label">need scores</span>
+          </button>
+          <button type="button" className="sport-teacher-attention-card" onClick={() => setActiveTab('students')}>
+            <strong>{students.filter((student) => !studentTalents.some((entry) => Number(entry.student) === Number(student.id))).length}</strong>
+            <span className="sport-teacher-attention-label">have no talent</span>
+          </button>
+          <button type="button" className="sport-teacher-attention-card" onClick={() => setActiveTab('students')}>
+            <strong>{students.filter((student) => !clubMemberships.some((membership) => Number(membership.student) === Number(student.id) && membership.is_active)).length}</strong>
+            <span className="sport-teacher-attention-label">have no club</span>
+          </button>
+          <button type="button" className="sport-teacher-attention-card" onClick={() => setActiveTab('results')}>
+            <strong>{eligibleTalentCount}</strong>
+            <span className="sport-teacher-attention-label">eligible for promotion</span>
+          </button>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', marginBottom: '24px' }}>
-        <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Quick Actions</div>
-        <div className="quick-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              openStudentRegistration();
-            }}
-            style={actionBtnStyle}
-          >
-            Register Student
-          </button>
-          <button onClick={() => openModal('assignTalent')} style={actionBtnStyle}>Assign Talent</button>
-          <button onClick={() => openModal('uploadExcel')} style={actionBtnStyle}>Upload Excel</button>
-        </div>
+      <div className="sport-teacher-dashboard-overview">
+        <section className="sport-teacher-overview-card">
+          <div className="sport-teacher-overview-card-heading">
+            <div><h2>Talent participation</h2><p>Where students are participating in your school.</p></div>
+            <button type="button" onClick={() => setActiveTab('talents')}>View talents</button>
+          </div>
+          {talentParticipation.length ? (
+            <div className="sport-teacher-talent-bars">
+              {talentParticipation.map(([name, count]) => (
+                <div className="sport-teacher-talent-bar-row" key={name}>
+                  <div className="sport-teacher-talent-bar-label"><span>{name}</span><strong>{count}</strong></div>
+                  <div className="sport-teacher-talent-bar-track"><span style={{ width: `${Math.max((count / highestTalentCount) * 100, 8)}%` }} /></div>
+                </div>
+              ))}
+            </div>
+          ) : <p className="sport-teacher-overview-empty">No talents have been assigned yet.</p>}
+        </section>
+        <section className="sport-teacher-overview-card">
+          <div className="sport-teacher-overview-card-heading">
+            <div><h2>Results progress</h2><p>{schoolCompetition?.name || 'School competition'}</p></div>
+            <button type="button" onClick={() => setActiveTab('results')}>Open results</button>
+          </div>
+          <div className="sport-teacher-progress-summary"><strong>{progressPercent}%</strong><span>scored</span><div className="sport-teacher-progress-track"><span style={{ width: `${progressPercent}%` }} /></div></div>
+          <div className="sport-teacher-result-legend">
+            <span><i className="is-scored" />Scored <strong>{resultProgress.scored}</strong></span>
+            <span><i className="is-pending" />Pending <strong>{resultProgress.pending}</strong></span>
+            <span><i className="is-passed" />Passed <strong>{resultProgress.passed}</strong></span>
+            <span><i className="is-failed" />Failed <strong>{resultProgress.failed}</strong></span>
+          </div>
+        </section>
       </div>
 
       {/* Two-column layout */}
@@ -990,7 +1027,8 @@ const SportTeacherPage = () => {
         </div>
       </div>
     </>
-  );
+    );
+  };
 
   // STUDENTS VIEW
   const renderStudents = () => (
@@ -1210,7 +1248,11 @@ const SportTeacherPage = () => {
         talentId: talentEntry.talent ? talentEntry.id : null,
         talent: talentEntry.talent_name || 'Talent',
         detail,
-        score: detail?.percentage_score ?? detail?.raw_score ?? result?.score ?? participation?.score ?? 0,
+        score: detail?.percentage_score ?? detail?.raw_score ?? result?.score ?? participation?.score ?? null,
+        hasScore: detail?.percentage_score !== null && detail?.percentage_score !== undefined
+          || detail?.raw_score !== null && detail?.raw_score !== undefined
+          || result?.score !== null && result?.score !== undefined
+          || participation?.score !== null && participation?.score !== undefined,
         status: detail ? (detail.passed ? 'finished' : 'registered') : (participation?.status || 'registered'),
       };
     });
