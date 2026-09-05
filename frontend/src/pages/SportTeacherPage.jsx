@@ -772,15 +772,49 @@ const SportTeacherPage = () => {
   ];
   const [navigationOpen, setNavigationOpen] = useState(false);
 
+  const renderLoadingSkeleton = () => (
+    <div className="sport-teacher-loading-skeleton" aria-label="Loading dashboard" aria-busy="true">
+      <div className="sport-teacher-skeleton-heading">
+        <div className="sport-teacher-skeleton-block sport-teacher-skeleton-title" />
+        <div className="sport-teacher-skeleton-block sport-teacher-skeleton-subtitle" />
+      </div>
+      <div className="sport-teacher-skeleton-stats">
+        {[1, 2, 3, 4].map((item) => (
+          <div className="sport-teacher-skeleton-card" key={item}>
+            <div className="sport-teacher-skeleton-block sport-teacher-skeleton-label" />
+            <div className="sport-teacher-skeleton-block sport-teacher-skeleton-number" />
+          </div>
+        ))}
+      </div>
+      <div className="sport-teacher-skeleton-card sport-teacher-skeleton-actions">
+        <div className="sport-teacher-skeleton-block sport-teacher-skeleton-section-title" />
+        <div className="sport-teacher-skeleton-action-row">
+          {[1, 2, 3].map((item) => <div className="sport-teacher-skeleton-block sport-teacher-skeleton-action" key={item} />)}
+        </div>
+      </div>
+      <div className="sport-teacher-skeleton-panels">
+        {[1, 2].map((panel) => (
+          <div className="sport-teacher-skeleton-card sport-teacher-skeleton-panel" key={panel}>
+            <div className="sport-teacher-skeleton-panel-heading">
+              <div className="sport-teacher-skeleton-block sport-teacher-skeleton-section-title" />
+              <div className="sport-teacher-skeleton-block sport-teacher-skeleton-count" />
+            </div>
+            {[1, 2, 3, 4, 5].map((row) => (
+              <div className="sport-teacher-skeleton-table-row" key={row}>
+                <div className="sport-teacher-skeleton-block sport-teacher-skeleton-row-main" />
+                <div className="sport-teacher-skeleton-block sport-teacher-skeleton-row-secondary" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   // Render content based on active tab
   const renderContent = () => {
     if (loading) {
-      return (
-        <div style={{ textAlign: 'center', padding: '60px 0' }}>
-          <div style={{ display: 'inline-block', width: '40px', height: '40px', border: '4px solid #e5e7eb', borderTopColor: '#0E1DB6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
-          <p style={{ marginTop: '16px', color: '#6b7280' }}>Loading dashboard...</p>
-        </div>
-      );
+      return renderLoadingSkeleton();
     }
 
     switch (activeTab) {

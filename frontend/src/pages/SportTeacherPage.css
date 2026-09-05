@@ -193,6 +193,139 @@
   font-weight: 600;
 }
 
+.sport-teacher-loading-skeleton {
+  width: min(100%, 1200px);
+  margin: 0 auto;
+}
+
+.sport-teacher-skeleton-heading {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.sport-teacher-skeleton-block {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #e8edf3;
+}
+
+.sport-teacher-skeleton-block::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  content: '';
+  transform: translateX(-100%);
+  animation: sport-teacher-skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.sport-teacher-skeleton-title {
+  width: min(330px, 62%);
+  height: 32px;
+}
+
+.sport-teacher-skeleton-subtitle {
+  width: min(220px, 45%);
+  height: 14px;
+}
+
+.sport-teacher-skeleton-stats,
+.sport-teacher-skeleton-panels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.sport-teacher-skeleton-card {
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.sport-teacher-skeleton-label {
+  width: 72%;
+  height: 12px;
+}
+
+.sport-teacher-skeleton-number {
+  width: 42%;
+  height: 30px;
+  margin-top: 14px;
+}
+
+.sport-teacher-skeleton-actions {
+  margin-bottom: 24px;
+}
+
+.sport-teacher-skeleton-section-title {
+  width: 150px;
+  height: 18px;
+}
+
+.sport-teacher-skeleton-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.sport-teacher-skeleton-action {
+  width: 130px;
+  height: 36px;
+}
+
+.sport-teacher-skeleton-panels {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+
+.sport-teacher-skeleton-panel {
+  min-width: 0;
+}
+
+.sport-teacher-skeleton-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.sport-teacher-skeleton-count {
+  width: 64px;
+  height: 14px;
+}
+
+.sport-teacher-skeleton-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(70px, 0.8fr);
+  gap: 16px;
+  padding: 17px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sport-teacher-skeleton-row-main,
+.sport-teacher-skeleton-row-secondary {
+  height: 14px;
+}
+
+.sport-teacher-skeleton-row-main {
+  width: 88%;
+}
+
+.sport-teacher-skeleton-row-secondary {
+  width: 72%;
+}
+
+@keyframes sport-teacher-skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
 .sport-teacher-home {
   width: min(100%, 1100px);
   margin: 0 auto;
@@ -1493,6 +1626,14 @@
 
   .sport-teacher-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sport-teacher-skeleton-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sport-teacher-skeleton-panels {
+    grid-template-columns: 1fr;
   }
 
   .sport-teacher-stat-grid > div,

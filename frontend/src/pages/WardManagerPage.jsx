@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Header } from '../components/shared';
+import DashboardSkeleton from '../components/DashboardSkeleton';
 import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
@@ -75,7 +76,7 @@ export default function WardManagerPage() {
       <main className="admin-content">
         {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
+          <DashboardSkeleton label="Loading ward dashboard" />
         ) : (
           <div className="cards-container">
             <section className="admin-section">

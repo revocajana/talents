@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Header } from '../components/shared';
+import DashboardSkeleton from '../components/DashboardSkeleton';
 import * as apiService from '../services/apiService';
 import '../styles/dashboard.css';
 
@@ -81,7 +82,7 @@ export default function StudentPage() {
     <div className="page-container">
       <Header title="Student Dashboard" />
       <main className="admin-content">
-        {loading && <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>}
+        {loading && <DashboardSkeleton label="Loading student dashboard" />}
         {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
 
         {!loading && !error && (

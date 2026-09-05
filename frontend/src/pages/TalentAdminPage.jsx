@@ -4,6 +4,7 @@ import * as apiService from '../services/apiService';
 import logo from '../assets/Logo1.png';
 import './SportTeacherPage.css';
 import '../styles/talentadmin.css';
+import DashboardSkeleton from '../components/DashboardSkeleton';
 
 export default function TalentAdminPage() {
   const { logout } = useAuth();
@@ -817,7 +818,7 @@ export default function TalentAdminPage() {
       <main className="sport-teacher-prototype-content talent-admin-content">
       {error && <div className="talent-admin-alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Dismiss error">&times;</button></div>}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading dashboard...</div>
+        <DashboardSkeleton label="Loading talent administration dashboard" />
       ) : (
         <div className="talent-admin-inner">
         <div className="talent-admin-page-heading" id="overview">
