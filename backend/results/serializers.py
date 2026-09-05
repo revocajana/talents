@@ -26,6 +26,9 @@ class ResultDetailSerializer(serializers.ModelSerializer):
 
 class ResultSerializer(serializers.ModelSerializer):
     participation_details = serializers.SerializerMethodField(read_only=True)
+    competition_name = serializers.CharField(source='participation.competition.name', read_only=True)
+    competition_level = serializers.CharField(source='participation.competition.level', read_only=True)
+    student_name = serializers.SerializerMethodField(read_only=True)
     details = ResultDetailSerializer(many=True, read_only=True)
     promotions = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
@@ -35,6 +38,9 @@ class ResultSerializer(serializers.ModelSerializer):
             'id',
             'participation',
             'participation_details',
+            'competition_name',
+            'competition_level',
+            'student_name',
             'score',
             'grade',
             'grade_points',
@@ -67,6 +73,9 @@ class ResultSerializer(serializers.ModelSerializer):
 
     def get_participation_details(self, obj):
         return f"{obj.participation.student} – {obj.participation.competition}"
+
+    def get_student_name(self, obj):
+        return f"{obj.participation.student.first_name} {obj.participation.student.last_name}"
 
 
 class ResultPromotionSerializer(serializers.ModelSerializer):

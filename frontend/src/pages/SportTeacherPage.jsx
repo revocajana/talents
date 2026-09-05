@@ -25,6 +25,7 @@ const SportTeacherPage = () => {
   const [clubMemberships, setClubMemberships] = useState([]);
   const [competitions, setCompetitions] = useState([]);
   const [participations, setParticipations] = useState([]);
+  const [results, setResults] = useState([]);
   const [talents, setTalents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [eligibleStudents, setEligibleStudents] = useState([]);
@@ -124,6 +125,7 @@ const SportTeacherPage = () => {
         membershipsRes,
         competitionsRes,
         participationsRes,
+        resultsRes,
         announcementsRes,
         eligibleRes,
         schoolRes,
@@ -140,6 +142,7 @@ const SportTeacherPage = () => {
         apiService.getClubMemberships({ school: schoolId }),
         apiService.getCompetitions({ school: schoolId }),
         apiService.getParticipations({ school: schoolId }),
+        apiService.getAllResults({ school: schoolId }),
         apiService.getAnnouncements({ is_active: true }),
         apiService.getEligibleForPromotion().catch(() => ({ data: [] })),
         apiService.getSchoolById(schoolId),
@@ -159,6 +162,7 @@ const SportTeacherPage = () => {
       setClubMemberships(membershipsRes.data.results || []);
       setCompetitions(competitionsRes.data.results || []);
       setParticipations(participationsRes.data.results || []);
+      setResults(resultsRes.data.results || []);
       setAnnouncements(announcementsRes.data.results || []);
       setEligibleStudents(eligibleRes.data || []);
       setSchoolRecord(schoolRes.data);
@@ -999,37 +1003,48 @@ const SportTeacherPage = () => {
   );
 
   // RESULTS VIEW
+  const resultByParticipation = new Map(results.map((result) => [Number(result.participation), result]));
+  const competitionById = new Map(competitions.map((competition) => [Number(competition.id), competition]));
+  const schoolResultRows = students.map((student) => {
+    const participation = participations.find((item) => Number(item.student) === Number(student.id) && competitionById.get(Number(item.competition))?.level === 'school');
+    const result = participation ? resultByParticipation.get(Number(participation.id)) : null;
+    return {
+      id: result?.id || participation?.id || `student-${student.id}`,
+      competition: result?.competition_name || (participation ? getCompetitionName(participation.competition) : null),
+      student: student.id,
+      score: result?.score ?? participation?.score ?? 0,
+      status: participation?.status || 'registered',
+    };
+  });
+
+  const higherLevelResults = ['district', 'zone', 'country'].map((level) => ({
+    level,
+    results: results.filter((result) => result.competition_level === level),
+  }));
+
   const renderResults = () => (
-    <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>All Competition Results</span>
-        <button onClick={() => openModal('recordResult')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Record Result</button>
-      </div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-          <thead>
-            <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Competition</th>
-              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Student</th>
-              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Score</th>
-              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {participations.map((part) => (
-              <tr key={part.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ padding: '10px 16px' }}>{getCompetitionName(part.competition)}</td>
-                <td style={{ padding: '10px 16px' }}>{getStudentName(part.student)}</td>
-                <td style={{ padding: '10px 16px', fontWeight: '600' }}>{part.score ? `${part.score}%` : '—'}</td>
-                <td style={{ padding: '10px 16px' }}>{getStatusBadge(part.status, part.score)}</td>
-              </tr>
-            ))}
-            {participations.length === 0 && (
-              <tr><td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No results recorded</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+    <div className="sport-teacher-results-stack">
+      <section className="sport-teacher-results-card">
+        <div className="sport-teacher-results-card-header">
+          <div><h2>School-level competition</h2><p>Manage results for all students in your school.</p></div>
+          <button type="button" onClick={() => openModal('recordResult')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Record Result</button>
+        </div>
+        <div className="sport-teacher-results-table-wrap">
+          <table className="sport-teacher-results-table"><thead><tr><th>Competition</th><th>Student</th><th>Score</th><th>Status</th></tr></thead><tbody>
+            {schoolResultRows.map((row) => <tr key={row.id}><td>{row.competition || 'Not recorded'}</td><td>{getStudentName(row.student)}</td><td><strong>{row.score}%</strong></td><td>{getStatusBadge(row.status, row.score)}</td></tr>)}
+            {!schoolResultRows.length && <tr><td colSpan="4" className="sport-teacher-results-empty">No students registered.</td></tr>}
+          </tbody></table>
+        </div>
+      </section>
+      {higherLevelResults.map(({ level, results: levelResults }) => (
+        <section className="sport-teacher-results-card" key={level}>
+          <div className="sport-teacher-results-card-header"><div><h2>{level.charAt(0).toUpperCase() + level.slice(1)}-level competition</h2><p>Read-only results for students promoted from your school.</p></div><span className="sport-teacher-read-only-badge">Read only</span></div>
+          <div className="sport-teacher-results-table-wrap"><table className="sport-teacher-results-table"><thead><tr><th>Competition</th><th>Student</th><th>Score</th><th>Rank</th></tr></thead><tbody>
+            {levelResults.map((result) => <tr key={result.id}><td>{result.competition_name}</td><td>{result.student_name}</td><td><strong>{result.score ?? 0}%</strong></td><td>{result.rank ?? '—'}</td></tr>)}
+            {!levelResults.length && <tr><td colSpan="4" className="sport-teacher-results-empty">No {level}-level results available.</td></tr>}
+          </tbody></table></div>
+        </section>
+      ))}
     </div>
   );
 

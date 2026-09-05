@@ -939,6 +939,83 @@
   filter: brightness(0.96);
 }
 
+.sport-teacher-results-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.sport-teacher-results-card {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.sport-teacher-results-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sport-teacher-results-card-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.sport-teacher-results-card-header p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.sport-teacher-results-table-wrap {
+  overflow-x: auto;
+}
+
+.sport-teacher-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.sport-teacher-results-table th,
+.sport-teacher-results-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sport-teacher-results-table th {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.sport-teacher-results-empty {
+  padding: 28px 16px !important;
+  color: #94a3b8 !important;
+  text-align: center !important;
+}
+
+.sport-teacher-read-only-badge {
+  padding: 5px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .sport-teacher-optional-label {
   color: #94a3b8;
   font-size: 12px;

@@ -219,6 +219,8 @@ export const deleteParticipation = (id) => api.delete(`/participations/${id}/`);
 // ==================== RESULTS ====================
 
 export const getResults = (params = {}) => api.get('/results/', { params });
+export const getAllResults = (params = {}) => getAllRecords('/results/', params);
+export const updateResult = (id, data) => api.patch(`/results/${id}/`, data);
 export const getResultById = (id) => api.get(`/results/${id}/`);
 export const createResult = (data) => api.post('/results/', data);
 export const promoteStudents = (data) => api.post('/result-promotions/promote/', data);
