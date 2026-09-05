@@ -4,6 +4,13 @@ import * as apiService from '../services/apiService';
 import './SportTeacherPage.css';
 import logo from '../assets/Logo1.png';
 
+const EyeIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+    <circle cx="12" cy="12" r="2.5" />
+  </svg>
+);
+
 const SportTeacherPage = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -34,7 +41,7 @@ const SportTeacherPage = () => {
   
   // Form states
   const [studentForm, setStudentForm] = useState({
-    first_name: '', last_name: '', gender: 'M', date_of_birth: '', password: '', club: '', talents: []
+    first_name: '', last_name: '', gender: 'M', date_of_birth: '', education_level: '', password: '', confirm_password: '', club: '', talents: []
   });
   const [clubMembershipForm, setClubMembershipForm] = useState({ student: '', club: '' });
   const [talentForm, setTalentForm] = useState({ student: '', talent: '', proficiency_level: 1, notes: '' });
@@ -53,7 +60,13 @@ const SportTeacherPage = () => {
     education_level: '',
     club: '',
     talents: [],
+    new_password: '',
+    confirm_password: '',
   });
+  const [showRegistrationPassword, setShowRegistrationPassword] = useState(false);
+  const [showRegistrationConfirmation, setShowRegistrationConfirmation] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [showEditConfirmation, setShowEditConfirmation] = useState(false);
   
   // Sidebar state
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -181,12 +194,18 @@ const SportTeacherPage = () => {
       education_level: student.education_level || '',
       club: String(clubMemberships.find((membership) => Number(membership.student) === Number(student.id) && membership.is_active)?.club || ''),
       talents: studentTalents.filter((entry) => Number(entry.student) === Number(student.id)).map((entry) => String(entry.talent)),
+      new_password: '',
+      confirm_password: '',
     });
   };
   const closeStudentEditor = () => setSelectedStudent(null);
 
   const handleSaveStudent = async (event) => {
     event.preventDefault();
+    if (studentEditForm.new_password !== studentEditForm.confirm_password) {
+      setError('New passwords do not match.');
+      return;
+    }
     try {
       await apiService.updateStudent(selectedStudent.id, {
         first_name: studentEditForm.first_name,
@@ -212,6 +231,12 @@ const SportTeacherPage = () => {
       await Promise.all(existingTalents.filter((entry) => !selectedTalentIds.has(Number(entry.talent))).map((entry) => apiService.deleteStudentTalent(entry.id)));
       const existingTalentIds = new Set(existingTalents.map((entry) => Number(entry.talent)));
       await Promise.all([...selectedTalentIds].filter((talentId) => !existingTalentIds.has(talentId)).map((talentId) => apiService.createStudentTalent({ student: selectedStudent.id, talent: talentId, proficiency_level: 1, notes: '' })));
+      if (studentEditForm.new_password || studentEditForm.confirm_password) {
+        await apiService.resetStudentPassword(selectedStudent.id, {
+          password: studentEditForm.new_password,
+          confirm_password: studentEditForm.confirm_password,
+        });
+      }
       closeStudentEditor();
       await loadData();
       showSuccess('Student changes saved successfully');
@@ -241,6 +266,7 @@ const SportTeacherPage = () => {
       date_of_birth: '',
       education_level: '',
       password: '',
+      confirm_password: '',
       club: '',
       talents: [],
     });
@@ -255,6 +281,10 @@ const SportTeacherPage = () => {
   // Register Student
   const handleRegisterStudent = async (e) => {
     e.preventDefault();
+    if (studentForm.password !== studentForm.confirm_password) {
+      setError('Passwords do not match.');
+      return;
+    }
     try {
       await apiService.registerStudent({
         first_name: studentForm.first_name,
@@ -267,7 +297,7 @@ const SportTeacherPage = () => {
         club: studentForm.club ? Number(studentForm.club) : null,
         talents: studentForm.talents.map((talentId) => Number(talentId)),
       });
-      setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', education_level: '', password: '', club: '', talents: [] });
+      setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', education_level: '', password: '', confirm_password: '', club: '', talents: [] });
       closeModal('registerStudent');
       loadData();
       showSuccess('Student registered successfully');
@@ -1082,11 +1112,14 @@ const SportTeacherPage = () => {
             <label>Last Name *<input type="text" value={studentForm.last_name} onChange={(event) => setStudentForm({ ...studentForm, last_name: event.target.value })} required /></label>
             <label>Gender *<select value={studentForm.gender} onChange={(event) => setStudentForm({ ...studentForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option></select></label>
             <label>Date of Birth<input type="date" value={studentForm.date_of_birth} onChange={(event) => setStudentForm({ ...studentForm, date_of_birth: event.target.value })} /></label>
-            <label>Class / Level<select value={studentForm.education_level} onChange={(event) => setStudentForm({ ...studentForm, education_level: event.target.value })}><option value="">Not specified</option>{educationLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label>
           </div>
-          <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-club-row">
-            <label>Password *<input type="password" value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /></label>
+          <div className="sport-teacher-registration-form-grid sport-teacher-registration-level-club-row">
+            <label>Class / Level<select value={studentForm.education_level} onChange={(event) => setStudentForm({ ...studentForm, education_level: event.target.value })}><option value="">Not specified</option>{educationLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label>
             <label>Assign school club <select value={studentForm.club} onChange={(event) => setStudentForm({ ...studentForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
+          </div>
+          <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-row">
+            <label>Password *<span className="sport-teacher-password-control"><input type={showRegistrationPassword ? 'text' : 'password'} value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationPassword((visible) => !visible)} aria-label={showRegistrationPassword ? 'Hide password' : 'Show password'}><EyeIcon /></button></span></label>
+            <label>Confirm Password *<span className="sport-teacher-password-control"><input type={showRegistrationConfirmation ? 'text' : 'password'} value={studentForm.confirm_password} onChange={(event) => setStudentForm({ ...studentForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationConfirmation((visible) => !visible)} aria-label={showRegistrationConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon /></button></span></label>
           </div>
           <fieldset className="sport-teacher-registration-talents">
             <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
@@ -1119,8 +1152,12 @@ const SportTeacherPage = () => {
             <label>Gender *<select value={studentEditForm.gender} onChange={(event) => setStudentEditForm({ ...studentEditForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option></select></label>
             <label>Date of Birth<input type="date" value={studentEditForm.date_of_birth} onChange={(event) => setStudentEditForm({ ...studentEditForm, date_of_birth: event.target.value })} /></label>
             <label>Class / Level<select value={studentEditForm.education_level} onChange={(event) => setStudentEditForm({ ...studentEditForm, education_level: event.target.value })}><option value="">Not specified</option>{educationLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label>
+            <label>Assign club<select value={studentEditForm.club} onChange={(event) => setStudentEditForm({ ...studentEditForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
           </div>
-          <label className="sport-teacher-edit-club-field">Assign school club<select value={studentEditForm.club} onChange={(event) => setStudentEditForm({ ...studentEditForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
+          <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-row">
+            <label>New Password<span className="sport-teacher-password-control"><input type={showEditPassword ? 'text' : 'password'} value={studentEditForm.new_password} onChange={(event) => setStudentEditForm({ ...studentEditForm, new_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditPassword((visible) => !visible)} aria-label={showEditPassword ? 'Hide new password' : 'Show new password'}><EyeIcon /></button></span></label>
+            <label>Confirm Password<span className="sport-teacher-password-control"><input type={showEditConfirmation ? 'text' : 'password'} value={studentEditForm.confirm_password} onChange={(event) => setStudentEditForm({ ...studentEditForm, confirm_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditConfirmation((visible) => !visible)} aria-label={showEditConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon /></button></span></label>
+          </div>
           <fieldset className="sport-teacher-registration-talents">
             <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
             {renderTalentCheckboxes(studentEditForm.talents, (talents) => setStudentEditForm({ ...studentEditForm, talents }))}

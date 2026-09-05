@@ -184,6 +184,7 @@ export const getStudentById = (id) => api.get(`/students/${id}/`);
 export const createStudent = (data) => api.post('/students/', data);
 export const registerStudent = (data) => api.post('/students/register/', data);
 export const updateStudent = (id, data) => api.patch(`/students/${id}/`, data);
+export const resetStudentPassword = (id, data) => api.post(`/students/${id}/reset-password/`, data);
 export const deleteStudent = (id) => api.delete(`/students/${id}/`);
 
 // ==================== PARENTS ====================

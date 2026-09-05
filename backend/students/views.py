@@ -90,6 +90,24 @@ class StudentViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
 
         return Response(StudentSerializer(student).data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['post'], url_path='reset-password')
+    def reset_password(self, request, pk=None):
+        student = self.get_object()
+        password = request.data.get('password')
+        confirmation = request.data.get('confirm_password')
+        if not password or not confirmation:
+            return Response({'detail': 'Both password fields are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if password != confirmation:
+            return Response({'detail': 'Passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(password) < 8:
+            return Response({'detail': 'Password must be at least 8 characters long.'}, status=status.HTTP_400_BAD_REQUEST)
+        account = User.objects.filter(student=student).first()
+        if account is None:
+            return Response({'detail': 'This student has no linked user account.'}, status=status.HTTP_400_BAD_REQUEST)
+        account.set_password(password)
+        account.save(update_fields=['password'])
+        return Response({'detail': 'Student password updated successfully.'})
+
 
 class ParentViewSet(viewsets.ModelViewSet):
     queryset = Parent.objects.all()

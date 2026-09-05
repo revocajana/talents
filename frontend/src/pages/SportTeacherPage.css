@@ -642,6 +642,45 @@
   outline: 3px solid rgba(70, 130, 180, 0.16);
 }
 
+.sport-teacher-password-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sport-teacher-password-control input {
+  padding-right: 64px;
+}
+
+.sport-teacher-password-control button {
+  position: absolute;
+  right: 8px;
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  color: #0e1db6;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sport-teacher-password-control button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.sport-teacher-password-control button:hover,
+.sport-teacher-password-control button:focus-visible {
+  color: #4682b4;
+  text-decoration: underline;
+}
+
 .sport-teacher-registration-password-club-row {
   margin-top: 16px;
 }
