@@ -1282,7 +1282,7 @@ const SportTeacherPage = () => {
                 .map((talent) => (
                 <button type="button" key={talent.id} onClick={() => setSelectedTalent(talent)} className="sport-teacher-drawer-talent-item">
                   <strong>{talent.name}:</strong>{' '}
-                  <span>{talent.description || 'Talent record'}</span>
+                  <span>{talent.description || 'Talent record'} ({studentTalents.filter((entry) => Number(entry.talent) === Number(talent.id)).length})</span>
                 </button>
               ))}
             </div>
