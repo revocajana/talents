@@ -26,6 +26,7 @@ const SportTeacherPage = () => {
   const [competitions, setCompetitions] = useState([]);
   const [participations, setParticipations] = useState([]);
   const [results, setResults] = useState([]);
+  const [resultDetails, setResultDetails] = useState([]);
   const [talents, setTalents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [eligibleStudents, setEligibleStudents] = useState([]);
@@ -127,6 +128,7 @@ const SportTeacherPage = () => {
         competitionsRes,
         participationsRes,
         resultsRes,
+        resultDetailsRes,
         announcementsRes,
         eligibleRes,
         schoolRes,
@@ -144,6 +146,7 @@ const SportTeacherPage = () => {
         apiService.getCompetitions({ school: schoolId }),
         apiService.getParticipations({ school: schoolId }),
         apiService.getAllResults({ school: schoolId }),
+        apiService.getAllResultDetails({ school: schoolId }),
         apiService.getAnnouncements({ is_active: true }),
         apiService.getEligibleForPromotion().catch(() => ({ data: [] })),
         apiService.getSchoolById(schoolId),
@@ -164,6 +167,7 @@ const SportTeacherPage = () => {
       setCompetitions(competitionsRes.data.results || []);
       setParticipations(participationsRes.data.results || []);
       setResults(resultsRes.data.results || []);
+      setResultDetails(resultDetailsRes.data.results || []);
       setAnnouncements(announcementsRes.data.results || []);
       setEligibleStudents(eligibleRes.data || []);
       setSchoolRecord(schoolRes.data);
@@ -213,16 +217,33 @@ const SportTeacherPage = () => {
   const handleSaveResult = async (row) => {
     try {
       const score = resultScores[row.id] === '' ? null : Number(resultScores[row.id] ?? row.score);
+      let participationId = row.participation;
       if (row.participation) {
-        await apiService.updateParticipation(row.participation, { score, status: 'finished' });
+        await apiService.updateParticipation(row.participation, { status: 'finished' });
       } else if (row.competitionId) {
-        await apiService.createParticipation({ competition: row.competitionId, student: row.student, score, status: 'finished' });
+        const participationResponse = await apiService.createParticipation({ competition: row.competitionId, student: row.student, score: null, status: 'finished' });
+        participationId = participationResponse.data.id;
       } else {
         setError('No school-level competition is available for this school.');
         return;
       }
-      if (row.result && row.status === 'finished') {
-        await apiService.updateResult(row.result, { score });
+      let resultId = row.result;
+      if (!resultId) {
+        const resultResponse = await apiService.createResult({ participation: participationId, score: null, award: 'none' });
+        resultId = resultResponse.data.id;
+      }
+      if (row.detail) {
+        await apiService.updateResultDetail(row.detail.id, {
+          raw_score: score ?? 0,
+          percentage_score: score,
+        });
+      } else if (row.talentId) {
+        await apiService.createResultDetail({
+          result: resultId,
+          talent: row.talentId,
+          raw_score: score ?? 0,
+          percentage_score: score,
+        });
       }
       await loadData();
       showSuccess('Result saved successfully');
@@ -1031,17 +1052,22 @@ const SportTeacherPage = () => {
     const result = participation ? resultByParticipation.get(Number(participation.id)) : null;
     const studentTalentEntries = studentTalents.filter((entry) => Number(entry.student) === Number(student.id));
     const talentRows = studentTalentEntries.length ? studentTalentEntries : [{ id: `no-talent-${student.id}`, talent_name: 'None' }];
-    return talentRows.map((talentEntry) => ({
-      id: `${result?.id || participation?.id || `student-${student.id}`}-${talentEntry.id}`,
-      result: result?.id,
-      participation: participation?.id,
-      competition: result?.competition_name || (participation ? getCompetitionName(participation.competition) : null),
-      competitionId: participation?.competition || schoolCompetition?.id,
-      student: student.id,
-      talent: talentEntry.talent_name || 'Talent',
-      score: result?.score ?? participation?.score ?? 0,
-      status: participation?.status || 'registered',
-    }));
+    return talentRows.map((talentEntry) => {
+      const detail = resultDetails.find((entry) => Number(entry.talent) === Number(talentEntry.id) && result && Number(entry.result) === Number(result.id));
+      return {
+        id: `${result?.id || participation?.id || `student-${student.id}`}-${talentEntry.id}`,
+        result: result?.id,
+        participation: participation?.id,
+        competition: result?.competition_name || (participation ? getCompetitionName(participation.competition) : null),
+        competitionId: participation?.competition || schoolCompetition?.id,
+        student: student.id,
+        talentId: talentEntry.talent ? talentEntry.id : null,
+        talent: talentEntry.talent_name || 'Talent',
+        detail,
+        score: detail?.percentage_score ?? detail?.raw_score ?? result?.score ?? participation?.score ?? 0,
+        status: detail ? (detail.passed ? 'finished' : 'registered') : (participation?.status || 'registered'),
+      };
+    });
   });
 
   const higherLevelResults = ['district', 'zone', 'country'].map((level) => ({

@@ -228,8 +228,10 @@ export const promoteStudents = (data) => api.post('/result-promotions/promote/',
 export const getResultPromotions = (params = {}) => api.get('/result-promotions/', { params });
 
 export const getResultDetails = (params = {}) => api.get('/result-details/', { params });
+export const getAllResultDetails = (params = {}) => getAllRecords('/result-details/', params);
 export const getResultDetailById = (id) => api.get(`/result-details/${id}/`);
 export const createResultDetail = (data) => api.post('/result-details/', data);
+export const updateResultDetail = (id, data) => api.patch(`/result-details/${id}/`, data);
 
 // ==================== ANNOUNCEMENTS ====================
 
