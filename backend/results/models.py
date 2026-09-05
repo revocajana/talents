@@ -116,6 +116,7 @@ class Result(models.Model):
 
 class ResultPromotion(models.Model):
     result = models.ForeignKey(Result, on_delete=models.CASCADE, related_name='promotions')
+    result_detail = models.ForeignKey('ResultDetail', on_delete=models.CASCADE, null=True, blank=True, related_name='promotions')
     from_level = models.CharField(max_length=20)
     to_level = models.CharField(max_length=20)
     promoted_by = models.ForeignKey('core.User', on_delete=models.PROTECT, related_name='result_promotions')
@@ -136,6 +137,8 @@ class ResultDetail(models.Model):
     # Scoring for this talent component
     raw_score = models.DecimalField(max_digits=5, decimal_places=2)
     percentage_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    passed = models.BooleanField(default=False)
+    promoted_to = models.CharField(max_length=20, blank=True)
     
     notes = models.TextField(blank=True)
     recorded_at = models.DateTimeField(auto_now_add=True)
@@ -143,7 +146,15 @@ class ResultDetail(models.Model):
     class Meta:
         ordering = ['-recorded_at']
         verbose_name_plural = 'Result Details'
+        constraints = [
+            models.UniqueConstraint(fields=['result', 'talent'], name='unique_result_detail_per_talent'),
+        ]
 
     def __str__(self):
         return f"{self.result} – {self.talent.talent.name}"
+
+    def save(self, *args, **kwargs):
+        score = self.percentage_score if self.percentage_score is not None else self.raw_score
+        self.passed = score >= 50
+        super().save(*args, **kwargs)
 

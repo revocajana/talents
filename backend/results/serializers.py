@@ -11,11 +11,14 @@ class ResultDetailSerializer(serializers.ModelSerializer):
         model = ResultDetail
         fields = [
             'id',
+            'result',
             'talent',
             'talent_name',
             'student_name',
             'raw_score',
             'percentage_score',
+            'passed',
+            'promoted_to',
             'notes',
             'recorded_at',
         ]
@@ -81,7 +84,7 @@ class ResultSerializer(serializers.ModelSerializer):
 class ResultPromotionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResultPromotion
-        fields = ['id', 'result', 'from_level', 'to_level', 'promoted_by', 'promoted_at', 'notes']
+        fields = ['id', 'result', 'result_detail', 'from_level', 'to_level', 'promoted_by', 'promoted_at', 'notes']
         read_only_fields = ['promoted_by', 'promoted_at']
 
     def validate(self, attrs):
@@ -92,6 +95,11 @@ class ResultPromotionSerializer(serializers.ModelSerializer):
         }
         if attrs.get('from_level') not in allowed or attrs.get('to_level') != allowed.get(attrs.get('from_level')):
             raise serializers.ValidationError('Results must progress from school to district to zone to country.')
+        if attrs.get('result_detail'):
+            if not attrs['result_detail'].passed:
+                raise serializers.ValidationError('Only passed talent results can be promoted.')
+            if attrs['result_detail'].result_id != attrs['result'].id:
+                raise serializers.ValidationError('Talent result must belong to the selected result.')
         if not attrs['result'].approval_status == 'approved':
             raise serializers.ValidationError('Only approved results can be promoted.')
         if attrs['result'].grade and attrs['result'].grade not in {'A+', 'A', 'A-', 'B+'}:

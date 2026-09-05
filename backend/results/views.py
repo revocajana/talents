@@ -66,12 +66,13 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], permission_classes=[IsSportTeacher])
     def promote(self, request):
         """Promote students to next competition level."""
+        detail_ids = request.data.get('result_detail_ids', [])
         student_ids = request.data.get('student_ids', [])
         competition_id = request.data.get('competition_id')
         from_level = request.data.get('from_level', 'school')
         to_level = request.data.get('to_level')  # district, zone, country
         
-        if not student_ids or not competition_id or not to_level:
+        if not (detail_ids or student_ids) or not competition_id or not to_level:
             return Response({
                 'error': 'student_ids, competition_id, and to_level are required'
             }, status=status.HTTP_400_BAD_REQUEST)
@@ -97,6 +98,25 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
         errors = []
         
         with transaction.atomic():
+            if detail_ids:
+                details = ResultDetail.objects.select_related('result__participation__student').filter(
+                    id__in=detail_ids,
+                    result__participation__competition_id=competition_id,
+                    result__participation__student__school=request.user.school,
+                    passed=True,
+                )
+                for detail in details:
+                    promotion = ResultPromotion.objects.create(
+                        result=detail.result,
+                        result_detail=detail,
+                        to_level=to_level,
+                        from_level=from_level,
+                        promoted_by=request.user,
+                        promoted_at=timezone.now(),
+                    )
+                    detail.promoted_to = to_level
+                    detail.save(update_fields=['promoted_to'])
+                    promotions.append(promotion)
             for student_id in student_ids:
                 try:
                     # Check if student exists in school
