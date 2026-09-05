@@ -1392,16 +1392,14 @@ const SportTeacherPage = () => {
           <h2>New announcement</h2>
           <button type="button" onClick={() => closeModal('createAnnouncement')} aria-label="Close announcement form">&times;</button>
         </div>
-        <p className="sport-teacher-drawer-kicker">Publish to {schoolName}</p>
         <form onSubmit={handleCreateAnnouncement}>
-          <div className="sport-teacher-registration-form-grid">
+          <div className="sport-teacher-announcement-form">
             <label>Title *<input type="text" value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} maxLength="200" required /></label>
             <label>Message *<textarea value={announcementForm.content} onChange={(event) => setAnnouncementForm({ ...announcementForm, content: event.target.value })} rows="7" required /></label>
-            <label>Expires on (optional)<input type="date" value={announcementForm.expires_at} onChange={(event) => setAnnouncementForm({ ...announcementForm, expires_at: event.target.value })} /></label>
-          </div>
-          <div className="sport-teacher-registration-form-actions">
-            <button type="button" onClick={() => closeModal('createAnnouncement')}>Cancel</button>
-            <button type="submit" disabled={announcementSubmitting}>{announcementSubmitting ? 'Publishing...' : 'Publish announcement'}</button>
+            <div className="sport-teacher-announcement-form-actions">
+              <label>Expires on (optional)<input type="date" value={announcementForm.expires_at} onChange={(event) => setAnnouncementForm({ ...announcementForm, expires_at: event.target.value })} /></label>
+              <button type="submit" disabled={announcementSubmitting}>{announcementSubmitting ? 'Publishing...' : 'Publish'}</button>
+            </div>
           </div>
         </form>
       </aside>
