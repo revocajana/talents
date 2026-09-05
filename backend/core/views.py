@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import transaction
 from django.db.models import Q
 
 from .models import (
@@ -180,12 +181,44 @@ class CountryClubViewSet(viewsets.ModelViewSet):
     serializer_class = CountryClubSerializer
     permission_classes = [ConfigurationPermission]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        country_id = self.request.query_params.get('country')
+        if country_id:
+            queryset = queryset.filter(country_id=country_id)
+        return queryset
+
 
 class SchoolClubViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = SchoolClub.objects.select_related('school', 'country_club').all()
     serializer_class = SchoolClubSerializer
     permission_classes = [AuthenticatedReadOnly]
     scope_paths = {'student': 'memberships__student_id', 'school': 'school_id', 'country': 'school__country_id', 'zone': 'school__zone_id', 'region': 'school__region_id', 'district': 'school__district_id', 'ward': 'school__ward_id'}
+
+    @action(detail=False, methods=['post'], url_path='register')
+    def register(self, request):
+        if request.user.role not in {'head_teacher', 'sport_teacher'}:
+            return Response({'detail': 'Only school teachers can register clubs.'}, status=403)
+        school = request.user.school
+        country_club_ids = list(dict.fromkeys(request.data.get('country_club_ids') or []))
+        if school is None:
+            return Response({'detail': 'This teacher has no assigned school.'}, status=400)
+        allowed_total = school.recommended_club_count
+        current_count = SchoolClub.objects.filter(school=school, is_active=True).count()
+        if current_count + len(country_club_ids) > allowed_total:
+            return Response({'detail': f'This school can register up to {allowed_total} active clubs.'}, status=400)
+        country_clubs = list(CountryClub.objects.filter(id__in=country_club_ids, country_id=school.country_id, is_active=True))
+        if len(country_clubs) != len(country_club_ids):
+            return Response({'detail': 'Choose active clubs from your school country.'}, status=400)
+        existing_ids = set(SchoolClub.objects.filter(school=school, country_club_id__in=country_club_ids).values_list('country_club_id', flat=True))
+        if existing_ids:
+            return Response({'detail': 'One or more selected clubs are already registered for this school.'}, status=400)
+        with transaction.atomic():
+            SchoolClub.objects.bulk_create([
+                SchoolClub(school=school, country_club=country_club, is_active=True)
+                for country_club in country_clubs
+            ])
+        return Response({'registered': len(country_clubs)}, status=201)
 
 
 class ClubTeacherViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):

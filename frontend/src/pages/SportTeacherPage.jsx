@@ -21,6 +21,7 @@ const SportTeacherPage = () => {
   const [students, setStudents] = useState([]);
   const [studentTalents, setStudentTalents] = useState([]);
   const [clubs, setClubs] = useState([]);
+  const [countryClubs, setCountryClubs] = useState([]);
   const [clubMemberships, setClubMemberships] = useState([]);
   const [competitions, setCompetitions] = useState([]);
   const [participations, setParticipations] = useState([]);
@@ -37,6 +38,7 @@ const SportTeacherPage = () => {
     recordResult: false,
     uploadExcel: false,
     assignStudentClub: false,
+    registerClubs: false,
   });
   
   // Form states
@@ -46,6 +48,7 @@ const SportTeacherPage = () => {
   const [clubMembershipForm, setClubMembershipForm] = useState({ student: '', club: '' });
   const [talentForm, setTalentForm] = useState({ student: '', talent: '', proficiency_level: 1, notes: '' });
   const [clubForm, setClubForm] = useState({ name: '', focus: '', description: '' });
+  const [selectedClubIds, setSelectedClubIds] = useState([]);
   const [resultForm, setResultForm] = useState({ student: '', competition: '', score: '', status: 'finished' });
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -124,6 +127,7 @@ const SportTeacherPage = () => {
         announcementsRes,
         eligibleRes,
         schoolRes,
+        countryClubsRes,
       ] = await Promise.all([
         apiService.getStudents({ school: schoolId }),
         apiService.getEducationLevels({
@@ -139,6 +143,7 @@ const SportTeacherPage = () => {
         apiService.getAnnouncements({ is_active: true }),
         apiService.getEligibleForPromotion().catch(() => ({ data: [] })),
         apiService.getSchoolById(schoolId),
+        apiService.getCountryClubs({ country: user?.country_id || user?.country?.id || user?.country }),
       ]);
       
       const schoolStudents = (studentsRes.data.results || []).filter((student) => {
@@ -157,6 +162,7 @@ const SportTeacherPage = () => {
       setAnnouncements(announcementsRes.data.results || []);
       setEligibleStudents(eligibleRes.data || []);
       setSchoolRecord(schoolRes.data);
+      setCountryClubs(countryClubsRes.data.results || []);
       
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load data');
@@ -279,6 +285,8 @@ const SportTeacherPage = () => {
     setTimeout(() => setSuccess(null), 5000);
   };
 
+  const clubLimit = students.length <= 200 ? 3 : students.length < 500 ? 5 : 10;
+
   // Register Student
   const handleRegisterStudent = async (e) => {
     e.preventDefault();
@@ -344,6 +352,24 @@ const SportTeacherPage = () => {
       showSuccess('Club created successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create club');
+    }
+  };
+
+  const openClubRegistration = () => {
+    setError(null);
+    setSelectedClubIds([]);
+    openModal('registerClubs');
+  };
+
+  const handleRegisterClubs = async (event) => {
+    event.preventDefault();
+    try {
+      await apiService.registerClubs({ country_club_ids: selectedClubIds.map(Number) });
+      closeModal('registerClubs');
+      await loadData();
+      showSuccess('Clubs registered successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to register clubs');
     }
   };
 
@@ -510,6 +536,10 @@ const SportTeacherPage = () => {
       ])
   ).values());
   const registrationClubs = schoolClubs.filter((club) => club.is_active !== false);
+  const registeredCountryClubIds = new Set(schoolClubs.map((club) => Number(club.country_club ?? club.country_club_id)));
+  const availableCountryClubs = countryClubs.filter(
+    (club) => club.is_active !== false && !registeredCountryClubIds.has(Number(club.id))
+  );
   const talentsByCategory = talents.reduce((groups, talent) => {
     const category = talent.category_name || 'Uncategorized';
     groups[category] = [...(groups[category] || []), talent];
@@ -610,11 +640,13 @@ const SportTeacherPage = () => {
     <div className="sport-teacher-prototype-page">
       <div className="sport-teacher-prototype-page-heading">
         <h1>Clubs &amp; Talents</h1>
-        <p>{schoolName}</p>
       </div>
       <div className="sport-teacher-management-grid">
         <section className="sport-teacher-management-card">
-          <div className="sport-teacher-card-heading"><h2>Clubs</h2></div>
+          <div className="sport-teacher-card-heading">
+            <h2>Clubs</h2>
+            <button type="button" className="sport-teacher-card-action" onClick={openClubRegistration}>Register club</button>
+          </div>
           {selectedClubs.length ? (
             <div className="sport-teacher-club-list">
               {selectedClubs.map((club) => (
@@ -1157,6 +1189,40 @@ const SportTeacherPage = () => {
     </>
   ) : null;
 
+  const clubRegistrationDrawer = modals.registerClubs ? (
+    <>
+      <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close club registration" onClick={() => closeModal('registerClubs')} />
+      <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label="Register clubs">
+        <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
+        <div className="sport-teacher-search-drawer-header">
+          <h2>Register club</h2>
+          <button type="button" onClick={() => closeModal('registerClubs')} aria-label="Close club registration">&times;</button>
+        </div>
+        <p className="sport-teacher-drawer-kicker">Choose clubs for {schoolName}</p>
+        <p className="sport-teacher-club-limit">Maximum active clubs: <strong>{clubLimit}</strong>. Currently registered: <strong>{schoolClubs.filter((club) => club.is_active).length}</strong>.</p>
+        <form onSubmit={handleRegisterClubs}>
+          <div className="sport-teacher-club-checkbox-list">
+            {availableCountryClubs.map((club) => {
+              const selected = selectedClubIds.includes(String(club.id));
+              const remaining = clubLimit - schoolClubs.filter((item) => item.is_active).length;
+              return (
+                <label key={club.id}>
+                  <input type="checkbox" checked={selected} disabled={!selected && selectedClubIds.length >= remaining} onChange={(event) => setSelectedClubIds(event.target.checked ? [...selectedClubIds, String(club.id)] : selectedClubIds.filter((id) => id !== String(club.id)))} />
+                  <span><strong>{club.name}</strong><small>{club.focus}</small></span>
+                </label>
+              );
+            })}
+            {!availableCountryClubs.length && <p className="sport-teacher-empty-message">No additional clubs are available for this school.</p>}
+          </div>
+          <div className="sport-teacher-registration-form-actions">
+            <button type="button" onClick={() => closeModal('registerClubs')}>Cancel</button>
+            <button type="submit" disabled={!selectedClubIds.length}>Register selected clubs</button>
+          </div>
+        </form>
+      </aside>
+    </>
+  ) : null;
+
   const studentEditDrawer = selectedStudent ? (
     <>
       <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close student editor" onClick={closeStudentEditor} />
@@ -1358,6 +1424,7 @@ const SportTeacherPage = () => {
         </>
       )}
       {registrationDrawer}
+      {clubRegistrationDrawer}
       {studentEditDrawer}
     </div>
   );
