@@ -1151,22 +1151,20 @@ const SportTeacherPage = () => {
     <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <span style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Announcements</span>
-          <span style={{ fontSize: '14px', color: '#6b7280' }}>{relevantAnnouncements.length} available</span>
+          <span style={{ display: 'block', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Announcements ({relevantAnnouncements.length})</span>
         </div>
         <button type="button" onClick={() => openModal('createAnnouncement')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Add announcement</button>
       </div>
       <div style={{ display: 'grid', gap: '16px', padding: '20px' }}>
         {relevantAnnouncements.map((announcement) => (
-          <article key={announcement.id} style={{ paddingBottom: '16px', borderBottom: '1px solid #f3f4f6' }}>
+          <article key={announcement.id} style={{ padding: '0 0 16px', borderBottom: '1px solid #f3f4f6' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'baseline' }}>
-              <h2 style={{ margin: 0, color: '#111827', fontSize: '17px' }}>{announcement.title}</h2>
-              <span style={{ color: '#6b7280', fontSize: '12px', whiteSpace: 'nowrap' }}>{announcement.scope_display || announcement.scope}</span>
+              <h2 style={{ margin: 0, color: '#111827', fontSize: '20px', fontWeight: '700', lineHeight: 1.3 }}>{announcement.title}</h2>
+              <span style={{ color: '#6b7280', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                {announcement.published_at || announcement.created_at ? new Date(announcement.published_at || announcement.created_at).toLocaleDateString('en-GB') : 'Date unavailable'}
+              </span>
             </div>
-            <p style={{ margin: '8px 0 0', color: '#4b5563', lineHeight: 1.6 }}>{announcement.content}</p>
-            <small style={{ display: 'block', marginTop: '8px', color: '#9ca3af' }}>
-              {announcement.published_at || announcement.created_at ? new Date(announcement.published_at || announcement.created_at).toLocaleDateString('en-GB') : 'Date unavailable'}
-            </small>
+            <p style={{ margin: '8px 0 0', color: '#4b5563', fontSize: '14px', lineHeight: 1.6 }}>{announcement.content}</p>
           </article>
         ))}
         {relevantAnnouncements.length === 0 && <p style={{ margin: 0, color: '#6b7280' }}>No announcements for your school.</p>}
