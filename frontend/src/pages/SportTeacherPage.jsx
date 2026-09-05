@@ -583,6 +583,13 @@ const SportTeacherPage = () => {
         return `${studentA.first_name} ${studentA.last_name}`.localeCompare(`${studentB.first_name} ${studentB.last_name}`);
       })
     : [];
+  const selectedClubStudents = selectedClub
+    ? clubMemberships
+      .filter((membership) => Number(membership.club) === Number(selectedClub.id) && membership.is_active)
+      .map((membership) => students.find((student) => Number(student.id) === Number(membership.student)))
+      .filter(Boolean)
+      .sort((studentA, studentB) => `${studentA.first_name} ${studentA.last_name}`.localeCompare(`${studentB.first_name} ${studentB.last_name}`))
+    : [];
 
   const getStatusBadge = (status, score) => {
     if (status === 'disqualified') {
@@ -1335,7 +1342,27 @@ const SportTeacherPage = () => {
             </div>
             <p className="sport-teacher-drawer-kicker">Club details</p>
             <p>{selectedClub.focus || 'This club is selected for the school.'}</p>
-            <p className="sport-teacher-drawer-note">Club editing and deletion are managed by the administrator.</p>
+            <p className="sport-teacher-drawer-kicker">Students in this club</p>
+            {selectedClubStudents.length ? (
+              <table className="sport-teacher-drawer-table">
+                <thead><tr><th>Name</th><th>Form</th><th>Other talents</th></tr></thead>
+                <tbody>
+                  {selectedClubStudents.map((student) => {
+                    const otherTalents = studentTalents
+                      .filter((entry) => Number(entry.student) === Number(student.id))
+                      .map((entry) => entry.talent_name || 'Talent')
+                      .join(', ');
+                    return (
+                      <tr key={student.id}>
+                        <td>{student.first_name} {student.last_name} ({student.gender || '—'})</td>
+                        <td>{getStudentEducationLevel(student)}</td>
+                        <td>{otherTalents || 'None'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : <p className="sport-teacher-empty-message">No students assigned to this club.</p>}
           </aside>
         </>
       )}
