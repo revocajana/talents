@@ -175,6 +175,23 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
     permission_classes = [AuthenticatedReadOnly]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.role in {'sport_teacher', 'head_teacher'}:
+            return queryset.filter(school_id=user.school_id, scope='school') if user.school_id else queryset.none()
+        return queryset
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role == 'sport_teacher':
+            if not user.school_id:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'school': 'Your account is not assigned to a school.'})
+            serializer.save(scope='school', school_id=user.school_id, is_active=True)
+            return
+        serializer.save()
+
 
 class CountryClubViewSet(viewsets.ModelViewSet):
     queryset = CountryClub.objects.select_related('country').all()

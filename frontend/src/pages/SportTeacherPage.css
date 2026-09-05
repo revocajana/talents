@@ -750,7 +750,8 @@
 }
 
 .sport-teacher-registration-form-grid input,
-.sport-teacher-registration-form-grid select {
+.sport-teacher-registration-form-grid select,
+.sport-teacher-registration-form-grid textarea {
   width: 100%;
   min-height: 42px;
   padding: 10px 12px;
@@ -763,8 +764,14 @@
   font-weight: 400;
 }
 
+.sport-teacher-registration-form-grid textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
 .sport-teacher-registration-form-grid input:focus,
 .sport-teacher-registration-form-grid select:focus,
+.sport-teacher-registration-form-grid textarea:focus,
 .sport-teacher-registration-assignment-grid select:focus {
   border-color: #4682b4;
   outline: 3px solid rgba(70, 130, 180, 0.16);

@@ -42,6 +42,7 @@ const SportTeacherPage = () => {
     uploadExcel: false,
     assignStudentClub: false,
     registerClubs: false,
+    createAnnouncement: false,
   });
   
   // Form states
@@ -54,6 +55,8 @@ const SportTeacherPage = () => {
   const [selectedClubIds, setSelectedClubIds] = useState([]);
   const [resultForm, setResultForm] = useState({ student: '', competition: '', score: '', status: 'finished' });
   const [uploadFile, setUploadFile] = useState(null);
+  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', expires_at: '' });
+  const [announcementSubmitting, setAnnouncementSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [promoting, setPromoting] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
@@ -333,6 +336,29 @@ const SportTeacherPage = () => {
   const showSuccess = (msg) => {
     setSuccess(msg);
     setTimeout(() => setSuccess(null), 5000);
+  };
+
+  const handleCreateAnnouncement = async (event) => {
+    event.preventDefault();
+    setAnnouncementSubmitting(true);
+    setError(null);
+    try {
+      await apiService.createAnnouncement({
+        title: announcementForm.title.trim(),
+        content: announcementForm.content.trim(),
+        scope: 'school',
+        school: schoolId,
+        expires_at: announcementForm.expires_at || null,
+      });
+      setAnnouncementForm({ title: '', content: '', expires_at: '' });
+      closeModal('createAnnouncement');
+      await loadData();
+      showSuccess('School announcement published successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.school?.[0] || 'Failed to publish announcement');
+    } finally {
+      setAnnouncementSubmitting(false);
+    }
   };
 
   const clubLimit = students.length <= 200 ? 3 : students.length < 500 ? 5 : 10;
@@ -1124,8 +1150,11 @@ const SportTeacherPage = () => {
   const renderAnnouncements = () => (
     <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Announcements</span>
-        <span style={{ fontSize: '14px', color: '#6b7280' }}>{relevantAnnouncements.length} available</span>
+        <div>
+          <span style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Announcements</span>
+          <span style={{ fontSize: '14px', color: '#6b7280' }}>{relevantAnnouncements.length} available</span>
+        </div>
+        <button type="button" onClick={() => openModal('createAnnouncement')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Add announcement</button>
       </div>
       <div style={{ display: 'grid', gap: '16px', padding: '20px' }}>
         {relevantAnnouncements.map((announcement) => (
@@ -1354,6 +1383,31 @@ const SportTeacherPage = () => {
     </>
   ) : null;
 
+  const announcementDrawer = modals.createAnnouncement ? (
+    <>
+      <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close announcement form" onClick={() => closeModal('createAnnouncement')} />
+      <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label="Create school announcement">
+        <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
+        <div className="sport-teacher-search-drawer-header">
+          <h2>New announcement</h2>
+          <button type="button" onClick={() => closeModal('createAnnouncement')} aria-label="Close announcement form">&times;</button>
+        </div>
+        <p className="sport-teacher-drawer-kicker">Publish to {schoolName}</p>
+        <form onSubmit={handleCreateAnnouncement}>
+          <div className="sport-teacher-registration-form-grid">
+            <label>Title *<input type="text" value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} maxLength="200" required /></label>
+            <label>Message *<textarea value={announcementForm.content} onChange={(event) => setAnnouncementForm({ ...announcementForm, content: event.target.value })} rows="7" required /></label>
+            <label>Expires on (optional)<input type="date" value={announcementForm.expires_at} onChange={(event) => setAnnouncementForm({ ...announcementForm, expires_at: event.target.value })} /></label>
+          </div>
+          <div className="sport-teacher-registration-form-actions">
+            <button type="button" onClick={() => closeModal('createAnnouncement')}>Cancel</button>
+            <button type="submit" disabled={announcementSubmitting}>{announcementSubmitting ? 'Publishing...' : 'Publish announcement'}</button>
+          </div>
+        </form>
+      </aside>
+    </>
+  ) : null;
+
   const layout = (
     <div className="sport-teacher-page">
       <header className="sport-teacher-app-bar">
@@ -1540,6 +1594,7 @@ const SportTeacherPage = () => {
       {registrationDrawer}
       {clubRegistrationDrawer}
       {studentEditDrawer}
+      {announcementDrawer}
     </div>
   );
 
