@@ -1,8 +1,8 @@
 from rest_framework import viewsets
 from core.permissions import StudentDataPermission, ConfigurationPermission, ScopedQuerysetMixin
 
-from .models import Student, Parent
-from .serializers import StudentSerializer, ParentSerializer
+from .models import EducationLevel, Student, Parent
+from .serializers import EducationLevelSerializer, StudentSerializer, ParentSerializer
 
 
 class StudentViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -27,3 +27,10 @@ class ParentViewSet(viewsets.ModelViewSet):
     queryset = Parent.objects.all()
     serializer_class = ParentSerializer
     permission_classes = [ConfigurationPermission]
+
+
+class EducationLevelViewSet(viewsets.ModelViewSet):
+    queryset = EducationLevel.objects.select_related('country').all()
+    serializer_class = EducationLevelSerializer
+    permission_classes = [ConfigurationPermission]
+    filterset_fields = ['country', 'level_type', 'is_active']

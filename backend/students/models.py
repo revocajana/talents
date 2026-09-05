@@ -9,6 +9,29 @@ def _generate_student_id():
     return f"SID-{uuid.uuid4().hex[:10].upper()}"
 
 
+class EducationLevel(models.Model):
+    LEVEL_TYPE_CHOICES = [
+        ('standard', 'Standard'),
+        ('form', 'Form'),
+    ]
+
+    country = models.ForeignKey('core.Country', on_delete=models.CASCADE, related_name='education_levels')
+    name = models.CharField(max_length=50)
+    code = models.CharField(max_length=20)
+    level_type = models.CharField(max_length=20, choices=LEVEL_TYPE_CHOICES)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['level_type', 'order', 'name']
+        constraints = [
+            models.UniqueConstraint(fields=['country', 'code'], name='unique_education_level_per_country'),
+        ]
+
+    def __str__(self):
+        return f'{self.name} ({self.country.name})'
+
+
 
 class Student(models.Model):
     """Represents a student enrolled in a school.
@@ -27,6 +50,7 @@ class Student(models.Model):
     last_name = models.CharField(max_length=100)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     date_of_birth = models.DateField(null=True, blank=True)
+    education_level = models.ForeignKey(EducationLevel, on_delete=models.PROTECT, null=True, blank=True, related_name='students')
     # link to the school; cascade delete if school removed
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="students")
     # optional parent/guardian relationship

@@ -20,6 +20,7 @@ const SportTeacherPage = () => {
   const [talents, setTalents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [eligibleStudents, setEligibleStudents] = useState([]);
+  const [educationLevels, setEducationLevels] = useState([]);
   
   // Modal states
   const [modals, setModals] = useState({
@@ -90,6 +91,7 @@ const SportTeacherPage = () => {
       
       const [
         studentsRes,
+        educationLevelsRes,
         talentsRes,
         studentTalentsRes,
         clubsRes,
@@ -101,6 +103,10 @@ const SportTeacherPage = () => {
         schoolRes,
       ] = await Promise.all([
         apiService.getStudents({ school: schoolId }),
+        apiService.getEducationLevels({
+          country: user?.country_id || user?.country?.id || user?.country,
+          is_active: true,
+        }),
         apiService.getTalents(),
         apiService.getStudentTalents({ school: schoolId }),
         apiService.getClubs({ school: schoolId }),
@@ -117,6 +123,8 @@ const SportTeacherPage = () => {
         return Number(studentSchoolId) === schoolId;
       });
       setStudents(schoolStudents);
+      const schoolCountryId = schoolRes.data.country?.id ?? schoolRes.data.country_id ?? schoolRes.data.country;
+      setEducationLevels((educationLevelsRes.data.results || []).filter((level) => Number(level.country) === Number(schoolCountryId)));
       setTalents(talentsRes.data.results || []);
       setStudentTalents(studentTalentsRes.data.results || []);
       setClubs(clubsRes.data.results || []);
@@ -159,6 +167,7 @@ const SportTeacherPage = () => {
       last_name: '',
       gender: 'M',
       date_of_birth: '',
+      education_level: '',
       password: '',
       club: '',
       talents: [],
@@ -179,6 +188,7 @@ const SportTeacherPage = () => {
         first_name: studentForm.first_name,
         last_name: studentForm.last_name,
         gender: studentForm.gender,
+        education_level_id: studentForm.education_level || null,
         date_of_birth: studentForm.date_of_birth || null,
         school_id: schoolId,
       });
@@ -204,7 +214,7 @@ const SportTeacherPage = () => {
         proficiency_level: 1,
         notes: '',
       })));
-      setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', password: '', club: '', talents: [] });
+      setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', education_level: '', password: '', club: '', talents: [] });
       closeModal('registerStudent');
       loadData();
       showSuccess('Student registered successfully');
@@ -1012,6 +1022,7 @@ const SportTeacherPage = () => {
             <label>Last Name *<input type="text" value={studentForm.last_name} onChange={(event) => setStudentForm({ ...studentForm, last_name: event.target.value })} required /></label>
             <label>Gender *<select value={studentForm.gender} onChange={(event) => setStudentForm({ ...studentForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option></select></label>
             <label>Date of Birth<input type="date" value={studentForm.date_of_birth} onChange={(event) => setStudentForm({ ...studentForm, date_of_birth: event.target.value })} /></label>
+            <label>Class / Level<select value={studentForm.education_level} onChange={(event) => setStudentForm({ ...studentForm, education_level: event.target.value })}><option value="">Not specified</option>{educationLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label>
           </div>
           <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-club-row">
             <label>Password *<input type="password" value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /></label>
@@ -1360,6 +1371,10 @@ const SportTeacherPage = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Date of Birth</label>
                   <input type="date" name="date_of_birth" value={studentForm.date_of_birth} onChange={(e) => setStudentForm({ ...studentForm, date_of_birth: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>Class / Level</label>
+                  <select value={studentForm.education_level} onChange={(e) => setStudentForm({ ...studentForm, education_level: e.target.value })} style={{ minHeight: '42px', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '7px', fontSize: '14px', boxSizing: 'border-box' }}><option value="">Not specified</option>{educationLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select>
                 </div>
               </div>
               <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-club-row">

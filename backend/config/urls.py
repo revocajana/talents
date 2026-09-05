@@ -48,7 +48,7 @@ from core.views import (
     NotificationViewSet,
     AuditLogViewSet,
 )
-from students.views import StudentViewSet, ParentViewSet
+from students.views import EducationLevelViewSet, StudentViewSet, ParentViewSet
 from competitions.views import CompetitionViewSet, CompetitionParticipationViewSet, CompetitionJudgeViewSet
 from results.views import ResultViewSet, ResultDetailViewSet, ResultPromotionViewSet
 
@@ -63,6 +63,7 @@ router.register('school-ownership-types', SchoolOwnershipTypeViewSet)
 router.register('users', UserViewSet)
 router.register('students', StudentViewSet)
 router.register('parents', ParentViewSet)
+router.register('education-levels', EducationLevelViewSet)
 router.register('talent-categories', TalentCategoryViewSet)
 router.register('talents', TalentViewSet)
 router.register('student-talents', StudentTalentViewSet)

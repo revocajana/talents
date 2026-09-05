@@ -176,6 +176,7 @@ export const sendMessage = (data) => api.post('/messages/', data);
 // ==================== STUDENTS ====================
 
 export const getStudents = (params = {}) => api.get('/students/', { params });
+export const getEducationLevels = (params = {}) => api.get('/education-levels/', { params });
 export const getAllStudents = (params = {}) => getAllRecords('/students/', params);
 export const getStudentById = (id) => api.get(`/students/${id}/`);
 export const createStudent = (data) => api.post('/students/', data);

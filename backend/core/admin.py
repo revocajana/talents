@@ -25,7 +25,7 @@ from .models import (
     ClubTeacher,
     StudentClubMembership,
 )
-from students.models import Student
+from students.models import EducationLevel, Student
 
 
 admin.site.site_header = 'Super admin'
@@ -813,10 +813,18 @@ class ParentAdmin(admin.ModelAdmin):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ('student_id', 'first_name', 'last_name', 'school', 'gender', 'parent')
-    list_filter = ('gender', 'school__country', 'school__zone', 'school__region', 'school__district', 'school__ward')
+    list_display = ('student_id', 'first_name', 'last_name', 'school', 'education_level', 'gender', 'parent')
+    list_filter = ('education_level', 'gender', 'school__country', 'school__zone', 'school__region', 'school__district', 'school__ward')
     search_fields = ('student_id', 'first_name', 'last_name', 'school__name')
     autocomplete_fields = ('school', 'parent')
+
+
+@admin.register(EducationLevel)
+class EducationLevelAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'level_type', 'country', 'order', 'is_active')
+    list_filter = ('country', 'level_type', 'is_active')
+    search_fields = ('name', 'code', 'country__name')
+    ordering = ('country', 'level_type', 'order', 'name')
 
 
 @admin.register(TalentCategory)
