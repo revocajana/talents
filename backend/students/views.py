@@ -34,3 +34,16 @@ class EducationLevelViewSet(viewsets.ModelViewSet):
     serializer_class = EducationLevelSerializer
     permission_classes = [ConfigurationPermission]
     filterset_fields = ['country', 'level_type', 'is_active']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        country_id = self.request.query_params.get('country')
+        level_type = self.request.query_params.get('level_type')
+        is_active = self.request.query_params.get('is_active')
+        if country_id:
+            queryset = queryset.filter(country_id=country_id)
+        if level_type:
+            queryset = queryset.filter(level_type=level_type)
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() in {'1', 'true', 'yes'})
+        return queryset
