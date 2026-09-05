@@ -532,6 +532,27 @@ const SportTeacherPage = () => {
         </div>
       </section>
     ));
+  const selectedTalentStudents = selectedTalent
+    ? studentTalents
+      .filter((entry) => Number(entry.talent) === Number(selectedTalent.id))
+      .map((entry) => students.find((student) => Number(student.id) === Number(entry.student)))
+      .filter(Boolean)
+      .filter((student) => {
+        const query = talentSearchQuery.trim().toLowerCase();
+        if (!query) return true;
+        const otherTalentNames = studentTalents
+          .filter((entry) => Number(entry.student) === Number(student.id) && Number(entry.talent) !== Number(selectedTalent.id))
+          .map((entry) => entry.talent_name || '')
+          .join(' ');
+        return `${student.first_name} ${student.last_name} ${student.student_id || ''} ${otherTalentNames}`.toLowerCase().includes(query);
+      })
+      .sort((studentA, studentB) => {
+        if (talentSortBy === 'class') {
+          return getStudentEducationLevel(studentA).localeCompare(getStudentEducationLevel(studentB));
+        }
+        return `${studentA.first_name} ${studentA.last_name}`.localeCompare(`${studentB.first_name} ${studentB.last_name}`);
+      })
+    : [];
 
   const getStatusBadge = (status, score) => {
     if (status === 'disqualified') {
@@ -1299,19 +1320,37 @@ const SportTeacherPage = () => {
               <button type="button" onClick={() => setSelectedTalent(null)} aria-label="Close talent details">&times;</button>
             </div>
             <p className="sport-teacher-drawer-kicker">Students with this talent</p>
+            <div className="sport-teacher-drawer-controls">
+              <input type="text" placeholder="Search students..." value={talentSearchQuery} onChange={(event) => setTalentSearchQuery(event.target.value)} className="sport-teacher-search-input" aria-label="Search students" />
+              <select value={talentSortBy} onChange={(event) => setTalentSortBy(event.target.value)} className="sport-teacher-sort-select" aria-label="Sort students">
+                <option value="name">Sort by name</option>
+                <option value="class">Sort by class</option>
+              </select>
+            </div>
             <div className="sport-teacher-drawer-list">
-              {studentTalents
-                .filter((st) => st.talent === selectedTalent.id)
-                .map((st) => {
-                  const student = students.find((s) => s.id === st.student);
-                  return (
-                    <div key={st.id}>
-                      <strong>{student?.first_name} {student?.last_name}</strong>
-                      <span>{student?.student_id || 'Student record'}</span>
-                    </div>
-                  );
-                })}
-              {studentTalents.filter((st) => st.talent === selectedTalent.id).length === 0 && (
+              {selectedTalentStudents.length > 0 && (
+                <table className="sport-teacher-drawer-table">
+                  <thead>
+                    <tr><th>Name</th><th>Form</th><th>Other talents</th></tr>
+                  </thead>
+                  <tbody>
+                    {selectedTalentStudents.map((student) => {
+                      const otherTalents = studentTalents
+                        .filter((entry) => Number(entry.student) === Number(student.id) && Number(entry.talent) !== Number(selectedTalent.id))
+                        .map((entry) => entry.talent_name || 'Talent')
+                        .join(', ');
+                      return (
+                        <tr key={student.id}>
+                          <td>{student.first_name} {student.last_name} ({student.gender || '—'})</td>
+                          <td>{getStudentEducationLevel(student)}</td>
+                          <td>{otherTalents || 'None'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+              {selectedTalentStudents.length === 0 && (
                 <p className="sport-teacher-empty-message">No student has this talent in your school.</p>
               )}
             </div>

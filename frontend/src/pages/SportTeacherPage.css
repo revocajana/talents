@@ -423,6 +423,32 @@
   font-size: 13px;
 }
 
+.sport-teacher-drawer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sport-teacher-drawer-table th,
+.sport-teacher-drawer-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  vertical-align: top;
+}
+
+.sport-teacher-drawer-table th {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.sport-teacher-drawer-table td {
+  color: #334155;
+  line-height: 1.45;
+}
+
 .sport-teacher-empty-message {
   margin-top: 24px;
 }
