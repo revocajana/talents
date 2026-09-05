@@ -238,6 +238,7 @@ const SportTeacherPage = () => {
         });
       }
       closeStudentEditor();
+      setActiveTab('students');
       await loadData();
       showSuccess('Student changes saved successfully');
     } catch (err) {
@@ -299,7 +300,8 @@ const SportTeacherPage = () => {
       });
       setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', education_level: '', password: '', confirm_password: '', club: '', talents: [] });
       closeModal('registerStudent');
-      loadData();
+      setActiveTab('students');
+      await loadData();
       showSuccess('Student registered successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to register student');
