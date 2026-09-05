@@ -180,6 +180,7 @@ export const getEducationLevels = (params = {}) => api.get('/education-levels/',
 export const getAllStudents = (params = {}) => getAllRecords('/students/', params);
 export const getStudentById = (id) => api.get(`/students/${id}/`);
 export const createStudent = (data) => api.post('/students/', data);
+export const registerStudent = (data) => api.post('/students/register/', data);
 export const updateStudent = (id, data) => api.put(`/students/${id}/`, data);
 export const deleteStudent = (id) => api.delete(`/students/${id}/`);
 

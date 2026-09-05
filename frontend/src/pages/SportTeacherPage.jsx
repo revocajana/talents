@@ -184,36 +184,17 @@ const SportTeacherPage = () => {
   const handleRegisterStudent = async (e) => {
     e.preventDefault();
     try {
-      const studentRes = await apiService.createStudent({
+      const studentRes = await apiService.registerStudent({
         first_name: studentForm.first_name,
         last_name: studentForm.last_name,
         gender: studentForm.gender,
         education_level_id: studentForm.education_level || null,
         date_of_birth: studentForm.date_of_birth || null,
         school_id: schoolId,
-      });
-      await apiService.createUser({
-        username: studentRes.data.student_id,
         password: studentForm.password,
-        first_name: studentForm.first_name,
-        last_name: studentForm.last_name,
-        role: 'student',
-        school: schoolId,
-        student: studentRes.data.id,
+        club: studentForm.club ? Number(studentForm.club) : null,
+        talents: studentForm.talents.map((talentId) => Number(talentId)),
       });
-      if (studentForm.club) {
-        await apiService.createClubMembership({
-          student: studentRes.data.id,
-          club: Number(studentForm.club),
-          is_active: true,
-        });
-      }
-      await Promise.all(studentForm.talents.map((talentId) => apiService.createStudentTalent({
-        student: studentRes.data.id,
-        talent: Number(talentId),
-        proficiency_level: 1,
-        notes: '',
-      })));
       setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', education_level: '', password: '', club: '', talents: [] });
       closeModal('registerStudent');
       loadData();
