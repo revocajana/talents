@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from .models import Result, ResultDetail, ResultPromotion
+from .models import Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
+
+
+class SchoolCompetitionSubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SchoolCompetitionSubmission
+        fields = '__all__'
+        read_only_fields = ['submitted_by', 'submitted_at', 'approved_by', 'approved_at']
 
 
 class ResultDetailSerializer(serializers.ModelSerializer):

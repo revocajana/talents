@@ -4,7 +4,30 @@ from django.utils import timezone
 
 from competitions.models import Competition, CompetitionParticipation
 from students.models import Student
-from core.models import StudentTalent, District, Ward, Zone, Region
+from core.models import StudentTalent, District, Ward, Zone, Region, School, User
+
+
+class SchoolCompetitionSubmission(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='competition_submissions')
+    competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name='school_submissions')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='submitted_competition_results')
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_competition_submissions')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    feedback = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['school', 'competition'], name='unique_school_competition_submission'),
+        ]
 
 
 class Result(models.Model):
@@ -154,6 +177,12 @@ class ResultDetail(models.Model):
         return f"{self.result} – {self.talent.talent.name}"
 
     def save(self, *args, **kwargs):
+        submission = SchoolCompetitionSubmission.objects.filter(
+            school_id=self.result.participation.student.school_id,
+            competition_id=self.result.participation.competition_id,
+        ).first()
+        if submission and submission.status in {'submitted', 'approved'}:
+            raise ValidationError('Submitted or approved competition results are locked.')
         score = self.percentage_score if self.percentage_score is not None else self.raw_score
         self.passed = score >= 50
         super().save(*args, **kwargs)

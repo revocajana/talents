@@ -7,8 +7,8 @@ from rest_framework.response import Response
 from competitions.models import Competition, CompetitionParticipation
 from students.models import Student
 
-from .models import Result, ResultDetail, ResultPromotion
-from .serializers import ResultSerializer, ResultDetailSerializer, ResultPromotionSerializer
+from .models import Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
+from .serializers import ResultSerializer, ResultDetailSerializer, ResultPromotionSerializer, SchoolCompetitionSubmissionSerializer
 from core.permissions import AuthenticatedReadOnly, StudentDataPermission, ScopedQuerysetMixin
 
 from core.permissions import IsSportTeacher
@@ -153,3 +153,27 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
             'errors': errors,
             'data': serializer.data
         })
+
+
+class SchoolCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = SchoolCompetitionSubmission.objects.select_related('school', 'competition').all()
+    serializer_class = SchoolCompetitionSubmissionSerializer
+    permission_classes = [AuthenticatedReadOnly]
+    scope_paths = {'school': 'school_id', 'country': 'school__country_id', 'zone': 'school__zone_id', 'region': 'school__region_id', 'district': 'school__district_id', 'ward': 'school__ward_id'}
+
+    def perform_create(self, serializer):
+        if self.request.user.role not in {'head_teacher', 'sport_teacher'} or not self.request.user.school_id:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only a school teacher can create this submission.')
+        serializer.save(school=self.request.user.school)
+
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        submission = self.get_object()
+        if request.user.role not in {'head_teacher', 'sport_teacher'} or submission.school_id != request.user.school_id:
+            return Response({'detail': 'Only the school teacher can submit these results.'}, status=status.HTTP_403_FORBIDDEN)
+        submission.status = 'submitted'
+        submission.submitted_by = request.user
+        submission.submitted_at = timezone.now()
+        submission.save(update_fields=['status', 'submitted_by', 'submitted_at'])
+        return Response(self.get_serializer(submission).data)

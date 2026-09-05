@@ -99,6 +99,18 @@ class CompetitionParticipationViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet
         'district': 'student__school__district_id', 'ward': 'student__school__ward_id',
     }
 
+    def perform_update(self, serializer):
+        from results.models import SchoolCompetitionSubmission
+        from rest_framework.exceptions import ValidationError
+        participation = self.get_object()
+        if SchoolCompetitionSubmission.objects.filter(
+            school_id=participation.student.school_id,
+            competition_id=participation.competition_id,
+            status__in={'submitted', 'approved'},
+        ).exists():
+            raise ValidationError('Submitted or approved competition results are locked.')
+        serializer.save()
+
 
 class CompetitionJudgeViewSet(viewsets.ModelViewSet):
     queryset = CompetitionJudge.objects.select_related('competition', 'judge').all()

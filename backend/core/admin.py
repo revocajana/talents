@@ -25,6 +25,7 @@ from .models import (
     ClubTeacher,
     StudentClubMembership,
 )
+from results.models import SchoolCompetitionSubmission
 from students.models import EducationLevel, Student
 
 
@@ -825,6 +826,14 @@ class EducationLevelAdmin(admin.ModelAdmin):
     list_filter = ('country', 'level_type', 'is_active')
     search_fields = ('name', 'code', 'country__name')
     ordering = ('country', 'level_type', 'order', 'name')
+
+
+@admin.register(SchoolCompetitionSubmission)
+class SchoolCompetitionSubmissionAdmin(admin.ModelAdmin):
+    list_display = ('school', 'competition', 'status', 'submitted_at', 'approved_at')
+    list_filter = ('status', 'competition', 'school__country')
+    search_fields = ('school__name', 'competition__name')
+    readonly_fields = ('submitted_at', 'approved_at')
 
 
 @admin.register(TalentCategory)
