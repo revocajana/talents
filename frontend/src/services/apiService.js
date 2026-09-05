@@ -1,3 +1,6 @@
+export const getSchoolResultSubmissions = (params = {}) => api.get('/school-result-submissions/', { params });
+export const createSchoolResultSubmission = (data) => api.post('/school-result-submissions/', data);
+export const submitSchoolResultSubmission = (id) => api.post(`/school-result-submissions/${id}/submit/`);
 import axios from 'axios';
 
 const API_HOST = import.meta.env.VITE_API_URL

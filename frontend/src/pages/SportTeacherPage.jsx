@@ -26,6 +26,7 @@ const SportTeacherPage = () => {
   const [competitions, setCompetitions] = useState([]);
   const [participations, setParticipations] = useState([]);
   const [results, setResults] = useState([]);
+  const [schoolSubmission, setSchoolSubmission] = useState(null);
   const [resultDetails, setResultDetails] = useState([]);
   const [talents, setTalents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -133,6 +134,7 @@ const SportTeacherPage = () => {
         eligibleRes,
         schoolRes,
         countryClubsRes,
+        submissionsRes,
       ] = await Promise.all([
         apiService.getStudents({ school: schoolId }),
         apiService.getEducationLevels({
@@ -151,6 +153,7 @@ const SportTeacherPage = () => {
         apiService.getEligibleForPromotion().catch(() => ({ data: [] })),
         apiService.getSchoolById(schoolId),
         apiService.getCountryClubs({ country: user?.country_id || user?.country?.id || user?.country }),
+        apiService.getSchoolResultSubmissions({ school: schoolId }),
       ]);
       
       const schoolStudents = (studentsRes.data.results || []).filter((student) => {
@@ -172,6 +175,7 @@ const SportTeacherPage = () => {
       setEligibleStudents(eligibleRes.data || []);
       setSchoolRecord(schoolRes.data);
       setCountryClubs(countryClubsRes.data.results || []);
+      setSchoolSubmission((submissionsRes.data.results || []).find((submission) => submission.competition === schoolCompetition?.id) || submissionsRes.data.results?.[0] || null);
       
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load data');
@@ -1075,15 +1079,31 @@ const SportTeacherPage = () => {
     results: results.filter((result) => result.competition_level === level),
   }));
 
+  const handleSubmitSchoolResults = async () => {
+    if (!schoolCompetition) {
+      setError('No school-level competition is available.');
+      return;
+    }
+    try {
+      const submission = schoolSubmission || (await apiService.createSchoolResultSubmission({ school: schoolId, competition: schoolCompetition.id, status: 'draft' })).data;
+      await apiService.submitSchoolResultSubmission(submission.id);
+      await loadData();
+      showSuccess('School results submitted for district review');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to submit school results');
+    }
+  };
+
   const renderResults = () => (
     <div className="sport-teacher-results-stack">
       <section className="sport-teacher-results-card">
         <div className="sport-teacher-results-card-header">
-          <div><h2>School-level competition</h2><p>Results for all students in your school.</p></div>
+          <div><h2>School-level competition</h2><p>{schoolSubmission?.status === 'submitted' ? 'Submitted and locked for district review.' : 'Results for all students in your school.'}</p></div>
+          {schoolSubmission?.status !== 'submitted' && <button type="button" onClick={handleSubmitSchoolResults} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>Submit results</button>}
         </div>
         <div className="sport-teacher-results-table-wrap">
           <table className="sport-teacher-results-table"><thead><tr><th>Competition</th><th>Student</th><th>Talent</th><th>Score</th><th>Status</th></tr></thead><tbody>
-            {schoolResultRows.map((row) => <tr key={row.id}><td>{row.competition || schoolCompetition?.name || 'Not recorded'}</td><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={resultScores[row.id] ?? row.score} onChange={(event) => setResultScores({ ...resultScores, [row.id]: event.target.value })} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /><button type="button" className="sport-teacher-inline-save" onClick={() => handleSaveResult(row)}>Save</button></span></td><td>{getStatusBadge(row.status, row.score, Boolean(row.participation || row.detail))}</td></tr>)}
+            {schoolResultRows.map((row) => <tr key={row.id}><td>{row.competition || schoolCompetition?.name || 'Not recorded'}</td><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={resultScores[row.id] ?? row.score} disabled={schoolSubmission?.status === 'submitted' || schoolSubmission?.status === 'approved'} onChange={(event) => setResultScores({ ...resultScores, [row.id]: event.target.value })} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /><button type="button" className="sport-teacher-inline-save" disabled={schoolSubmission?.status === 'submitted' || schoolSubmission?.status === 'approved'} onClick={() => handleSaveResult(row)}>Save</button></span></td><td>{getStatusBadge(row.status, row.score, Boolean(row.participation || row.detail))}</td></tr>)}
             {!schoolResultRows.length && <tr><td colSpan="5" className="sport-teacher-results-empty">No students registered.</td></tr>}
           </tbody></table>
         </div>
