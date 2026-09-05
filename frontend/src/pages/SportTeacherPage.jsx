@@ -4,10 +4,19 @@ import * as apiService from '../services/apiService';
 import './SportTeacherPage.css';
 import logo from '../assets/Logo1.png';
 
-const EyeIcon = () => (
+const EyeIcon = ({ visible = false }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-    <circle cx="12" cy="12" r="2.5" />
+    {visible ? (
+      <>
+        <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+        <circle cx="12" cy="12" r="2.5" />
+      </>
+    ) : (
+      <>
+        <path d="M3 3l18 18" />
+        <path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a18.5 18.5 0 0 1-3.1 3.7M6.2 6.8C3.5 8.4 2 12 2 12s3.5 6 10 6a10.7 10.7 0 0 0 4-.8" />
+      </>
+    )}
   </svg>
 );
 
@@ -1366,8 +1375,8 @@ const SportTeacherPage = () => {
             <label>Assign school club <select value={studentForm.club} onChange={(event) => setStudentForm({ ...studentForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
           </div>
           <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-row">
-            <label>Password *<span className="sport-teacher-password-control"><input type={showRegistrationPassword ? 'text' : 'password'} value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationPassword((visible) => !visible)} aria-label={showRegistrationPassword ? 'Hide password' : 'Show password'}><EyeIcon /></button></span></label>
-            <label>Confirm Password *<span className="sport-teacher-password-control"><input type={showRegistrationConfirmation ? 'text' : 'password'} value={studentForm.confirm_password} onChange={(event) => setStudentForm({ ...studentForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationConfirmation((visible) => !visible)} aria-label={showRegistrationConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon /></button></span></label>
+            <label>Password *<span className="sport-teacher-password-control"><input type={showRegistrationPassword ? 'text' : 'password'} value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationPassword((visible) => !visible)} aria-label={showRegistrationPassword ? 'Hide password' : 'Show password'}><EyeIcon visible={showRegistrationPassword} /></button></span></label>
+            <label>Confirm Password *<span className="sport-teacher-password-control"><input type={showRegistrationConfirmation ? 'text' : 'password'} value={studentForm.confirm_password} onChange={(event) => setStudentForm({ ...studentForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationConfirmation((visible) => !visible)} aria-label={showRegistrationConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon visible={showRegistrationConfirmation} /></button></span></label>
           </div>
           <fieldset className="sport-teacher-registration-talents">
             <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
@@ -1437,8 +1446,8 @@ const SportTeacherPage = () => {
             <label>Assign club<select value={studentEditForm.club} onChange={(event) => setStudentEditForm({ ...studentEditForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
           </div>
           <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-row">
-            <label>New Password<span className="sport-teacher-password-control"><input type={showEditPassword ? 'text' : 'password'} value={studentEditForm.new_password} onChange={(event) => setStudentEditForm({ ...studentEditForm, new_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditPassword((visible) => !visible)} aria-label={showEditPassword ? 'Hide new password' : 'Show new password'}><EyeIcon /></button></span></label>
-            <label>Confirm Password<span className="sport-teacher-password-control"><input type={showEditConfirmation ? 'text' : 'password'} value={studentEditForm.confirm_password} onChange={(event) => setStudentEditForm({ ...studentEditForm, confirm_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditConfirmation((visible) => !visible)} aria-label={showEditConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon /></button></span></label>
+            <label>New Password<span className="sport-teacher-password-control"><input type={showEditPassword ? 'text' : 'password'} value={studentEditForm.new_password} onChange={(event) => setStudentEditForm({ ...studentEditForm, new_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditPassword((visible) => !visible)} aria-label={showEditPassword ? 'Hide new password' : 'Show new password'}><EyeIcon visible={showEditPassword} /></button></span></label>
+            <label>Confirm Password<span className="sport-teacher-password-control"><input type={showEditConfirmation ? 'text' : 'password'} value={studentEditForm.confirm_password} onChange={(event) => setStudentEditForm({ ...studentEditForm, confirm_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditConfirmation((visible) => !visible)} aria-label={showEditConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon visible={showEditConfirmation} /></button></span></label>
           </div>
           <fieldset className="sport-teacher-registration-talents">
             <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
@@ -1509,8 +1518,8 @@ const SportTeacherPage = () => {
           <button type="button" onClick={() => closeModal('changePassword')} aria-label="Close change password">&times;</button>
         </div>
         <form onSubmit={handleChangePassword} className="sport-teacher-profile-form">
-          <label>New password<span className="sport-teacher-password-control"><input type={showProfilePassword ? 'text' : 'password'} value={profilePasswordForm.new_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, new_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePassword((visible) => !visible)} aria-label={showProfilePassword ? 'Hide new password' : 'Show new password'}><EyeIcon /></button></span></label>
-          <label>Confirm password<span className="sport-teacher-password-control"><input type={showProfilePasswordConfirmation ? 'text' : 'password'} value={profilePasswordForm.confirm_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePasswordConfirmation((visible) => !visible)} aria-label={showProfilePasswordConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon /></button></span></label>
+          <label>New password<span className="sport-teacher-password-control"><input type={showProfilePassword ? 'text' : 'password'} value={profilePasswordForm.new_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, new_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePassword((visible) => !visible)} aria-label={showProfilePassword ? 'Hide new password' : 'Show new password'}><EyeIcon visible={showProfilePassword} /></button></span></label>
+          <label>Confirm password<span className="sport-teacher-password-control"><input type={showProfilePasswordConfirmation ? 'text' : 'password'} value={profilePasswordForm.confirm_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePasswordConfirmation((visible) => !visible)} aria-label={showProfilePasswordConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon visible={showProfilePasswordConfirmation} /></button></span></label>
           <button type="submit" className="sport-teacher-profile-submit" disabled={profileSubmitting}>{profileSubmitting ? 'Saving...' : 'Save password'}</button>
         </form>
       </aside>
