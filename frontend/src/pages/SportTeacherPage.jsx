@@ -56,6 +56,7 @@ const SportTeacherPage = () => {
   const [promoting, setPromoting] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [resultScores, setResultScores] = useState({});
   const [studentEditForm, setStudentEditForm] = useState({
     first_name: '',
     last_name: '',
@@ -137,7 +138,7 @@ const SportTeacherPage = () => {
           is_active: true,
         }),
         apiService.getTalents(),
-        apiService.getStudentTalents({ school: schoolId }),
+        apiService.getAllStudentTalents({ school: schoolId }),
         apiService.getClubs({ school: schoolId }),
         apiService.getClubMemberships({ school: schoolId }),
         apiService.getCompetitions({ school: schoolId }),
@@ -209,6 +210,26 @@ const SportTeacherPage = () => {
     });
   };
   const closeStudentEditor = () => setSelectedStudent(null);
+  const handleSaveResult = async (row) => {
+    try {
+      const score = resultScores[row.id] === '' ? null : Number(resultScores[row.id] ?? row.score);
+      if (row.participation) {
+        await apiService.updateParticipation(row.participation, { score, status: 'finished' });
+      } else if (row.competitionId) {
+        await apiService.createParticipation({ competition: row.competitionId, student: row.student, score, status: 'finished' });
+      } else {
+        setError('No school-level competition is available for this school.');
+        return;
+      }
+      if (row.result && row.status === 'finished') {
+        await apiService.updateResult(row.result, { score });
+      }
+      await loadData();
+      showSuccess('Result saved successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to save result');
+    }
+  };
 
   const handleSaveStudent = async (event) => {
     event.preventDefault();
@@ -508,7 +529,7 @@ const SportTeacherPage = () => {
   });
 
   const getStudentTalentNames = (studentId) => {
-    const talents = studentTalents.filter(st => st.student === studentId);
+    const talents = studentTalents.filter((entry) => Number(entry.student) === Number(studentId));
     return talents.map(t => t.talent_name || 'Talent').join(', ') || 'None';
   };
 
@@ -724,7 +745,6 @@ const SportTeacherPage = () => {
             Register Student
           </button>
           <button onClick={() => openModal('assignTalent')} style={actionBtnStyle}>Assign Talent</button>
-          <button onClick={() => openModal('recordResult')} style={actionBtnStyle}>Record Result</button>
           <button onClick={() => openModal('uploadExcel')} style={actionBtnStyle}>Upload Excel</button>
         </div>
       </div>
@@ -1005,16 +1025,23 @@ const SportTeacherPage = () => {
   // RESULTS VIEW
   const resultByParticipation = new Map(results.map((result) => [Number(result.participation), result]));
   const competitionById = new Map(competitions.map((competition) => [Number(competition.id), competition]));
-  const schoolResultRows = students.map((student) => {
+  const schoolCompetition = competitions.find((competition) => competition.level === 'school');
+  const schoolResultRows = students.flatMap((student) => {
     const participation = participations.find((item) => Number(item.student) === Number(student.id) && competitionById.get(Number(item.competition))?.level === 'school');
     const result = participation ? resultByParticipation.get(Number(participation.id)) : null;
-    return {
-      id: result?.id || participation?.id || `student-${student.id}`,
+    const studentTalentEntries = studentTalents.filter((entry) => Number(entry.student) === Number(student.id));
+    const talentRows = studentTalentEntries.length ? studentTalentEntries : [{ id: `no-talent-${student.id}`, talent_name: 'None' }];
+    return talentRows.map((talentEntry) => ({
+      id: `${result?.id || participation?.id || `student-${student.id}`}-${talentEntry.id}`,
+      result: result?.id,
+      participation: participation?.id,
       competition: result?.competition_name || (participation ? getCompetitionName(participation.competition) : null),
+      competitionId: participation?.competition || schoolCompetition?.id,
       student: student.id,
+      talent: talentEntry.talent_name || 'Talent',
       score: result?.score ?? participation?.score ?? 0,
       status: participation?.status || 'registered',
-    };
+    }));
   });
 
   const higherLevelResults = ['district', 'zone', 'country'].map((level) => ({
@@ -1026,13 +1053,12 @@ const SportTeacherPage = () => {
     <div className="sport-teacher-results-stack">
       <section className="sport-teacher-results-card">
         <div className="sport-teacher-results-card-header">
-          <div><h2>School-level competition</h2><p>Manage results for all students in your school.</p></div>
-          <button type="button" onClick={() => openModal('recordResult')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Record Result</button>
+          <div><h2>School-level competition</h2><p>Results for all students in your school.</p></div>
         </div>
         <div className="sport-teacher-results-table-wrap">
-          <table className="sport-teacher-results-table"><thead><tr><th>Competition</th><th>Student</th><th>Score</th><th>Status</th></tr></thead><tbody>
-            {schoolResultRows.map((row) => <tr key={row.id}><td>{row.competition || 'Not recorded'}</td><td>{getStudentName(row.student)}</td><td><strong>{row.score}%</strong></td><td>{getStatusBadge(row.status, row.score)}</td></tr>)}
-            {!schoolResultRows.length && <tr><td colSpan="4" className="sport-teacher-results-empty">No students registered.</td></tr>}
+          <table className="sport-teacher-results-table"><thead><tr><th>Competition</th><th>Student</th><th>Talent</th><th>Score</th><th>Status</th></tr></thead><tbody>
+            {schoolResultRows.map((row) => <tr key={row.id}><td>{row.competition || schoolCompetition?.name || 'Not recorded'}</td><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={resultScores[row.id] ?? row.score} onChange={(event) => setResultScores({ ...resultScores, [row.id]: event.target.value })} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /><button type="button" className="sport-teacher-inline-save" onClick={() => handleSaveResult(row)}>Save</button></span></td><td>{getStatusBadge(row.status, row.score)}</td></tr>)}
+            {!schoolResultRows.length && <tr><td colSpan="5" className="sport-teacher-results-empty">No students registered.</td></tr>}
           </tbody></table>
         </div>
       </section>

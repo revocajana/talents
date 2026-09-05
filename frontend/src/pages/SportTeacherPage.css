@@ -992,12 +992,61 @@
   white-space: nowrap;
 }
 
+.sport-teacher-inline-score {
+  width: 86px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: white;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 600;
+}
+
+.sport-teacher-inline-score:focus {
+  border-color: #0e1db6;
+  outline: 3px solid rgba(14, 29, 182, 0.14);
+}
+
+.sport-teacher-score-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sport-teacher-inline-save {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #0e1db6;
+  border-radius: 6px;
+  background: #0e1db6;
+  color: white;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sport-teacher-inline-save:hover,
+.sport-teacher-inline-save:focus-visible {
+  background: #1728d1;
+}
+
 .sport-teacher-results-table th {
   background: #f8fafc;
   color: #64748b;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.sport-teacher-result-row-clickable {
+  cursor: pointer;
+}
+
+.sport-teacher-result-row-clickable:hover {
+  background: #f4f5ff;
 }
 
 .sport-teacher-results-empty {

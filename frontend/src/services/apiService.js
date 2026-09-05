@@ -149,6 +149,7 @@ export const getCountryClubs = (params = {}) => api.get('/country-clubs/', { par
 
 
 export const getStudentTalents = (params = {}) => api.get('/student-talents/', { params });
+export const getAllStudentTalents = (params = {}) => getAllRecords('/student-talents/', params);
 export const getStudentTalentById = (id) => api.get(`/student-talents/${id}/`);
 export const createStudentTalent = (data) => api.post('/student-talents/', data);
 export const updateStudentTalent = (id, data) => api.put(`/student-talents/${id}/`, data);
@@ -213,7 +214,7 @@ export const uploadBulkResults = (formData) => api.post('/competitions/bulk-uplo
 export const getParticipations = (params = {}) => api.get('/participations/', { params });
 export const createParticipation = (data) => api.post('/participations/', data);
 export const getParticipationById = (id) => api.get(`/participations/${id}/`);
-export const updateParticipation = (id, data) => api.put(`/participations/${id}/`, data);
+export const updateParticipation = (id, data) => api.patch(`/participations/${id}/`, data);
 export const deleteParticipation = (id) => api.delete(`/participations/${id}/`);
 
 // ==================== RESULTS ====================
