@@ -30,6 +30,7 @@ const SportTeacherPage = () => {
   const [resultDetails, setResultDetails] = useState([]);
   const [talents, setTalents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [eligibleStudents, setEligibleStudents] = useState([]);
   const [educationLevels, setEducationLevels] = useState([]);
   
@@ -343,22 +344,56 @@ const SportTeacherPage = () => {
     setAnnouncementSubmitting(true);
     setError(null);
     try {
-      await apiService.createAnnouncement({
+      const announcementData = {
         title: announcementForm.title.trim(),
         content: announcementForm.content.trim(),
         scope: 'school',
         school: schoolId,
         expires_at: announcementForm.expires_at || null,
-      });
+      };
+      if (selectedAnnouncement) {
+        await apiService.updateAnnouncement(selectedAnnouncement.id, announcementData);
+      } else {
+        await apiService.createAnnouncement(announcementData);
+      }
       setAnnouncementForm({ title: '', content: '', expires_at: '' });
+      setSelectedAnnouncement(null);
       closeModal('createAnnouncement');
       await loadData();
-      showSuccess('School announcement published successfully');
+      showSuccess(selectedAnnouncement ? 'Announcement updated successfully' : 'School announcement published successfully');
     } catch (err) {
       setError(err.response?.data?.detail || err.response?.data?.school?.[0] || 'Failed to publish announcement');
     } finally {
       setAnnouncementSubmitting(false);
     }
+  };
+
+  const handleDeleteAnnouncement = async () => {
+    if (!selectedAnnouncement || !window.confirm('Delete this announcement?')) return;
+    setAnnouncementSubmitting(true);
+    setError(null);
+    try {
+      await apiService.deleteAnnouncement(selectedAnnouncement.id);
+      setAnnouncementForm({ title: '', content: '', expires_at: '' });
+      setSelectedAnnouncement(null);
+      closeModal('createAnnouncement');
+      await loadData();
+      showSuccess('Announcement deleted successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete announcement');
+    } finally {
+      setAnnouncementSubmitting(false);
+    }
+  };
+
+  const openAnnouncementEditor = (announcement) => {
+    setSelectedAnnouncement(announcement);
+    setAnnouncementForm({
+      title: announcement.title || '',
+      content: announcement.content || '',
+      expires_at: announcement.expires_at ? announcement.expires_at.slice(0, 10) : '',
+    });
+    openModal('createAnnouncement');
   };
 
   const clubLimit = students.length <= 200 ? 3 : students.length < 500 ? 5 : 10;
@@ -1153,13 +1188,13 @@ const SportTeacherPage = () => {
         <div>
           <span style={{ display: 'block', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Announcements ({relevantAnnouncements.length})</span>
         </div>
-        <button type="button" onClick={() => openModal('createAnnouncement')} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Add announcement</button>
+        <button type="button" onClick={() => { setSelectedAnnouncement(null); setAnnouncementForm({ title: '', content: '', expires_at: '' }); openModal('createAnnouncement'); }} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>+ Add announcement</button>
       </div>
       <div style={{ display: 'grid', gap: '16px', padding: '20px' }}>
         {relevantAnnouncements.map((announcement) => (
           <article key={announcement.id} style={{ padding: '0 0 16px', borderBottom: '1px solid #f3f4f6' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'baseline' }}>
-              <h2 style={{ margin: 0, color: '#111827', fontSize: '20px', fontWeight: '700', lineHeight: 1.3 }}>{announcement.title}</h2>
+              <button type="button" className="sport-teacher-announcement-title" onClick={() => openAnnouncementEditor(announcement)}>{announcement.title}</button>
               <span style={{ color: '#6b7280', fontSize: '12px', whiteSpace: 'nowrap' }}>
                 {announcement.published_at || announcement.created_at ? new Date(announcement.published_at || announcement.created_at).toLocaleDateString('en-GB') : 'Date unavailable'}
               </span>
@@ -1387,7 +1422,7 @@ const SportTeacherPage = () => {
       <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label="Create school announcement">
         <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
         <div className="sport-teacher-search-drawer-header">
-          <h2>New announcement</h2>
+          <h2>{selectedAnnouncement ? 'Edit announcement' : 'New announcement'}</h2>
           <button type="button" onClick={() => closeModal('createAnnouncement')} aria-label="Close announcement form">&times;</button>
         </div>
         <form onSubmit={handleCreateAnnouncement}>
@@ -1396,6 +1431,7 @@ const SportTeacherPage = () => {
             <label>Message *<textarea value={announcementForm.content} onChange={(event) => setAnnouncementForm({ ...announcementForm, content: event.target.value })} rows="7" required /></label>
             <div className="sport-teacher-announcement-form-actions">
               <label>Expires on (optional)<input type="date" value={announcementForm.expires_at} onChange={(event) => setAnnouncementForm({ ...announcementForm, expires_at: event.target.value })} /></label>
+              {selectedAnnouncement && <button type="button" className="sport-teacher-announcement-delete" onClick={handleDeleteAnnouncement} disabled={announcementSubmitting}>Delete</button>}
               <button type="submit" disabled={announcementSubmitting}>{announcementSubmitting ? 'Publishing...' : 'Publish'}</button>
             </div>
           </div>

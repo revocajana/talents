@@ -783,6 +783,26 @@
   margin-top: 8px;
 }
 
+.sport-teacher-announcement-title {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sport-teacher-announcement-title:hover,
+.sport-teacher-announcement-title:focus-visible {
+  color: #0e1db6;
+  text-decoration: underline;
+}
+
 .sport-teacher-announcement-form label {
   display: flex;
   flex-direction: column;
@@ -820,14 +840,14 @@
 
 .sport-teacher-announcement-form-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 180px) auto auto;
   align-items: end;
   gap: 16px;
 }
 
 .sport-teacher-announcement-form-actions > button {
-  min-height: 42px;
-  padding: 10px 22px;
+  min-height: 38px;
+  padding: 8px 16px;
   border: 0;
   border-radius: 7px;
   background: #0e1db6;
@@ -835,6 +855,10 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+.sport-teacher-announcement-form-actions > .sport-teacher-announcement-delete {
+  background: #b91c1c;
 }
 
 .sport-teacher-announcement-form-actions > button:disabled {

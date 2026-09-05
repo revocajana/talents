@@ -192,6 +192,13 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
             return
         serializer.save()
 
+    def perform_update(self, serializer):
+        user = self.request.user
+        if user.role == 'sport_teacher':
+            serializer.save(scope='school', school_id=user.school_id, is_active=True)
+            return
+        serializer.save()
+
 
 class CountryClubViewSet(viewsets.ModelViewSet):
     queryset = CountryClub.objects.select_related('country').all()
