@@ -44,6 +44,8 @@ const SportTeacherPage = () => {
     assignStudentClub: false,
     registerClubs: false,
     createAnnouncement: false,
+    profile: false,
+    changePassword: false,
   });
   
   // Form states
@@ -78,6 +80,10 @@ const SportTeacherPage = () => {
   const [showRegistrationConfirmation, setShowRegistrationConfirmation] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [showEditConfirmation, setShowEditConfirmation] = useState(false);
+  const [profilePasswordForm, setProfilePasswordForm] = useState({ new_password: '', confirm_password: '' });
+  const [showProfilePassword, setShowProfilePassword] = useState(false);
+  const [showProfilePasswordConfirmation, setShowProfilePasswordConfirmation] = useState(false);
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
   
   // Sidebar state
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -206,6 +212,38 @@ const SportTeacherPage = () => {
   // Modal handlers
   const openModal = (name) => setModals(prev => ({ ...prev, [name]: true }));
   const closeModal = (name) => setModals(prev => ({ ...prev, [name]: false }));
+  const openProfileDrawer = () => {
+    setProfileMenuOpen(false);
+    openModal('profile');
+  };
+  const openChangePasswordDrawer = () => {
+    setProfileMenuOpen(false);
+    setProfilePasswordForm({ new_password: '', confirm_password: '' });
+    setShowProfilePassword(false);
+    setShowProfilePasswordConfirmation(false);
+    openModal('changePassword');
+  };
+
+  const handleChangePassword = async (event) => {
+    event.preventDefault();
+    if (profilePasswordForm.new_password !== profilePasswordForm.confirm_password) {
+      setError('New password and confirmation do not match.');
+      return;
+    }
+    setProfileSubmitting(true);
+    setError(null);
+    try {
+      await apiService.updateUserPassword(user.id, profilePasswordForm.new_password);
+      setProfilePasswordForm({ new_password: '', confirm_password: '' });
+      closeModal('changePassword');
+      showSuccess('Password changed successfully');
+    } catch (err) {
+      const responseErrors = err.response?.data;
+      setError(responseErrors?.detail || responseErrors?.password?.[0] || 'Failed to change password');
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
   const openStudentEditor = (student) => {
     setError(null);
     setSelectedStudent(student);
@@ -1440,6 +1478,45 @@ const SportTeacherPage = () => {
     </>
   ) : null;
 
+  const profileDrawer = modals.profile ? (
+    <>
+      <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close profile" onClick={() => closeModal('profile')} />
+      <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label="Profile details">
+        <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
+        <div className="sport-teacher-search-drawer-header">
+          <h2>Profile</h2>
+          <button type="button" onClick={() => closeModal('profile')} aria-label="Close profile">&times;</button>
+        </div>
+        <div className="sport-teacher-profile-details">
+          <div><span>Username:</span><strong>{user?.username || '-'}</strong></div>
+          <div><span>Firstname:</span><strong>{user?.first_name || '-'}</strong></div>
+          <div><span>Lastname:</span><strong>{user?.last_name || '-'}</strong></div>
+          <div><span>Email:</span><strong>{user?.email || '-'}</strong></div>
+          <div><span>Role:</span><strong>{user?.role || '-'}</strong></div>
+          <div><span>School:</span><strong>{schoolName}</strong></div>
+        </div>
+      </aside>
+    </>
+  ) : null;
+
+  const changePasswordDrawer = modals.changePassword ? (
+    <>
+      <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close change password" onClick={() => closeModal('changePassword')} />
+      <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label="Change password">
+        <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
+        <div className="sport-teacher-search-drawer-header">
+          <h2>Change password</h2>
+          <button type="button" onClick={() => closeModal('changePassword')} aria-label="Close change password">&times;</button>
+        </div>
+        <form onSubmit={handleChangePassword} className="sport-teacher-profile-form">
+          <label>New password<span className="sport-teacher-password-control"><input type={showProfilePassword ? 'text' : 'password'} value={profilePasswordForm.new_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, new_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePassword((visible) => !visible)} aria-label={showProfilePassword ? 'Hide new password' : 'Show new password'}><EyeIcon /></button></span></label>
+          <label>Confirm password<span className="sport-teacher-password-control"><input type={showProfilePasswordConfirmation ? 'text' : 'password'} value={profilePasswordForm.confirm_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePasswordConfirmation((visible) => !visible)} aria-label={showProfilePasswordConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon /></button></span></label>
+          <button type="submit" className="sport-teacher-profile-submit" disabled={profileSubmitting}>{profileSubmitting ? 'Saving...' : 'Save password'}</button>
+        </form>
+      </aside>
+    </>
+  ) : null;
+
   const layout = (
     <div className="sport-teacher-page">
       <header className="sport-teacher-app-bar">
@@ -1464,8 +1541,9 @@ const SportTeacherPage = () => {
           </button>
           {profileMenuOpen && (
             <div className="sport-teacher-profile-menu">
-              <button type="button" onClick={() => setProfileMenuOpen(false)}>Profile</button>
-              <button type="button" onClick={() => setProfileMenuOpen(false)}>Change password</button>
+              <button type="button" onClick={openProfileDrawer}>Profile</button>
+              <button type="button" onClick={openChangePasswordDrawer}>Change password</button>
+              <button type="button" onClick={logout}>Logout</button>
             </div>
           )}
           </div>
@@ -1497,9 +1575,6 @@ const SportTeacherPage = () => {
             {item.label}
           </button>
         ))}
-        <button type="button" className="sport-teacher-logout-button" onClick={logout}>
-          Logout
-        </button>
       </aside>
       <main className="sport-teacher-prototype-content">
         {renderContent()}
@@ -1627,6 +1702,8 @@ const SportTeacherPage = () => {
       {clubRegistrationDrawer}
       {studentEditDrawer}
       {announcementDrawer}
+      {profileDrawer}
+      {changePasswordDrawer}
     </div>
   );
 
@@ -1663,8 +1740,9 @@ const SportTeacherPage = () => {
           </button>
           {profileMenuOpen && (
             <div className="sport-teacher-profile-menu">
-              <button type="button" onClick={() => setProfileMenuOpen(false)}>Profile</button>
-              <button type="button" onClick={() => setProfileMenuOpen(false)}>Change password</button>
+              <button type="button" onClick={openProfileDrawer}>Profile</button>
+              <button type="button" onClick={openChangePasswordDrawer}>Change password</button>
+              <button type="button" onClick={logout}>Logout</button>
             </div>
           )}
         </div>

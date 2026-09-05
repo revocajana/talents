@@ -114,6 +114,22 @@ class UserViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [ConfigurationPermission]
     scope_paths = {'school': 'school_id'}
 
+    def get_permissions(self):
+        if self.action in {'update', 'partial_update'}:
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
+    def get_object(self):
+        user = super().get_object()
+        if self.action in {'update', 'partial_update'} and not (
+            self.request.user.is_superuser
+            or self.request.user.role == 'talent_admin'
+            or user.pk == self.request.user.pk
+        ):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('You can update only your own profile.')
+        return user
+
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def current(self, request):
         serializer = self.get_serializer(request.user)

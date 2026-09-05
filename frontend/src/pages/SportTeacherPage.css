@@ -635,6 +635,54 @@
   font-size: 14px;
 }
 
+.sport-teacher-profile-details {
+  display: grid;
+  gap: 16px;
+}
+
+.sport-teacher-profile-details div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sport-teacher-profile-details span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sport-teacher-profile-details strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sport-teacher-profile-form {
+  display: grid;
+  gap: 16px;
+}
+
+.sport-teacher-profile-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.sport-teacher-profile-submit {
+  min-height: 42px;
+  border: 0;
+  border-radius: 7px;
+  background: #0e1db6;
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .sport-teacher-drawer-kicker {
   margin: 0;
   font-weight: 700;
