@@ -44,6 +44,16 @@ const SportTeacherPage = () => {
   const [uploading, setUploading] = useState(false);
   const [promoting, setPromoting] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [studentEditForm, setStudentEditForm] = useState({
+    first_name: '',
+    last_name: '',
+    gender: 'M',
+    date_of_birth: '',
+    education_level: '',
+    club: '',
+    talents: [],
+  });
   
   // Sidebar state
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -160,6 +170,68 @@ const SportTeacherPage = () => {
   // Modal handlers
   const openModal = (name) => setModals(prev => ({ ...prev, [name]: true }));
   const closeModal = (name) => setModals(prev => ({ ...prev, [name]: false }));
+  const openStudentEditor = (student) => {
+    setError(null);
+    setSelectedStudent(student);
+    setStudentEditForm({
+      first_name: student.first_name || '',
+      last_name: student.last_name || '',
+      gender: student.gender || 'M',
+      date_of_birth: student.date_of_birth || '',
+      education_level: student.education_level || '',
+      club: String(clubMemberships.find((membership) => Number(membership.student) === Number(student.id) && membership.is_active)?.club || ''),
+      talents: studentTalents.filter((entry) => Number(entry.student) === Number(student.id)).map((entry) => String(entry.talent)),
+    });
+  };
+  const closeStudentEditor = () => setSelectedStudent(null);
+
+  const handleSaveStudent = async (event) => {
+    event.preventDefault();
+    try {
+      await apiService.updateStudent(selectedStudent.id, {
+        first_name: studentEditForm.first_name,
+        last_name: studentEditForm.last_name,
+        gender: studentEditForm.gender,
+        date_of_birth: studentEditForm.date_of_birth || null,
+        education_level_id: studentEditForm.education_level || null,
+      });
+      const existingMembership = clubMemberships.find((membership) => Number(membership.student) === Number(selectedStudent.id) && membership.is_active);
+      if (existingMembership && String(existingMembership.club) !== String(studentEditForm.club)) {
+        await apiService.updateClubMembership(existingMembership.id, { is_active: false, left_at: new Date().toISOString() });
+      }
+      if (studentEditForm.club && (!existingMembership || String(existingMembership.club) !== String(studentEditForm.club))) {
+        const previousMembership = clubMemberships.find((membership) => Number(membership.student) === Number(selectedStudent.id) && Number(membership.club) === Number(studentEditForm.club));
+        if (previousMembership) {
+          await apiService.updateClubMembership(previousMembership.id, { is_active: true, left_at: null });
+        } else {
+          await apiService.createClubMembership({ student: selectedStudent.id, club: Number(studentEditForm.club), is_active: true });
+        }
+      }
+      const existingTalents = studentTalents.filter((entry) => Number(entry.student) === Number(selectedStudent.id));
+      const selectedTalentIds = new Set(studentEditForm.talents.map((id) => Number(id)));
+      await Promise.all(existingTalents.filter((entry) => !selectedTalentIds.has(Number(entry.talent))).map((entry) => apiService.deleteStudentTalent(entry.id)));
+      const existingTalentIds = new Set(existingTalents.map((entry) => Number(entry.talent)));
+      await Promise.all([...selectedTalentIds].filter((talentId) => !existingTalentIds.has(talentId)).map((talentId) => apiService.createStudentTalent({ student: selectedStudent.id, talent: talentId, proficiency_level: 1, notes: '' })));
+      closeStudentEditor();
+      await loadData();
+      showSuccess('Student changes saved successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to save student changes');
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!selectedStudent) return;
+    if (!window.confirm(`Delete ${selectedStudent.first_name} ${selectedStudent.last_name}? This cannot be undone.`)) return;
+    try {
+      await apiService.deleteStudent(selectedStudent.id);
+      closeStudentEditor();
+      await loadData();
+      showSuccess('Student deleted successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete student');
+    }
+  };
   const openStudentRegistration = () => {
     setError(null);
     setStudentForm({
@@ -184,7 +256,7 @@ const SportTeacherPage = () => {
   const handleRegisterStudent = async (e) => {
     e.preventDefault();
     try {
-      const studentRes = await apiService.registerStudent({
+      await apiService.registerStudent({
         first_name: studentForm.first_name,
         last_name: studentForm.last_name,
         gender: studentForm.gender,
@@ -387,6 +459,11 @@ const SportTeacherPage = () => {
     return 'Not assigned';
   };
 
+  const getStudentEducationLevel = (student) => {
+    const levelId = student.education_level?.id ?? student.education_level_id ?? student.education_level;
+    return educationLevels.find((level) => Number(level.id) === Number(levelId))?.name || '—';
+  };
+
   const uniqueClubs = Array.from(new Map((clubs || []).map((club) => [String(club.id), club])).values());
   const schoolClubs = uniqueClubs.filter((club) => {
     const clubSchoolId = club.school?.id ?? club.school_id ?? club.school;
@@ -406,7 +483,7 @@ const SportTeacherPage = () => {
     groups[category] = [...(groups[category] || []), talent];
     return groups;
   }, {});
-  const renderTalentCheckboxes = () => Object.entries(talentsByCategory)
+  const renderTalentCheckboxes = (selectedTalentIds, onChange) => Object.entries(talentsByCategory)
     .sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB))
     .map(([category, categoryTalents]) => (
       <section className="sport-teacher-talent-category" key={category}>
@@ -416,7 +493,7 @@ const SportTeacherPage = () => {
             .sort((talentA, talentB) => talentA.name.localeCompare(talentB.name))
             .map((talent) => (
               <label key={talent.id}>
-                <input type="checkbox" checked={studentForm.talents.includes(String(talent.id))} onChange={(event) => setStudentForm({ ...studentForm, talents: event.target.checked ? [...studentForm.talents, String(talent.id)] : studentForm.talents.filter((id) => id !== String(talent.id)) })} />
+                <input type="checkbox" checked={selectedTalentIds.includes(String(talent.id))} onChange={(event) => onChange(event.target.checked ? [...selectedTalentIds, String(talent.id)] : selectedTalentIds.filter((id) => id !== String(talent.id)))} />
                 <span>{talent.name}</span>
               </label>
             ))}
@@ -655,7 +732,7 @@ const SportTeacherPage = () => {
             <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Student ID</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Name</th>
-              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Gender</th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Class</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Talents</th>
               <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Club</th>
             </tr>
@@ -663,9 +740,11 @@ const SportTeacherPage = () => {
           <tbody>
             {students.map((student) => (
               <tr key={student.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ padding: '10px 16px' }}>{student.student_id || '—'}</td>
-                <td style={{ padding: '10px 16px', fontWeight: '500' }}>{student.first_name} {student.last_name}</td>
-                <td style={{ padding: '10px 16px' }}>{student.gender || '—'}</td>
+                <td style={{ padding: '10px 16px' }}>
+                  <button type="button" className="sport-teacher-student-id-link" onClick={() => openStudentEditor(student)}>{student.student_id || '—'}</button>
+                </td>
+                <td style={{ padding: '10px 16px', fontWeight: '500' }}>{student.first_name} {student.last_name} ({student.gender || '—'})</td>
+                <td style={{ padding: '10px 16px' }}>{getStudentEducationLevel(student)}</td>
                 <td style={{ padding: '10px 16px' }}>{getStudentTalentNames(student.id)}</td>
                 <td style={{ padding: '10px 16px' }}>
                   <span style={{ display: 'inline-block', padding: '2px 10px', background: '#eef2ff', color: '#0E1DB6', borderRadius: '12px', fontSize: '12px' }}>
@@ -1011,12 +1090,45 @@ const SportTeacherPage = () => {
           </div>
           <fieldset className="sport-teacher-registration-talents">
             <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
-            {renderTalentCheckboxes()}
+            {renderTalentCheckboxes(studentForm.talents, (talents) => setStudentForm({ ...studentForm, talents }))}
             {!talents.length && <p className="sport-teacher-empty-message">No talents available.</p>}
           </fieldset>
           <div className="sport-teacher-registration-form-actions">
             <button type="button" onClick={() => closeModal('registerStudent')}>Cancel</button>
             <button type="submit">Register Student</button>
+          </div>
+        </form>
+      </aside>
+    </>
+  ) : null;
+
+  const studentEditDrawer = selectedStudent ? (
+    <>
+      <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close student editor" onClick={closeStudentEditor} />
+      <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label="Edit student">
+        <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
+        <div className="sport-teacher-search-drawer-header">
+          <h2>Edit Student</h2>
+          <button type="button" onClick={closeStudentEditor} aria-label="Close student editor">&times;</button>
+        </div>
+        <p className="sport-teacher-drawer-kicker">{selectedStudent.student_id}</p>
+        <form onSubmit={handleSaveStudent}>
+          <div className="sport-teacher-registration-form-grid">
+            <label>First Name *<input type="text" value={studentEditForm.first_name} onChange={(event) => setStudentEditForm({ ...studentEditForm, first_name: event.target.value })} required /></label>
+            <label>Last Name *<input type="text" value={studentEditForm.last_name} onChange={(event) => setStudentEditForm({ ...studentEditForm, last_name: event.target.value })} required /></label>
+            <label>Gender *<select value={studentEditForm.gender} onChange={(event) => setStudentEditForm({ ...studentEditForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option></select></label>
+            <label>Date of Birth<input type="date" value={studentEditForm.date_of_birth} onChange={(event) => setStudentEditForm({ ...studentEditForm, date_of_birth: event.target.value })} /></label>
+            <label>Class / Level<select value={studentEditForm.education_level} onChange={(event) => setStudentEditForm({ ...studentEditForm, education_level: event.target.value })}><option value="">Not specified</option>{educationLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label>
+          </div>
+          <label className="sport-teacher-edit-club-field">Assign school club<select value={studentEditForm.club} onChange={(event) => setStudentEditForm({ ...studentEditForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
+          <fieldset className="sport-teacher-registration-talents">
+            <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
+            {renderTalentCheckboxes(studentEditForm.talents, (talents) => setStudentEditForm({ ...studentEditForm, talents }))}
+            {!talents.length && <p className="sport-teacher-empty-message">No talents available.</p>}
+          </fieldset>
+          <div className="sport-teacher-registration-form-actions">
+            <button type="button" className="sport-teacher-danger-button" onClick={handleDeleteStudent}>Delete Student</button>
+            <button type="submit">Save Changes</button>
           </div>
         </form>
       </aside>
@@ -1169,6 +1281,7 @@ const SportTeacherPage = () => {
         </>
       )}
       {registrationDrawer}
+      {studentEditDrawer}
     </div>
   );
 
@@ -1370,7 +1483,7 @@ const SportTeacherPage = () => {
               </div>
               <fieldset className="sport-teacher-registration-talents">
                 <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
-                {renderTalentCheckboxes()}
+                {renderTalentCheckboxes(studentForm.talents, (talents) => setStudentForm({ ...studentForm, talents }))}
                 {!talents.length && <p className="sport-teacher-empty-message">No talents available.</p>}
               </fieldset>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>

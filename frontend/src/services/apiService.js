@@ -165,6 +165,8 @@ export const createClubTeacher = (data) => api.post('/club-teachers/', data);
 export const deleteClubTeacher = (id) => api.delete(`/club-teachers/${id}/`);
 export const getClubMemberships = (params = {}) => api.get('/club-memberships/', { params });
 export const createClubMembership = (data) => api.post('/club-memberships/', data);
+export const updateClubMembership = (id, data) => api.patch(`/club-memberships/${id}/`, data);
+export const deleteClubMembership = (id) => api.delete(`/club-memberships/${id}/`);
 export const getEvaluations = (params = {}) => api.get('/evaluations/', { params });
 export const getEvaluationCriteria = (params = {}) => api.get('/evaluation-criteria/', { params });
 export const createEvaluation = (data) => api.post('/evaluations/', data);
@@ -181,7 +183,7 @@ export const getAllStudents = (params = {}) => getAllRecords('/students/', param
 export const getStudentById = (id) => api.get(`/students/${id}/`);
 export const createStudent = (data) => api.post('/students/', data);
 export const registerStudent = (data) => api.post('/students/register/', data);
-export const updateStudent = (id, data) => api.put(`/students/${id}/`, data);
+export const updateStudent = (id, data) => api.patch(`/students/${id}/`, data);
 export const deleteStudent = (id) => api.delete(`/students/${id}/`);
 
 // ==================== PARENTS ====================

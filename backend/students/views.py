@@ -26,6 +26,11 @@ class StudentViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
             return
         serializer.save()
 
+    def perform_destroy(self, instance):
+        with transaction.atomic():
+            User.objects.filter(student=instance).delete()
+            instance.delete()
+
     @action(detail=False, methods=['post'], url_path='register')
     def register(self, request):
         if request.user.role not in {'head_teacher', 'sport_teacher'}:

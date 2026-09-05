@@ -654,6 +654,27 @@
   border-radius: 8px;
 }
 
+.sport-teacher-edit-club-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 16px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sport-teacher-edit-club-field select {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: white;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 400;
+}
+
 .sport-teacher-registration-talents legend {
   padding: 0 6px;
   color: #334155;
@@ -731,6 +752,29 @@
   border-color: #0e1db6;
   background: #0e1db6;
   color: white;
+}
+
+.sport-teacher-danger-button {
+  margin-right: auto;
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+}
+
+.sport-teacher-student-id-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0e1db6;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sport-teacher-student-id-link:hover,
+.sport-teacher-student-id-link:focus-visible {
+  color: #4682b4;
 }
 
 .sport-teacher-registration-form-actions button:hover,
