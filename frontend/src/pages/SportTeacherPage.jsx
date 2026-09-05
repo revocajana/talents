@@ -637,17 +637,17 @@ const SportTeacherPage = () => {
       .sort((studentA, studentB) => `${studentA.first_name} ${studentA.last_name}`.localeCompare(`${studentB.first_name} ${studentB.last_name}`))
     : [];
 
-  const getStatusBadge = (status, score) => {
+  const getStatusBadge = (status, score, recorded = score !== null && score !== undefined) => {
     if (status === 'disqualified') {
       return <span className="badge badge-danger">Disqualified</span>;
     }
+    if (!recorded || score === null || score === undefined) {
+      return <span className="badge badge-warning">Not recorded</span>;
+    }
     if (score >= 50) {
-      return <span className="badge badge-success">Passed</span>;
+      return <span className="badge badge-pending">Pending</span>;
     }
-    if (score > 0) {
-      return <span className="badge badge-danger">Failed</span>;
-    }
-    return <span className="badge badge-warning">Pending</span>;
+    return <span className="badge badge-danger">Failed</span>;
   };
 
   // Sidebar menu items
@@ -1083,7 +1083,7 @@ const SportTeacherPage = () => {
         </div>
         <div className="sport-teacher-results-table-wrap">
           <table className="sport-teacher-results-table"><thead><tr><th>Competition</th><th>Student</th><th>Talent</th><th>Score</th><th>Status</th></tr></thead><tbody>
-            {schoolResultRows.map((row) => <tr key={row.id}><td>{row.competition || schoolCompetition?.name || 'Not recorded'}</td><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={resultScores[row.id] ?? row.score} onChange={(event) => setResultScores({ ...resultScores, [row.id]: event.target.value })} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /><button type="button" className="sport-teacher-inline-save" onClick={() => handleSaveResult(row)}>Save</button></span></td><td>{getStatusBadge(row.status, row.score)}</td></tr>)}
+            {schoolResultRows.map((row) => <tr key={row.id}><td>{row.competition || schoolCompetition?.name || 'Not recorded'}</td><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={resultScores[row.id] ?? row.score} onChange={(event) => setResultScores({ ...resultScores, [row.id]: event.target.value })} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /><button type="button" className="sport-teacher-inline-save" onClick={() => handleSaveResult(row)}>Save</button></span></td><td>{getStatusBadge(row.status, row.score, Boolean(row.participation || row.detail))}</td></tr>)}
             {!schoolResultRows.length && <tr><td colSpan="5" className="sport-teacher-results-empty">No students registered.</td></tr>}
           </tbody></table>
         </div>

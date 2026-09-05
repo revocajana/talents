@@ -4,6 +4,16 @@
   background: #f8faff;
 }
 
+.sport-teacher-page .badge-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.sport-teacher-page .badge-pending {
+  background: #dcfce7;
+  color: #15803d;
+}
+
 .sport-teacher-app-bar {
   position: sticky;
   top: 0;
