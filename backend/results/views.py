@@ -5,6 +5,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from competitions.models import Competition, CompetitionParticipation
+from django.contrib.contenttypes.models import ContentType
+from core.models import District
 from students.models import Student
 
 from .models import Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
@@ -116,6 +118,27 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                     )
                     detail.promoted_to = to_level
                     detail.save(update_fields=['promoted_to'])
+                    if to_level == 'district':
+                        district = detail.result.participation.student.school.district
+                        district_type = ContentType.objects.get_for_model(District)
+                        next_competition = Competition.objects.filter(
+                            level='district',
+                            content_type=district_type,
+                            object_id=district.pk,
+                            status__in=('approved', 'pending_approval'),
+                        ).order_by('start_date').first()
+                        if next_competition:
+                            next_participation, _ = CompetitionParticipation.objects.get_or_create(
+                                competition=next_competition,
+                                student=detail.result.participation.student,
+                                defaults={'status': 'registered', 'score': None},
+                            )
+                            next_result, _ = Result.objects.get_or_create(participation=next_participation, defaults={'score': None})
+                            ResultDetail.objects.get_or_create(
+                                result=next_result,
+                                talent=detail.talent,
+                                defaults={'raw_score': detail.percentage_score or detail.raw_score, 'percentage_score': detail.percentage_score or detail.raw_score},
+                            )
                     promotions.append(promotion)
             for student_id in student_ids:
                 try:

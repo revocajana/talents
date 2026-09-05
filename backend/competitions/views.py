@@ -1,9 +1,11 @@
 from django.utils import timezone
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Competition, CompetitionParticipation, CompetitionJudge
+from core.models import District, School
 from .serializers import CompetitionSerializer, CompetitionParticipationSerializer, CompetitionJudgeSerializer
 from core.permissions import AuthenticatedReadOnly, ScopedQuerysetMixin, StudentDataPermission
 
@@ -28,7 +30,26 @@ class CompetitionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     }
 
     def perform_create(self, serializer):
-        serializer.save(organizer=self.request.user)
+        user = self.request.user
+        level = self.request.data.get('level')
+        if user.role == 'sport_teacher':
+            if level != 'school' or not user.school_id:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError('Sport teachers can create only school-level competitions for their school.')
+            competition = serializer.save(organizer=user, content_type=ContentType.objects.get_for_model(School), object_id=user.school_id)
+            competition.schools.set([user.school])
+            competition.participants.clear()
+            return
+        if user.role == 'district_manager':
+            district = user.district
+            if level != 'district' or district is None:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError('District managers can create only district-level competitions for their district.')
+            competition = serializer.save(organizer=user, content_type=ContentType.objects.get_for_model(District), object_id=district.pk)
+            competition.schools.set(School.objects.filter(district=district, is_approved=True))
+            competition.participants.clear()
+            return
+        serializer.save(organizer=user)
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
