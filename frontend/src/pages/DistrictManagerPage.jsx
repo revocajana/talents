@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import DashboardSkeleton from '../components/DashboardSkeleton';
 import * as apiService from '../services/apiService';
 import logo from '../assets/Logo1.png';
 import './SportTeacherPage.css';
@@ -477,16 +478,8 @@ export default function DistrictManagerPage() {
       </aside>
 
       <main className="sport-teacher-prototype-content district-manager-content">
-        <div className="district-manager-heading">
-          <div>
-            <p className="sport-teacher-eyebrow">District Manager</p>
-            <h1>{districtName}</h1>
-            <p>Manage school results, district qualifiers, and communication.</p>
-          </div>
-          <span className="sport-teacher-date">{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-        </div>
         {error && <div className="district-manager-alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Dismiss error">&times;</button></div>}
-        {loading ? <p>Loading district workspace...</p> : (
+        {loading ? <DashboardSkeleton label="Loading district manager dashboard" /> : (
           <>
             {activeMenu === 'home' && renderHomeView()}
             {activeMenu === 'results' && renderResultsView()}
