@@ -894,6 +894,14 @@ const SportTeacherPage = () => {
       const score = Number(row.detail?.percentage_score ?? row.detail?.raw_score);
       return row.hasScore && Number.isFinite(score) && score >= 50;
     }).length;
+    const involvedCompetitionIds = new Set(participations.map((participation) => Number(participation.competition)));
+    const involvedCompetitions = competitions
+      .filter((competition) => {
+        const competitionSchools = (competition.schools || []).map((id) => Number(id));
+        return competitionSchools.includes(schoolId) || involvedCompetitionIds.has(Number(competition.id));
+      })
+      .sort((competitionA, competitionB) => new Date(competitionA.start_date) - new Date(competitionB.start_date));
+    const formatCompetitionDate = (date) => date ? new Date(date).toLocaleDateString('en-GB') : 'Not set';
 
     return (
     <>
@@ -902,6 +910,10 @@ const SportTeacherPage = () => {
           <div><h2>Needs attention</h2></div>
         </div>
         <div className="sport-teacher-attention-grid">
+          <button type="button" className="sport-teacher-attention-card" onClick={() => setActiveTab('students')}>
+            <strong>{students.length}</strong>
+            <span className="sport-teacher-attention-label">total students</span>
+          </button>
           <button type="button" className="sport-teacher-attention-card" onClick={() => setActiveTab('results')}>
             <strong>{resultProgress.pending}</strong>
             <span className="sport-teacher-attention-label">need scores</span>
@@ -943,12 +955,12 @@ const SportTeacherPage = () => {
             <div><h2>Results progress</h2><p>{schoolCompetition?.name || 'School competition'}</p></div>
             <button type="button" onClick={() => setActiveTab('results')}>Open results</button>
           </div>
-          <div className="sport-teacher-progress-summary"><strong>{progressPercent}%</strong><span>scored</span><div className="sport-teacher-progress-track"><span style={{ width: `${progressPercent}%` }} /></div></div>
+          <div className="sport-teacher-progress-summary"><strong>{progressPercent}%</strong><span>has score</span><div className="sport-teacher-progress-track"><span style={{ width: `${progressPercent}%` }} /></div></div>
           <div className="sport-teacher-result-legend">
-            <span><i className="is-scored" />Scored <strong>{resultProgress.scored}</strong></span>
-            <span><i className="is-pending" />Pending <strong>{resultProgress.pending}</strong></span>
-            <span><i className="is-passed" />Passed <strong>{resultProgress.passed}</strong></span>
-            <span><i className="is-failed" />Failed <strong>{resultProgress.failed}</strong></span>
+            <span><i className="is-scored" />Scored results <strong>{resultProgress.scored}</strong></span>
+            <span><i className="is-pending" />Awaiting score <strong>{resultProgress.pending}</strong></span>
+            <span><i className="is-passed" />Passed talents (50%+) <strong>{resultProgress.passed}</strong></span>
+            <span><i className="is-failed" />Below 50% <strong>{resultProgress.failed}</strong></span>
           </div>
         </section>
       </div>
@@ -993,36 +1005,21 @@ const SportTeacherPage = () => {
           </div>
         </div>
 
-        {/* Competition Results */}
-        <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+        {/* Competitions */}
+        <div className="sport-teacher-home-competitions">
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Competition Results</span>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>{participations.length} total</span>
+            <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Competitions</span>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>{involvedCompetitions.length} total</span>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-              <thead>
-                <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Competition</th>
-                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Student</th>
-                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Score</th>
-                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {participations.slice(0, 5).map((part) => (
-                  <tr key={part.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '10px 16px' }}>{getCompetitionName(part.competition)}</td>
-                    <td style={{ padding: '10px 16px' }}>{getStudentName(part.student)}</td>
-                    <td style={{ padding: '10px 16px', fontWeight: '600' }}>{part.score ? `${part.score}%` : '—'}</td>
-                    <td style={{ padding: '10px 16px' }}>{getStatusBadge(part.status, part.score)}</td>
-                  </tr>
-                ))}
-                {participations.length === 0 && (
-                  <tr><td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No results recorded</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="sport-teacher-home-competition-list">
+            {involvedCompetitions.map((competition) => (
+              <div className="sport-teacher-home-competition-row" key={competition.id}>
+                <strong>{competition.name}</strong>
+                <span className="sport-teacher-home-competition-level">{competition.level?.replace('_', ' ') || 'Competition'} level</span>
+                <span>{formatCompetitionDate(competition.start_date)} - {formatCompetitionDate(competition.end_date)}</span>
+              </div>
+            ))}
+            {!involvedCompetitions.length && <p className="sport-teacher-overview-empty">No competitions involving this school.</p>}
           </div>
         </div>
       </div>
