@@ -1356,13 +1356,21 @@ const SportTeacherPage = () => {
       return;
     }
     try {
-      const existingSubmission = schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id));
-      const submission = existingSubmission || (await apiService.createSchoolResultSubmission({ school: schoolId, competition: competition.id, status: 'draft' })).data;
-      await apiService.submitSchoolResultSubmission(submission.id);
+      const competitionId = Number(competition.id);
+      const existingSubmission = schoolSubmissions.find((submission) => Number(submission.competition) === competitionId);
+      const submission = existingSubmission || (await apiService.createSchoolResultSubmission({ school: schoolId, competition: competitionId, status: 'draft' })).data;
+      const submittedResponse = await apiService.submitSchoolResultSubmission(submission.id);
+      const submittedSubmission = submittedResponse.data;
+      setSchoolSubmissions((current) => [
+        ...current.filter((item) => Number(item.competition) !== competitionId),
+        submittedSubmission,
+      ]);
+      setSchoolSubmission((current) => Number(current?.competition) === competitionId ? submittedSubmission : current);
+      showSuccess(`${competition.name} results submitted for district review`);
       await loadData();
-      showSuccess('School results submitted for district review');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to submit school results');
+      const responseErrors = err.response?.data;
+      setError(responseErrors?.detail || responseErrors?.competition?.[0] || responseErrors?.non_field_errors?.[0] || 'Failed to submit school results');
     }
   };
 
@@ -1370,7 +1378,13 @@ const SportTeacherPage = () => {
     const schoolRowsByCompetition = schoolResultRows.reduce((groups, row) => {
       const competitionId = row.competitionId || schoolCompetition?.id || 'school';
       const competitionName = row.competition || schoolCompetition?.name || 'School competition';
-      const group = groups[competitionId] || { name: competitionName, rows: [] };
+      const sourceCompetition = competitions.find((item) => Number(item.id) === Number(competitionId));
+      const group = groups[competitionId] || {
+        id: Number(competitionId),
+        name: competitionName,
+        status: sourceCompetition?.status || 'draft',
+        rows: [],
+      };
       group.rows.push(row);
       groups[competitionId] = group;
       return groups;
@@ -1383,10 +1397,11 @@ const SportTeacherPage = () => {
           {(() => {
             const competitionSubmission = schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId));
             const isLocked = ['submitted', 'approved'].includes(competitionSubmission?.status);
+            const canSubmit = !isLocked && ['draft', 'approved'].includes(competition.status);
             return (
           <div className="sport-teacher-results-card-header">
-            <div><h2>{competition.name}</h2><p>{isLocked ? 'Submitted and locked for district review.' : 'Results for all students in your school.'}</p></div>
-            {!isLocked && <button type="button" onClick={() => handleSubmitSchoolResults(competition)} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>Submit results</button>}
+            <div><h2>{competition.name}</h2><p>{isLocked ? 'Submitted and locked for district review.' : canSubmit ? 'Results for all students in your school.' : `Competition status: ${competition.status || 'draft'}. Submission is unavailable.`}</p></div>
+            {canSubmit && <button type="button" onClick={() => handleSubmitSchoolResults(competition)} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>Submit results</button>}
           </div>
             );
           })()}

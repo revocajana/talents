@@ -188,6 +188,10 @@ class SchoolCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelView
         if self.request.user.role not in {'head_teacher', 'sport_teacher'} or not self.request.user.school_id:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Only a school teacher can create this submission.')
+        competition = serializer.validated_data['competition']
+        if competition.level != 'school' or not competition.schools.filter(pk=self.request.user.school_id).exists():
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'competition': 'This competition is not available to your school.'})
         serializer.save(school=self.request.user.school)
 
     @action(detail=True, methods=['post'])
