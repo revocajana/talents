@@ -8,7 +8,8 @@ import '../styles/districtmanager.css';
 
 const MENU_ITEMS = [
   { key: 'home', label: 'Home' },
-  { key: 'results', label: 'School & District Results' },
+  { key: 'school-results', label: 'School results' },
+  { key: 'district-results', label: 'District results' },
   { key: 'announcements', label: 'Announcements' },
   { key: 'reports', label: 'Reports' },
 ];
@@ -38,7 +39,6 @@ export default function DistrictManagerPage() {
   const [activeMenu, setActiveMenu] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [resultsTab, setResultsTab] = useState('school');
   const [schoolSubmissions, setSchoolSubmissions] = useState([]);
   const districtName = allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name || 'Assigned District';
 
@@ -332,7 +332,7 @@ export default function DistrictManagerPage() {
         return { ...competition, entries };
       });
 
-    if (resultsTab === 'school') {
+    if (activeMenu === 'school-results') {
       return (
         <div className="district-results-stack">
           <div className="district-results-heading">
@@ -358,10 +358,6 @@ export default function DistrictManagerPage() {
         </div>
       );
     }
-    const schoolResultsByCompetition = schoolCompetitions.map((competition) => ({
-      ...competition,
-      entries: pendingPromotionStudents.filter((item) => Number(item.competition) === Number(competition.id)),
-    }));
     const districtResultsByCompetition = districtLevelCompetitions.map((competition) => {
       const entries = results.filter((result) => {
         const participation = participations.find((item) => Number(item.id) === Number(result.participation));
@@ -382,26 +378,6 @@ export default function DistrictManagerPage() {
             {submitting ? 'Processing...' : `Promote selected (${selectedPromotionStudents.length})`}
           </button>
         </div>
-
-        {schoolResultsByCompetition.map((competition) => (
-          <section className="district-result-card" key={`school-${competition.id}`}>
-            <div className="district-result-card-header">
-              <div><h3>{competition.name}</h3><p>School-level results and district qualifiers.</p></div>
-              <span className="district-result-level">School level</span>
-            </div>
-            <div className="district-result-table-wrap">
-              <table className="data-table"><thead><tr><th>Select</th><th>Student</th><th>School</th><th>Score</th><th>Status</th></tr></thead><tbody>
-                {competition.entries.map((item) => (
-                  <tr key={item.id}>
-                    <td><input type="checkbox" checked={selectedPromotionStudents.includes(Number(item.student))} onChange={(event) => setSelectedPromotionStudents((current) => event.target.checked ? [...new Set([...current, Number(item.student)])] : current.filter((id) => id !== Number(item.student)))} /></td>
-                    <td>{item.studentRecord.first_name} {item.studentRecord.last_name}</td><td>{item.schoolName}</td><td>{item.score}%</td><td>{item.status}</td>
-                  </tr>
-                ))}
-                {!competition.entries.length && <tr><td colSpan="5" className="district-result-empty">No eligible students for this competition.</td></tr>}
-              </tbody></table>
-            </div>
-          </section>
-        ))}
 
         {districtResultsByCompetition.map((competition) => (
           <section className="district-result-card" key={`district-${competition.id}`}>
@@ -550,15 +526,7 @@ export default function DistrictManagerPage() {
         {loading ? <DashboardSkeleton label="Loading district manager dashboard" /> : (
           <>
             {activeMenu === 'home' && renderHomeView()}
-            {activeMenu === 'results' && (
-              <>
-                <div className="district-results-tabs" role="tablist" aria-label="Results views">
-                  <button type="button" className={resultsTab === 'school' ? 'is-active' : ''} onClick={() => setResultsTab('school')} role="tab" aria-selected={resultsTab === 'school'}>School results</button>
-                  <button type="button" className={resultsTab === 'district' ? 'is-active' : ''} onClick={() => setResultsTab('district')} role="tab" aria-selected={resultsTab === 'district'}>District results</button>
-                </div>
-                {renderResultsView()}
-              </>
-            )}
+            {(activeMenu === 'school-results' || activeMenu === 'district-results') && renderResultsView()}
             {activeMenu === 'announcements' && renderAnnouncementsView()}
             {activeMenu === 'reports' && renderReportsView()}
           </>
