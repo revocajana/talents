@@ -40,7 +40,9 @@ export default function DistrictManagerPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [schoolSubmissions, setSchoolSubmissions] = useState([]);
-  const districtName = allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name || 'Assigned District';
+  const districtName = currentUser?.district_name
+    || allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name
+    || 'Assigned District';
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -259,7 +261,7 @@ export default function DistrictManagerPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', maxWidth: '100%', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: '700', color: '#0E1DB6' }}>District:</span>
             <span style={{ fontWeight: '600', color: '#374151' }}>
-              {allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name || 'Assigned District'}
+              {districtName}
             </span>
           </div>
         </div>
@@ -270,7 +272,7 @@ export default function DistrictManagerPage() {
           <div className="section-header">
             <h2>District Overview</h2>
             <p>
-              {allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name || 'District'} summary
+              {districtName || 'District'} summary
             </p>
           </div>
           <div className="stats-overview">
