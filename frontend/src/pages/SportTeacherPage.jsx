@@ -531,6 +531,17 @@ const SportTeacherPage = () => {
     }
   };
 
+  const handleRemoveClub = async (club) => {
+    if (!window.confirm(`Remove ${club.name} from this school?`)) return;
+    try {
+      await apiService.updateClubStatus(club.id, { is_active: false });
+      await loadData();
+      showSuccess(`${club.name} removed from the school`);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to remove club');
+    }
+  };
+
   // Assign student to club
   const handleAssignStudentClub = async (e) => {
     e.preventDefault();
@@ -1485,11 +1496,17 @@ const SportTeacherPage = () => {
         <p className="sport-teacher-club-limit">Maximum active clubs: <strong>{clubLimit}</strong>. Currently registered: <strong>{schoolClubs.filter((club) => club.is_active).length}</strong>.</p>
         <form onSubmit={handleRegisterClubs}>
           <div className="sport-teacher-club-checkbox-list">
+            {schoolClubs.filter((club) => club.is_active).map((club) => (
+              <div className="sport-teacher-registered-club" key={club.id}>
+                <span><strong>{club.name}</strong><small>{club.focus || 'Registered school club'}</small></span>
+                <button type="button" onClick={() => handleRemoveClub(club)}>Remove</button>
+              </div>
+            ))}
             {availableCountryClubs.map((club) => {
               const selected = selectedClubIds.includes(String(club.id));
               const remaining = clubLimit - schoolClubs.filter((item) => item.is_active).length;
               return (
-                <label key={club.id}>
+                <label key={club.id} className={!selected && selectedClubIds.length >= remaining ? 'is-disabled' : ''} title={!selected && selectedClubIds.length >= remaining ? 'Maximum club limit reached' : undefined}>
                   <input type="checkbox" checked={selected} disabled={!selected && selectedClubIds.length >= remaining} onChange={(event) => setSelectedClubIds(event.target.checked ? [...selectedClubIds, String(club.id)] : selectedClubIds.filter((id) => id !== String(club.id)))} />
                   <span><strong>{club.name}</strong><small>{club.focus}</small></span>
                 </label>

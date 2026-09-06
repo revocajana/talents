@@ -165,6 +165,7 @@ export const getClubs = (params = {}) => api.get('/clubs/', { params });
 export const createClub = (data) => api.post('/clubs/', data);
 export const registerClubs = (data) => api.post('/clubs/register/', data);
 export const updateClub = (id, data) => api.put(`/clubs/${id}/`, data);
+export const updateClubStatus = (id, data) => api.patch(`/clubs/${id}/`, data);
 export const deleteClub = (id) => api.delete(`/clubs/${id}/`);
 export const getClubTeachers = (params = {}) => api.get('/club-teachers/', { params });
 export const createClubTeacher = (data) => api.post('/club-teachers/', data);

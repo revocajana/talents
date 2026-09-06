@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 
 from .models import (
     Country, Zone, Region, District, Ward, School, SchoolOwnershipType,
@@ -234,6 +235,18 @@ class SchoolClubViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     serializer_class = SchoolClubSerializer
     permission_classes = [AuthenticatedReadOnly]
     scope_paths = {'student': 'memberships__student_id', 'school': 'school_id', 'country': 'school__country_id', 'zone': 'school__zone_id', 'region': 'school__region_id', 'district': 'school__district_id', 'ward': 'school__ward_id'}
+
+    def perform_update(self, serializer):
+        school_club = self.get_object()
+        if serializer.validated_data.get('is_active', school_club.is_active) is False:
+            with transaction.atomic():
+                serializer.save()
+                school_club.memberships.filter(is_active=True).update(
+                    is_active=False,
+                    left_at=timezone.now(),
+                )
+            return
+        serializer.save()
 
     @action(detail=False, methods=['post'], url_path='register')
     def register(self, request):

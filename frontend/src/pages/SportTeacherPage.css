@@ -985,6 +985,57 @@
   background: #f4f5ff;
 }
 
+.sport-teacher-club-checkbox-list label.is-disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.sport-teacher-club-checkbox-list label.is-disabled strong,
+.sport-teacher-club-checkbox-list label.is-disabled small {
+  color: #94a3b8;
+}
+
+.sport-teacher-registered-club {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #c7d2fe;
+  border-radius: 7px;
+  background: #f4f5ff;
+}
+
+.sport-teacher-registered-club span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sport-teacher-registered-club strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.sport-teacher-registered-club small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.sport-teacher-registered-club button {
+  flex-shrink: 0;
+  padding: 6px 9px;
+  border: 1px solid #fecaca;
+  border-radius: 5px;
+  background: #fff1f2;
+  color: #b91c1c;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .sport-teacher-club-checkbox-list input {
   width: 16px;
   height: 16px;
