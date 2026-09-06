@@ -967,41 +967,31 @@ const SportTeacherPage = () => {
 
       {/* Two-column layout */}
       <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        {/* Students List */}
-        <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+        {/* Top students by talent count */}
+        <div className="sport-teacher-home-top-students">
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Students</span>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>{students.length} total</span>
+            <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Top 5 students by talents</span>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>Most talents</span>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-              <thead>
-                <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Name</th>
-                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Talent</th>
-                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Club</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.slice(0, 5).map((student) => (
-                  <tr key={student.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '10px 16px' }}>
-                      <span style={{ fontWeight: '500' }}>{student.first_name} {student.last_name}</span>
-                      <span style={{ display: 'block', fontSize: '12px', color: '#9ca3af' }}>{student.student_id || ''}</span>
-                    </td>
-                    <td style={{ padding: '10px 16px' }}>{getStudentTalentNames(student.id)}</td>
-                    <td style={{ padding: '10px 16px' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 10px', background: '#eef2ff', color: '#0E1DB6', borderRadius: '12px', fontSize: '12px' }}>
-                        {getStudentClub(student.id)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {students.length === 0 && (
-                  <tr><td colSpan="3" style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>No students registered</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="sport-teacher-home-top-student-list">
+            {[...students]
+              .map((student) => ({
+                ...student,
+                assignedTalents: studentTalents.filter((entry) => Number(entry.student) === Number(student.id)),
+              }))
+              .sort((studentA, studentB) => studentB.assignedTalents.length - studentA.assignedTalents.length)
+              .slice(0, 5)
+              .map((student) => (
+                <div className="sport-teacher-home-top-student" key={student.id}>
+                  <div className="sport-teacher-home-top-student-label">
+                    <span>{student.first_name} {student.last_name}</span>
+                    <strong>{student.assignedTalents.length}</strong>
+                  </div>
+                  <div className="sport-teacher-talent-bar-track"><span style={{ width: `${Math.max((student.assignedTalents.length / (studentTalents.length || 1)) * 100, 8)}%` }} /></div>
+                  <small>{student.assignedTalents.map((entry) => entry.talent_name || 'Talent').join(', ') || 'No talents assigned'}</small>
+                </div>
+              ))}
+            {!students.length && <p className="sport-teacher-overview-empty">No students registered.</p>}
           </div>
         </div>
 

@@ -344,6 +344,52 @@
   background: white;
 }
 
+.sport-teacher-home-top-students {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+}
+
+.sport-teacher-home-top-student-list {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.sport-teacher-home-top-student {
+  display: grid;
+  gap: 6px;
+}
+
+.sport-teacher-home-top-student-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.sport-teacher-home-top-student-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sport-teacher-home-top-student-label strong {
+  flex-shrink: 0;
+  color: #0f172a;
+}
+
+.sport-teacher-home-top-student small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sport-teacher-home-competition-list {
   display: grid;
   gap: 0;
