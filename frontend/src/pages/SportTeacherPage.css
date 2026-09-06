@@ -497,6 +497,29 @@
   white-space: nowrap;
 }
 
+.sport-teacher-home-competition-title {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sport-teacher-home-competition-title:hover,
+.sport-teacher-home-competition-title:focus-visible {
+  color: #0e1db6;
+  text-decoration: underline;
+  outline: none;
+}
+
 .sport-teacher-home-competition-level {
   color: #0e1db6;
   font-size: 12px;
@@ -1257,6 +1280,65 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+.sport-teacher-competition-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sport-teacher-competition-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.sport-teacher-competition-form-actions button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.sport-teacher-competition-form-actions .sport-teacher-competition-delete {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+  margin-right: auto;
+}
+
+.sport-teacher-competition-form-actions .sport-teacher-competition-delete:hover,
+.sport-teacher-competition-form-actions .sport-teacher-competition-delete:focus-visible {
+  border-color: #dc2626;
+  background: #fee2e2;
+  outline: none;
+}
+
+.sport-teacher-competition-form-actions .sport-teacher-competition-save {
+  min-width: 132px;
+  border: 1px solid #0e1db6;
+  background: #0e1db6;
+  color: white;
+}
+
+.sport-teacher-competition-form-actions .sport-teacher-competition-save:hover,
+.sport-teacher-competition-form-actions .sport-teacher-competition-save:focus-visible {
+  border-color: #1728d1;
+  background: #1728d1;
+  box-shadow: 0 5px 12px rgba(14, 29, 182, 0.2);
+  outline: none;
+}
+
+.sport-teacher-competition-form-actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .sport-teacher-drawer-kicker {

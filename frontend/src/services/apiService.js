@@ -208,6 +208,7 @@ export const getCompetitions = (params = {}) => api.get('/competitions/', { para
 export const getCompetitionById = (id) => api.get(`/competitions/${id}/`);
 export const createCompetition = (data) => api.post('/competitions/', data);
 export const updateCompetition = (id, data) => api.put(`/competitions/${id}/`, data);
+export const patchCompetition = (id, data) => api.patch(`/competitions/${id}/`, data);
 export const deleteCompetition = (id) => api.delete(`/competitions/${id}/`);
 export const getEligibleForPromotion = (params = {}) => api.get('/competitions/eligible_for_promotion/', { params });
 export const uploadBulkResults = (formData) => api.post('/competitions/bulk-upload/', formData, {

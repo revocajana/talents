@@ -41,6 +41,7 @@ const SportTeacherPage = () => {
   const [talents, setTalents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [selectedCompetition, setSelectedCompetition] = useState(null);
   const [eligibleStudents, setEligibleStudents] = useState([]);
   const [educationLevels, setEducationLevels] = useState([]);
   
@@ -70,6 +71,8 @@ const SportTeacherPage = () => {
   const [uploadFile, setUploadFile] = useState(null);
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', expires_at: '' });
   const [announcementSubmitting, setAnnouncementSubmitting] = useState(false);
+  const [competitionForm, setCompetitionForm] = useState({ name: '', description: '', start_date: '', end_date: '' });
+  const [competitionSubmitting, setCompetitionSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [promoting, setPromoting] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
@@ -443,6 +446,64 @@ const SportTeacherPage = () => {
       expires_at: announcement.expires_at ? announcement.expires_at.slice(0, 10) : '',
     });
     openModal('createAnnouncement');
+  };
+
+  const openCompetitionEditor = (competition = null) => {
+    setSelectedCompetition(competition);
+    setCompetitionForm({
+      name: competition?.name || '',
+      description: competition?.description || '',
+      start_date: competition?.start_date || '',
+      end_date: competition?.end_date || '',
+    });
+    openModal('competition');
+  };
+
+  const handleSaveCompetition = async (event) => {
+    event.preventDefault();
+    setCompetitionSubmitting(true);
+    setError(null);
+    try {
+      const payload = {
+        name: competitionForm.name.trim(),
+        description: competitionForm.description.trim(),
+        start_date: competitionForm.start_date,
+        end_date: competitionForm.end_date || null,
+        level: 'school',
+        schools: [schoolId],
+      };
+      if (selectedCompetition) {
+        await apiService.patchCompetition(selectedCompetition.id, payload);
+      } else {
+        await apiService.createCompetition(payload);
+      }
+      closeModal('competition');
+      setSelectedCompetition(null);
+      setCompetitionForm({ name: '', description: '', start_date: '', end_date: '' });
+      await loadData();
+      showSuccess(selectedCompetition ? 'Competition updated successfully' : 'Competition created successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to save competition');
+    } finally {
+      setCompetitionSubmitting(false);
+    }
+  };
+
+  const handleDeleteCompetition = async () => {
+    if (!selectedCompetition || !window.confirm('Delete this competition?')) return;
+    setCompetitionSubmitting(true);
+    setError(null);
+    try {
+      await apiService.deleteCompetition(selectedCompetition.id);
+      closeModal('competition');
+      setSelectedCompetition(null);
+      await loadData();
+      showSuccess('Competition deleted successfully');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete competition');
+    } finally {
+      setCompetitionSubmitting(false);
+    }
   };
 
   const clubLimit = students.length <= 200 ? 3 : students.length < 500 ? 5 : 10;
@@ -1029,12 +1090,12 @@ const SportTeacherPage = () => {
         <div className="sport-teacher-home-competitions">
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>Competitions</span>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>{involvedCompetitions.length} total</span>
+            <button type="button" onClick={() => openCompetitionEditor()} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>Add competition</button>
           </div>
           <div className="sport-teacher-home-competition-list">
             {involvedCompetitions.map((competition) => (
               <div className="sport-teacher-home-competition-row" key={competition.id}>
-                <strong>{competition.name}</strong>
+                {competition.level === 'school' ? <button type="button" className="sport-teacher-home-competition-title" onClick={() => openCompetitionEditor(competition)}>{competition.name}</button> : <strong>{competition.name}</strong>}
                 <span className="sport-teacher-home-competition-level">{competition.level?.replace('_', ' ') || 'Competition'} level</span>
                 <span>{formatCompetitionDate(competition.start_date)} - {formatCompetitionDate(competition.end_date)}</span>
               </div>
@@ -1619,6 +1680,31 @@ const SportTeacherPage = () => {
     </>
   ) : null;
 
+  const competitionDrawer = modals.competition ? (
+    <>
+      <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close competition form" onClick={() => closeModal('competition')} />
+      <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label="School competition form">
+        <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
+        <div className="sport-teacher-search-drawer-header">
+          <h2>{selectedCompetition ? 'Edit competition' : 'Add competition'}</h2>
+          <button type="button" onClick={() => closeModal('competition')} aria-label="Close competition form">&times;</button>
+        </div>
+        <form onSubmit={handleSaveCompetition} className="sport-teacher-profile-form">
+          <label>Competition name *<input type="text" value={competitionForm.name} onChange={(event) => setCompetitionForm({ ...competitionForm, name: event.target.value })} maxLength="150" required /></label>
+          <label>Description<textarea value={competitionForm.description} onChange={(event) => setCompetitionForm({ ...competitionForm, description: event.target.value })} rows="4" /></label>
+          <div className="sport-teacher-competition-date-grid">
+            <label>Start date *<input type="date" value={competitionForm.start_date} onChange={(event) => setCompetitionForm({ ...competitionForm, start_date: event.target.value })} required /></label>
+            <label>End date<input type="date" value={competitionForm.end_date} onChange={(event) => setCompetitionForm({ ...competitionForm, end_date: event.target.value })} /></label>
+          </div>
+          <div className="sport-teacher-competition-form-actions">
+            {selectedCompetition && <button type="button" className="sport-teacher-competition-delete" onClick={handleDeleteCompetition} disabled={competitionSubmitting}>Delete competition</button>}
+            <button type="submit" className="sport-teacher-competition-save" disabled={competitionSubmitting}>{competitionSubmitting ? 'Saving changes...' : 'Save changes'}</button>
+          </div>
+        </form>
+      </aside>
+    </>
+  ) : null;
+
   const profileDrawer = modals.profile ? (
     <>
       <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close profile" onClick={() => closeModal('profile')} />
@@ -1837,6 +1923,7 @@ const SportTeacherPage = () => {
       {announcementDrawer}
       {profileDrawer}
       {changePasswordDrawer}
+      {competitionDrawer}
     </div>
   );
 

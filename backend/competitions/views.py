@@ -51,6 +51,18 @@ class CompetitionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
             return
         serializer.save(organizer=user)
 
+    def perform_update(self, serializer):
+        user = self.request.user
+        if user.role == 'sport_teacher':
+            competition = self.get_object()
+            if competition.level != 'school' or not competition.schools.filter(pk=user.school_id).exists():
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('You can update only school competitions for your school.')
+            competition = serializer.save(level='school', content_type=ContentType.objects.get_for_model(School), object_id=user.school_id)
+            competition.schools.set([user.school])
+            return
+        serializer.save()
+
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         competition = self.get_object()
