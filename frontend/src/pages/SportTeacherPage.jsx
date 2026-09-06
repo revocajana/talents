@@ -859,6 +859,7 @@ const SportTeacherPage = () => {
         <section className="sport-teacher-management-card">
           <div className="sport-teacher-card-heading">
             <div><h2>Talents</h2><p>Talent categories in the system</p></div>
+            <span className="sport-teacher-read-only-badge">Read only</span>
           </div>
           <div className="sport-teacher-category-list">
             {[...new Set(talents.map((talent) => talent.category_name).filter(Boolean))].sort().map((category) => (
