@@ -36,6 +36,7 @@ const SportTeacherPage = () => {
   const [participations, setParticipations] = useState([]);
   const [results, setResults] = useState([]);
   const [schoolSubmission, setSchoolSubmission] = useState(null);
+  const [schoolSubmissions, setSchoolSubmissions] = useState([]);
   const [resultDetails, setResultDetails] = useState([]);
   const [talents, setTalents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -194,6 +195,7 @@ const SportTeacherPage = () => {
       setEligibleStudents(eligibleRes.data || []);
       setSchoolRecord(schoolRes.data);
       setCountryClubs(countryClubsRes.data.results || []);
+      setSchoolSubmissions(submissionsRes.data.results || []);
       setSchoolSubmission((submissionsRes.data.results || []).find((submission) => submission.competition === schoolCompetition?.id) || submissionsRes.data.results?.[0] || null);
       
     } catch (err) {
@@ -1245,9 +1247,13 @@ const SportTeacherPage = () => {
   // RESULTS VIEW
   const resultByParticipation = new Map(results.map((result) => [Number(result.participation), result]));
   const competitionById = new Map(competitions.map((competition) => [Number(competition.id), competition]));
-  const schoolCompetition = competitions.find((competition) => competition.level === 'school');
-  const schoolResultRows = students.flatMap((student) => {
-    const participation = participations.find((item) => Number(item.student) === Number(student.id) && competitionById.get(Number(item.competition))?.level === 'school');
+  const schoolCompetitions = competitions.filter((competition) => {
+    const competitionSchools = (competition.schools || []).map((id) => Number(id));
+    return competition.level === 'school' && competitionSchools.includes(Number(schoolId));
+  });
+  const schoolCompetition = schoolCompetitions[0];
+  const schoolResultRows = schoolCompetitions.flatMap((competition) => students.flatMap((student) => {
+    const participation = participations.find((item) => Number(item.student) === Number(student.id) && Number(item.competition) === Number(competition.id));
     const result = participation ? resultByParticipation.get(Number(participation.id)) : null;
     const studentTalentEntries = studentTalents.filter((entry) => Number(entry.student) === Number(student.id));
     const talentRows = studentTalentEntries.length ? studentTalentEntries : [{ id: `no-talent-${student.id}`, talent_name: 'None' }];
@@ -1257,8 +1263,8 @@ const SportTeacherPage = () => {
         id: `${result?.id || participation?.id || `student-${student.id}`}-${talentEntry.id}`,
         result: result?.id,
         participation: participation?.id,
-        competition: result?.competition_name || (participation ? getCompetitionName(participation.competition) : null),
-        competitionId: participation?.competition || schoolCompetition?.id,
+        competition: competition.name,
+        competitionId: competition.id,
         student: student.id,
         talentId: talentEntry.talent ? talentEntry.id : null,
         talent: talentEntry.talent_name || 'Talent',
@@ -1271,20 +1277,26 @@ const SportTeacherPage = () => {
         status: detail ? (detail.passed ? 'finished' : 'registered') : (participation?.status || 'registered'),
       };
     });
-  });
-
-  const higherLevelResults = ['district', 'zone', 'country'].map((level) => ({
-    level,
-    results: results.filter((result) => result.competition_level === level),
   }));
 
-  const handleSubmitSchoolResults = async () => {
-    if (!schoolCompetition) {
+  const higherLevelCompetitions = ['district', 'zone', 'country'].flatMap((level) => competitions
+    .filter((competition) => {
+      const competitionSchools = (competition.schools || []).map((id) => Number(id));
+      return competition.level === level && competitionSchools.includes(Number(schoolId));
+    })
+    .map((competition) => ({
+      ...competition,
+      resultRows: results.filter((result) => Number(result.competition) === Number(competition.id) || result.competition_name === competition.name),
+    })));
+
+  const handleSubmitSchoolResults = async (competition = schoolCompetition) => {
+    if (!competition) {
       setError('No school-level competition is available.');
       return;
     }
     try {
-      const submission = schoolSubmission || (await apiService.createSchoolResultSubmission({ school: schoolId, competition: schoolCompetition.id, status: 'draft' })).data;
+      const existingSubmission = schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id));
+      const submission = existingSubmission || (await apiService.createSchoolResultSubmission({ school: schoolId, competition: competition.id, status: 'draft' })).data;
       await apiService.submitSchoolResultSubmission(submission.id);
       await loadData();
       showSuccess('School results submitted for district review');
@@ -1293,31 +1305,55 @@ const SportTeacherPage = () => {
     }
   };
 
-  const renderResults = () => (
+  const renderResults = () => {
+    const schoolRowsByCompetition = schoolResultRows.reduce((groups, row) => {
+      const competitionId = row.competitionId || schoolCompetition?.id || 'school';
+      const competitionName = row.competition || schoolCompetition?.name || 'School competition';
+      const group = groups[competitionId] || { name: competitionName, rows: [] };
+      group.rows.push(row);
+      groups[competitionId] = group;
+      return groups;
+    }, {});
+
+    return (
     <div className="sport-teacher-results-stack">
-      <section className="sport-teacher-results-card">
-        <div className="sport-teacher-results-card-header">
-          <div><h2>School-level competition</h2><p>{schoolSubmission?.status === 'submitted' ? 'Submitted and locked for district review.' : 'Results for all students in your school.'}</p></div>
-          {schoolSubmission?.status !== 'submitted' && <button type="button" onClick={handleSubmitSchoolResults} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>Submit results</button>}
-        </div>
-        <div className="sport-teacher-results-table-wrap">
-          <table className="sport-teacher-results-table"><thead><tr><th>Competition</th><th>Student</th><th>Talent</th><th>Score</th><th>Status</th></tr></thead><tbody>
-            {schoolResultRows.map((row) => <tr key={row.id}><td>{row.competition || schoolCompetition?.name || 'Not recorded'}</td><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={resultScores[row.id] ?? row.score} disabled={schoolSubmission?.status === 'submitted' || schoolSubmission?.status === 'approved'} onChange={(event) => setResultScores({ ...resultScores, [row.id]: event.target.value })} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /><button type="button" className="sport-teacher-inline-save" disabled={schoolSubmission?.status === 'submitted' || schoolSubmission?.status === 'approved'} onClick={() => handleSaveResult(row)}>Save</button></span></td><td>{getStatusBadge(row.status, row.score, Boolean(row.participation || row.detail))}</td></tr>)}
-            {!schoolResultRows.length && <tr><td colSpan="5" className="sport-teacher-results-empty">No students registered.</td></tr>}
-          </tbody></table>
-        </div>
-      </section>
-      {higherLevelResults.map(({ level, results: levelResults }) => (
-        <section className="sport-teacher-results-card" key={level}>
-          <div className="sport-teacher-results-card-header"><div><h2>{level.charAt(0).toUpperCase() + level.slice(1)}-level competition</h2><p>Read-only results for students promoted from your school.</p></div><span className="sport-teacher-read-only-badge">Read only</span></div>
-          <div className="sport-teacher-results-table-wrap"><table className="sport-teacher-results-table"><thead><tr><th>Competition</th><th>Student</th><th>Score</th><th>Rank</th></tr></thead><tbody>
-            {levelResults.map((result) => <tr key={result.id}><td>{result.competition_name}</td><td>{result.student_name}</td><td><strong>{result.score ?? 0}%</strong></td><td>{result.rank ?? '—'}</td></tr>)}
-            {!levelResults.length && <tr><td colSpan="4" className="sport-teacher-results-empty">No {level}-level results available.</td></tr>}
+      {Object.entries(schoolRowsByCompetition).map(([competitionId, competition]) => (
+        <section className="sport-teacher-results-card" key={competitionId}>
+          {(() => {
+            const competitionSubmission = schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId));
+            const isLocked = ['submitted', 'approved'].includes(competitionSubmission?.status);
+            return (
+          <div className="sport-teacher-results-card-header">
+            <div><h2>{competition.name}</h2><p>{isLocked ? 'Submitted and locked for district review.' : 'Results for all students in your school.'}</p></div>
+            {!isLocked && <button type="button" onClick={() => handleSubmitSchoolResults(competition)} style={{ ...actionBtnStyle, background: '#0E1DB6', color: 'white' }}>Submit results</button>}
+          </div>
+            );
+          })()}
+          <div className="sport-teacher-results-table-wrap">
+            <table className="sport-teacher-results-table"><thead><tr><th>Student</th><th>Talent</th><th>Score</th><th>Status</th></tr></thead><tbody>
+              {competition.rows.map((row) => <tr key={row.id}><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={resultScores[row.id] ?? row.score ?? ''} disabled={schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'submitted' || schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'approved'} onChange={(event) => setResultScores({ ...resultScores, [row.id]: event.target.value })} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /><button type="button" className="sport-teacher-inline-save" disabled={schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'submitted' || schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'approved'} onClick={() => handleSaveResult(row)}>Save</button></span></td><td>{getStatusBadge(row.status, row.score, row.hasScore)}</td></tr>)}
+            </tbody></table>
+          </div>
+        </section>
+      ))}
+      {!Object.keys(schoolRowsByCompetition).length && (
+        <section className="sport-teacher-results-card">
+          <div className="sport-teacher-results-card-header"><div><h2>{schoolCompetition?.name || 'School competition'}</h2><p>Results for all students in your school.</p></div></div>
+          <p className="sport-teacher-results-empty">No students registered.</p>
+        </section>
+      )}
+      {higherLevelCompetitions.map((competition) => (
+        <section className="sport-teacher-results-card" key={competition.id}>
+          <div className="sport-teacher-results-card-header"><div><h2>{competition.name}</h2><p>Read-only results for students promoted from your school.</p></div><span className="sport-teacher-read-only-badge">Read only</span></div>
+          <div className="sport-teacher-results-table-wrap"><table className="sport-teacher-results-table"><thead><tr><th>Student</th><th>Score</th><th>Rank</th></tr></thead><tbody>
+            {competition.resultRows.map((result) => <tr key={result.id}><td>{result.student_name}</td><td><strong>{result.score ?? 0}%</strong></td><td>{result.rank ?? '—'}</td></tr>)}
+            {!competition.resultRows.length && <tr><td colSpan="3" className="sport-teacher-results-empty">No results available yet.</td></tr>}
           </tbody></table></div>
         </section>
       ))}
     </div>
-  );
+    );
+  };
 
   // ANNOUNCEMENTS VIEW
   const renderAnnouncements = () => (
