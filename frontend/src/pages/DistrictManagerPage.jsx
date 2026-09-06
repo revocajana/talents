@@ -152,34 +152,12 @@ export default function DistrictManagerPage() {
       })
       .filter((participation) => participation.studentRecord);
     return Array.from(new Map(eligible.map((item) => [Number(item.student), item])).values());
-  }, [districtSchools, districtStudents, districtCompetitions, participations, schoolCompetitions]);
+  }, [districtSchools, districtStudents, participations, schoolCompetitions]);
   const promotedStudents = useMemo(() => {
     const resultParticipationIds = new Set(results.filter((result) => promotions.some((promotion) => Number(promotion.result) === Number(result.id) && promotion.to_level === 'district')).map((result) => Number(result.participation)));
     const promotedStudentIds = new Set(participations.filter((participation) => resultParticipationIds.has(Number(participation.id))).map((participation) => Number(participation.student)));
     return districtStudents.filter((student) => promotedStudentIds.has(Number(student.id)));
   }, [districtStudents, participations, promotions, results]);
-
-  const statsData = [
-    { label: 'Schools', value: String(districtSchools.length) },
-    { label: 'Students', value: String(districtStudents.length) },
-    { label: 'Talents Registered', value: String(districtTalents.length) },
-    { label: 'Active Competitions', value: String(districtCompetitions.length) },
-  ];
-
-  const topSchools = useMemo(() => {
-    const schoolScores = districtSchools.map((school) => {
-      const studentCount = students.filter((student) => Number(student.school?.id ?? student.school) === Number(school.id)).length;
-      const talentCount = studentTalents.filter((talent) => Number(talent.student) === Number(
-        students.find((student) => Number(student.school?.id ?? student.school) === Number(school.id))?.id
-      )).length;
-      return {
-        name: school.name,
-        score: studentCount * 10 + talentCount * 20,
-      };
-    });
-
-    return [...schoolScores].sort((a, b) => b.score - a.score).slice(0, 3);
-  }, [districtSchools, studentTalents, students]);
 
   const navLinks = MENU_ITEMS.map((item) => ({
     ...item,
@@ -188,6 +166,60 @@ export default function DistrictManagerPage() {
   }));
 
   const refreshData = () => window.location.reload();
+
+  const talentParticipation = useMemo(() => {
+    const counts = new Map();
+    districtTalents.forEach((entry) => {
+      const talentName = entry.talent_name || 'Other talent';
+      counts.set(talentName, (counts.get(talentName) || 0) + 1);
+    });
+    const total = districtTalents.length;
+    return [...counts.entries()]
+      .sort(([, firstCount], [, secondCount]) => secondCount - firstCount)
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count, percentage: total ? Math.round((count / total) * 100) : 0 }));
+  }, [districtTalents]);
+
+  const schoolRanking = useMemo(() => districtSchools.map((school) => {
+    const schoolStudents = districtStudents.filter((student) => Number(student.school?.id ?? student.school) === Number(school.id));
+    const schoolStudentIds = new Set(schoolStudents.map((student) => Number(student.id)));
+    const schoolParticipations = participations.filter((participation) => schoolStudentIds.has(Number(participation.student)));
+    const scored = schoolParticipations.filter((participation) => participation.score !== null && participation.score !== undefined);
+    const averageScore = scored.length ? Math.round(scored.reduce((sum, item) => sum + Number(item.score), 0) / scored.length) : 0;
+    return { name: school.name, students: schoolStudents.length, participation: schoolParticipations.length, averageScore };
+  }).sort((first, second) => second.averageScore - first.averageScore || second.participation - first.participation).slice(0, 5), [districtSchools, districtStudents, participations]);
+
+  const competitionDates = useMemo(() => {
+    const dates = new Set();
+    districtCompetitions.forEach((competition) => {
+      if (!competition.start_date) return;
+      const date = new Date(`${competition.start_date}T00:00:00`);
+      const end = competition.end_date ? new Date(`${competition.end_date}T00:00:00`) : date;
+      while (date <= end) {
+        dates.add(date.toISOString().slice(0, 10));
+        date.setDate(date.getDate() + 1);
+      }
+    });
+    return dates;
+  }, [districtCompetitions]);
+
+  const calendarDays = useMemo(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    return { monthLabel: today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), firstDay, daysInMonth, year, month };
+  }, []);
+
+  const handleDeleteAnnouncement = async (announcementId) => {
+    try {
+      await apiService.deleteAnnouncement(announcementId);
+      setAnnouncements((items) => items.filter((item) => item.id !== announcementId));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete announcement');
+    }
+  };
 
   const handlePromoteStudents = async () => {
     if (!selectedPromotionStudents.length) return;
@@ -256,64 +288,37 @@ export default function DistrictManagerPage() {
 
   const renderHomeView = () => (
     <>
-      {!loading && (
-        <div className="district-toolbar" style={{ padding: '1rem 1.25rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', marginBottom: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', maxWidth: '100%', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: '700', color: '#0E1DB6' }}>District:</span>
-            <span style={{ fontWeight: '600', color: '#374151' }}>
-              {districtName}
-            </span>
-          </div>
-        </div>
-      )}
-
-      <div className="cards-container">
-        <section className="admin-section">
-          <div className="section-header">
-            <h2>District Overview</h2>
-            <p>
-              {districtName || 'District'} summary
-            </p>
-          </div>
-          <div className="stats-overview">
-            {statsData.map((stat, index) => (
-              <div key={index} className="stat-card">
-                <p className="stat-label">{stat.label}</p>
-                <h3 className="stat-value">{stat.value}</h3>
-              </div>
-            ))}
+      <div className="district-home-grid">
+        <section className="district-home-card talent-card">
+          <div className="district-card-heading"><div><h2>Talent participation</h2><p>Share of registered talent records</p></div><span className="district-card-kicker">{districtTalents.length} records</span></div>
+          <div className="talent-chart-layout">
+            <div className="talent-donut" style={{ background: `conic-gradient(${talentParticipation.map((item, index) => `${['#0e1db6', '#16a085', '#f59e0b', '#e05252', '#7c3aed'][index]} ${talentParticipation.slice(0, index).reduce((sum, entry) => sum + entry.percentage, 0)}% ${talentParticipation.slice(0, index + 1).reduce((sum, entry) => sum + entry.percentage, 0)}%`).join(', ') || '#e5e7eb 0 100%'}` }}><div /></div>
+            <div className="talent-legend">{talentParticipation.length ? talentParticipation.map((item, index) => <div className="talent-legend-row" key={item.name}><span className="legend-dot" style={{ background: ['#0e1db6', '#16a085', '#f59e0b', '#e05252', '#7c3aed'][index] }} /> <span>{item.name}</span><strong>{item.percentage}%</strong></div>) : <p>No talent records yet.</p>}</div>
           </div>
         </section>
 
-        <section className="admin-section">
-          <div className="section-header">
-            <h2>District Performance</h2>
-            <p>School activation and participation snapshot</p>
-          </div>
-          <div className="reports-grid">
-            <div className="report-card">
-              <h4>Top Schools</h4>
-              <ol className="stats-list">
-                {topSchools.length > 0 ? (
-                  topSchools.map((school) => (
-                    <li key={school.name}>
-                      <span>{school.name}</span> {school.score} pts
-                    </li>
-                  ))
-                ) : (
-                  <li><span>No schools</span></li>
-                )}
-              </ol>
-            </div>
-            <div className="report-card">
-              <h4>District Metrics</h4>
-              <ul className="stats-list">
-                <li><span>Total Wards:</span> {districtWards.length}</li>
-                <li><span>Schools Tracked:</span> {districtSchools.length}</li>
-                <li><span>Competitions:</span> {districtCompetitions.length}</li>
-              </ul>
-            </div>
-          </div>
+        <section className="district-home-card">
+          <div className="district-card-heading"><div><h2>School performance</h2><p>Ranked by average recorded score</p></div><span className="district-card-kicker">Top 5</span></div>
+          <div className="school-ranking">{schoolRanking.length ? schoolRanking.map((school, index) => <div className="school-ranking-row" key={school.name}><span className="school-rank">{index + 1}</span><div className="school-ranking-name"><strong>{school.name}</strong><small>{school.students} students · {school.participation} entries</small></div><b>{school.averageScore}%</b></div>) : <p className="district-empty-state">No school performance data yet.</p>}</div>
+        </section>
+
+        <section className="district-home-card">
+          <div className="district-card-heading"><div><h2>Competition management</h2><p>District events and school submissions</p></div><button type="button" className="district-text-button" onClick={() => setActiveMenu('district-results')}>Open results</button></div>
+          <div className="competition-management-list"><div><span>Active competitions</span><strong>{districtCompetitions.filter((item) => item.status !== 'completed' && item.status !== 'cancelled').length}</strong></div><div><span>District competitions</span><strong>{districtLevelCompetitions.length}</strong></div><div><span>Submitted school results</span><strong>{schoolSubmissions.filter((item) => item.status === 'submitted').length}</strong></div></div>
+          <button type="button" className="district-primary-button" onClick={() => setActiveMenu('district-results')}>Manage competitions</button>
+        </section>
+
+        <section className="district-home-card">
+          <div className="district-card-heading"><div><h2>Recent announcements</h2><p>Publish or remove district updates</p></div><button type="button" className="district-text-button" onClick={() => setActiveMenu('announcements')}>View all</button></div>
+          <div className="recent-announcements">{relevantAnnouncements.slice(0, 3).map((announcement) => <div className="recent-announcement-row" key={announcement.id}><div><strong>{announcement.title}</strong><small>{announcement.content || 'No details available.'}</small></div><button type="button" className="district-icon-button" onClick={() => handleDeleteAnnouncement(announcement.id)} title="Delete announcement" aria-label={`Delete ${announcement.title}`}>×</button></div>)}{!relevantAnnouncements.length && <p className="district-empty-state">No active announcements yet.</p>}</div>
+          <button type="button" className="district-primary-button" onClick={() => setActiveMenu('announcements')}>Publish announcement</button>
+        </section>
+
+        <section className="district-home-card district-calendar-card">
+          <div className="district-card-heading"><div><h2>Competition calendar</h2><p>Blue circles mark competition days</p></div><span className="district-card-kicker">{calendarDays.monthLabel}</span></div>
+          <div className="calendar-weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <span key={day}>{day}</span>)}</div>
+          <div className="calendar-grid">{Array.from({ length: calendarDays.firstDay }).map((_, index) => <span className="calendar-day is-empty" key={`empty-${index}`} />)}{Array.from({ length: calendarDays.daysInMonth }, (_, index) => { const day = index + 1; const dateKey = `${calendarDays.year}-${String(calendarDays.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; return <span className={`calendar-day ${competitionDates.has(dateKey) ? 'has-competition' : ''}`} key={dateKey}>{day}</span>; })}</div>
+          <div className="calendar-events">{districtCompetitions.filter((competition) => competition.start_date).slice(0, 5).map((competition) => <div key={competition.id}><span className="calendar-event-dot" /> <strong>{competition.name}</strong><small>{competition.start_date}{competition.end_date ? ` - ${competition.end_date}` : ''}</small></div>)}</div>
         </section>
       </div>
     </>

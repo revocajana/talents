@@ -2,6 +2,12 @@
   min-height: 100vh;
 }
 
+.district-manager-page .sport-teacher-app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
 .district-manager-content {
   font-size: 16px;
   font-weight: 400;
@@ -35,6 +41,310 @@
   margin: 5px 0 0;
   color: #64748b;
   font-size: 13px;
+}
+
+.district-home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  width: min(100%, 1100px);
+  margin: 0 auto;
+}
+
+.district-home-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #dbe4ee;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.district-calendar-card {
+  grid-column: 1 / -1;
+}
+
+.district-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.district-card-heading h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.district-card-heading p,
+.district-card-kicker,
+.district-empty-state {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.district-card-kicker {
+  flex-shrink: 0;
+  margin: 0;
+  font-weight: 700;
+}
+
+.talent-chart-layout {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-height: 180px;
+}
+
+.talent-donut {
+  display: grid;
+  flex: 0 0 142px;
+  place-items: center;
+  width: 142px;
+  height: 142px;
+  border-radius: 50%;
+}
+
+.talent-donut > div {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.talent-legend {
+  display: grid;
+  flex: 1;
+  gap: 10px;
+}
+
+.talent-legend-row {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.talent-legend-row span:not(.legend-dot) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talent-legend-row strong {
+  color: #0f172a;
+}
+
+.legend-dot,
+.calendar-event-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.school-ranking,
+.competition-management-list,
+.recent-announcements {
+  display: grid;
+  gap: 11px;
+}
+
+.school-ranking-row,
+.competition-management-list > div,
+.recent-announcement-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.school-rank {
+  display: grid;
+  flex: 0 0 26px;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: #0e1db6;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.school-ranking-name,
+.recent-announcement-row > div {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 3px;
+}
+
+.school-ranking-name strong,
+.recent-announcement-row strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.school-ranking-name small,
+.recent-announcement-row small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.school-ranking-row > b {
+  color: #0e1db6;
+  font-size: 14px;
+}
+
+.competition-management-list > div {
+  justify-content: space-between;
+  color: #475569;
+  font-size: 13px;
+}
+
+.competition-management-list strong {
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.district-primary-button,
+.district-text-button,
+.district-icon-button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.district-primary-button {
+  width: 100%;
+  margin-top: 18px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #0e1db6;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.district-text-button {
+  padding: 0;
+  background: transparent;
+  color: #0e1db6;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.district-icon-button {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.district-icon-button:hover {
+  color: #dc2626;
+}
+
+.district-calendar-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 34px;
+}
+
+.district-calendar-card .district-card-heading {
+  grid-column: 1 / -1;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(30px, 1fr));
+  gap: 8px;
+  text-align: center;
+}
+
+.calendar-weekdays {
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.calendar-grid {
+  grid-column: 1;
+}
+
+.calendar-day {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  max-width: 38px;
+  margin: auto;
+  border-radius: 50%;
+  background: #fff;
+  color: #111827;
+  font-size: 13px;
+}
+
+.calendar-day.has-competition {
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+}
+
+.calendar-day.is-empty {
+  visibility: hidden;
+}
+
+.calendar-events {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  grid-column: 2;
+  grid-row: 2 / span 2;
+  padding-left: 24px;
+  border-left: 1px solid #e5e7eb;
+}
+
+.calendar-events > div {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 6px 9px;
+  align-items: center;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.calendar-events strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-events small {
+  grid-column: 2;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.calendar-event-dot {
+  background: #2563eb;
 }
 
 .district-manager-page .stats-overview,
@@ -265,6 +575,43 @@
   .district-manager-page .stats-overview,
   .district-manager-page .reports-grid {
     grid-template-columns: 1fr;
+  }
+
+  .district-home-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .district-calendar-card {
+    grid-column: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .district-calendar-card .district-card-heading,
+  .calendar-grid,
+  .calendar-events {
+    grid-column: 1;
+  }
+
+  .calendar-events {
+    grid-row: auto;
+    padding: 16px 0 0;
+    border-top: 1px solid #e5e7eb;
+    border-left: 0;
+  }
+
+  .talent-chart-layout {
+    gap: 14px;
+  }
+
+  .talent-donut {
+    flex-basis: 118px;
+    width: 118px;
+    height: 118px;
+  }
+
+  .talent-donut > div {
+    width: 64px;
+    height: 64px;
   }
   .district-results-heading,
   .district-result-card-header,
