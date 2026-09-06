@@ -7,26 +7,6 @@
   font-weight: 400;
 }
 
-.district-manager-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  width: min(100%, 1100px);
-  margin: 0 auto 28px;
-}
-
-.district-manager-heading h1 {
-  margin: 0;
-  color: #0f172a;
-  font-size: clamp(24px, 4vw, 36px);
-}
-
-.district-manager-heading p:last-child {
-  margin: 8px 0 0;
-  color: #64748b;
-}
-
 .district-manager-content > .cards-container {
   width: min(100%, 1100px);
   margin: 0 auto;
@@ -157,6 +137,99 @@
   gap: 1rem;
 }
 
+.district-results-stack {
+  display: grid;
+  gap: 20px;
+  width: min(100%, 1100px);
+  margin: 0 auto;
+}
+
+.district-results-tabs {
+  display: flex;
+  gap: 4px;
+  width: min(100%, 1100px);
+  margin: 0 auto 16px;
+  padding: 4px;
+  border: 1px solid #dbe4ee;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.district-results-tabs button {
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.district-results-tabs button.is-active,
+.district-results-tabs button:hover,
+.district-results-tabs button:focus-visible {
+  background: white;
+  color: #0e1db6;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
+.district-results-heading,
+.district-result-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.district-results-heading h2,
+.district-result-card-header h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.district-results-heading p,
+.district-result-card-header p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.district-result-card {
+  overflow: hidden;
+  border: 1px solid #dbe4ee;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.district-result-card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.district-result-level {
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #0e1db6;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.district-result-table-wrap {
+  overflow-x: auto;
+}
+
+.district-result-empty {
+  padding: 24px !important;
+  color: #64748b;
+  text-align: center !important;
+}
+
 .district-section-heading h2 {
   margin-bottom: 0.35rem;
 }
@@ -225,4 +298,5 @@
   .district-manager-page .reports-grid {
     grid-template-columns: 1fr;
   }
-}
+  .district-results-heading,
+  .district-result-card-header,

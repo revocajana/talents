@@ -38,6 +38,8 @@ export default function DistrictManagerPage() {
   const [activeMenu, setActiveMenu] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [resultsTab, setResultsTab] = useState('school');
+  const [schoolSubmissions, setSchoolSubmissions] = useState([]);
   const districtName = allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name || 'Assigned District';
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function DistrictManagerPage() {
         setLoading(true);
         setError(null);
 
-        const [userRes, districtsRes, schoolsRes, wardsRes, competitionsRes, studentsRes, talentsRes, announcementsRes, resultsRes, participationsRes, promotionsRes] = await Promise.all([
+        const [userRes, districtsRes, schoolsRes, wardsRes, competitionsRes, studentsRes, talentsRes, announcementsRes, resultsRes, participationsRes, promotionsRes, submissionsRes] = await Promise.all([
           apiService.getCurrentUser(),
           apiService.getDistricts(),
           apiService.getSchools(),
@@ -58,6 +60,7 @@ export default function DistrictManagerPage() {
           apiService.getResults(),
           apiService.getParticipations(),
           apiService.getResultPromotions(),
+          apiService.getSchoolResultSubmissions(),
         ]);
 
         const districtList = districtsRes.data.results || [];
@@ -79,6 +82,7 @@ export default function DistrictManagerPage() {
         setResults(resultsRes.data.results || []);
         setParticipations(participationsRes.data.results || []);
         setPromotions(promotionsRes.data.results || []);
+        setSchoolSubmissions(submissionsRes.data.results || []);
 
         const defaultDistrict = userRes.data?.district || districtList[0]?.id || '';
         setSelectedDistrict(String(defaultDistrict));
@@ -313,57 +317,122 @@ export default function DistrictManagerPage() {
     </>
   );
 
-  const renderResultsView = () => (
-    <div className="cards-container">
-      <section className="admin-section">
-        <div className="section-header district-section-heading">
-          <div><h2>School Competition Results</h2><p>Review finished school results and select students for district competition.</p></div>
+  const renderResultsView = () => {
+    const submittedSchoolCompetitions = schoolCompetitions
+      .filter((competition) => schoolSubmissions.some((submission) => Number(submission.competition) === Number(competition.id) && submission.status === 'submitted'))
+      .map((competition) => {
+        const entries = participations
+          .filter((participation) => Number(participation.competition) === Number(competition.id) && districtStudents.some((student) => Number(student.id) === Number(participation.student)))
+          .map((participation) => {
+            const result = results.find((item) => Number(item.participation) === Number(participation.id));
+            const student = districtStudents.find((item) => Number(item.id) === Number(participation.student));
+            const school = districtSchools.find((item) => Number(item.id) === Number(student?.school?.id ?? student?.school));
+            return { participation, result, student, school };
+          });
+        return { ...competition, entries };
+      });
+
+    if (resultsTab === 'school') {
+      return (
+        <div className="district-results-stack">
+          <div className="district-results-heading">
+            <div><h2>School results</h2><p>Submitted results from schools in your district. These results are read-only.</p></div>
+          </div>
+          {submittedSchoolCompetitions.map((competition) => (
+            <section className="district-result-card" key={competition.id}>
+              <div className="district-result-card-header">
+                <div><h3>{competition.name}</h3><p>Submitted school-level results.</p></div>
+                <span className="district-result-level">Read only</span>
+              </div>
+              <div className="district-result-table-wrap">
+                <table className="data-table"><thead><tr><th>Student</th><th>School</th><th>Score</th><th>Grade</th><th>Approval</th></tr></thead><tbody>
+                  {competition.entries.map(({ participation, result, student, school }) => (
+                    <tr key={participation.id}><td>{student ? `${student.first_name} ${student.last_name}` : 'Student'}</td><td>{school?.name || 'School'}</td><td>{result?.score ?? participation.score ?? '—'}</td><td>{result?.grade || '—'}</td><td>{result?.approval_status || participation.status}</td></tr>
+                  ))}
+                  {!competition.entries.length && <tr><td colSpan="5" className="district-result-empty">No submitted results available yet.</td></tr>}
+                </tbody></table>
+              </div>
+            </section>
+          ))}
+          {!submittedSchoolCompetitions.length && <section className="district-result-card"><p className="district-result-empty">No school competition results have been submitted yet.</p></section>}
+        </div>
+      );
+    }
+    const schoolResultsByCompetition = schoolCompetitions.map((competition) => ({
+      ...competition,
+      entries: pendingPromotionStudents.filter((item) => Number(item.competition) === Number(competition.id)),
+    }));
+    const districtResultsByCompetition = districtLevelCompetitions.map((competition) => {
+      const entries = results.filter((result) => {
+        const participation = participations.find((item) => Number(item.id) === Number(result.participation));
+        return Number(participation?.competition) === Number(competition.id);
+      }).map((result) => {
+        const participation = participations.find((item) => Number(item.id) === Number(result.participation));
+        const student = districtStudents.find((item) => Number(item.id) === Number(participation?.student));
+        return { ...result, student };
+      });
+      return { ...competition, entries };
+    });
+
+    return (
+      <div className="district-results-stack">
+        <div className="district-results-heading">
+          <div><h2>District results</h2><p>Results grouped by district competition.</p></div>
           <button type="button" className="btn-primary" onClick={handlePromoteStudents} disabled={!selectedPromotionStudents.length || submitting}>
             {submitting ? 'Processing...' : `Promote selected (${selectedPromotionStudents.length})`}
           </button>
         </div>
 
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Select</th><th>Student</th><th>School</th><th>Competition</th><th>Score</th><th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingPromotionStudents.map((item) => (
-                <tr key={item.id}>
-                  <td><input type="checkbox" checked={selectedPromotionStudents.includes(Number(item.student))} onChange={(event) => setSelectedPromotionStudents((current) => event.target.checked ? [...new Set([...current, Number(item.student)])] : current.filter((id) => id !== Number(item.student)))} /></td>
-                  <td>{item.studentRecord.first_name} {item.studentRecord.last_name}</td><td>{item.schoolName}</td>
-                  <td>{schoolCompetitions.find((competition) => Number(competition.id) === Number(item.competition))?.name || 'School competition'}</td>
-                  <td>{item.score}%</td><td>{item.status}</td>
-                </tr>
-              ))}
-              {!pendingPromotionStudents.length && <tr><td colSpan="6">No eligible school-level students are pending promotion.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <section className="admin-section">
-        <div className="section-header"><h2>District Competition Results</h2><p>Record results for students promoted to district competition.</p></div>
-        <form className="district-form-grid" onSubmit={handleAddDistrictResult}>
-          <label>Competition<select required value={districtResultForm.competition} onChange={(event) => setDistrictResultForm({ ...districtResultForm, competition: event.target.value })}><option value="">Select district competition</option>{districtLevelCompetitions.map((competition) => <option key={competition.id} value={competition.id}>{competition.name}</option>)}</select></label>
-          <label>Student<select required value={districtResultForm.student} onChange={(event) => setDistrictResultForm({ ...districtResultForm, student: event.target.value })}><option value="">Select promoted student</option>{promotedStudents.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select></label>
-          <label>Score<input required type="number" min="0" max="100" value={districtResultForm.score} onChange={(event) => setDistrictResultForm({ ...districtResultForm, score: event.target.value })} /></label>
-          <label>Status<select value={districtResultForm.status} onChange={(event) => setDistrictResultForm({ ...districtResultForm, status: event.target.value })}><option value="finished">Finished</option><option value="registered">Registered</option><option value="disqualified">Disqualified</option></select></label>
-          <button type="submit" className="btn-primary" disabled={submitting}>Save district result</button>
-        </form>
-        <div className="table-container"><table className="data-table"><thead><tr><th>Student</th><th>Competition</th><th>Score</th><th>Grade</th><th>Approval</th></tr></thead><tbody>
-          {results.filter((result) => participations.some((participation) => Number(participation.id) === Number(result.participation) && districtLevelCompetitions.some((competition) => Number(competition.id) === Number(participation.competition)))).map((result) => {
-            const participation = participations.find((item) => Number(item.id) === Number(result.participation));
-            const student = districtStudents.find((item) => Number(item.id) === Number(participation?.student));
-            return <tr key={result.id}><td>{student ? `${student.first_name} ${student.last_name}` : 'Student'}</td><td>{districtLevelCompetitions.find((competition) => Number(competition.id) === Number(participation?.competition))?.name || 'District competition'}</td><td>{result.score ?? '—'}</td><td>{result.grade || '—'}</td><td>{result.approval_status}</td></tr>;
-          })}
-          {!results.some((result) => participations.some((participation) => Number(participation.id) === Number(result.participation) && districtLevelCompetitions.some((competition) => Number(competition.id) === Number(participation.competition)))) && <tr><td colSpan="5">No district results recorded yet.</td></tr>}
-        </tbody></table></div>
-      </section>
-    </div>
-  );
+        {schoolResultsByCompetition.map((competition) => (
+          <section className="district-result-card" key={`school-${competition.id}`}>
+            <div className="district-result-card-header">
+              <div><h3>{competition.name}</h3><p>School-level results and district qualifiers.</p></div>
+              <span className="district-result-level">School level</span>
+            </div>
+            <div className="district-result-table-wrap">
+              <table className="data-table"><thead><tr><th>Select</th><th>Student</th><th>School</th><th>Score</th><th>Status</th></tr></thead><tbody>
+                {competition.entries.map((item) => (
+                  <tr key={item.id}>
+                    <td><input type="checkbox" checked={selectedPromotionStudents.includes(Number(item.student))} onChange={(event) => setSelectedPromotionStudents((current) => event.target.checked ? [...new Set([...current, Number(item.student)])] : current.filter((id) => id !== Number(item.student)))} /></td>
+                    <td>{item.studentRecord.first_name} {item.studentRecord.last_name}</td><td>{item.schoolName}</td><td>{item.score}%</td><td>{item.status}</td>
+                  </tr>
+                ))}
+                {!competition.entries.length && <tr><td colSpan="5" className="district-result-empty">No eligible students for this competition.</td></tr>}
+              </tbody></table>
+            </div>
+          </section>
+        ))}
+
+        {districtResultsByCompetition.map((competition) => (
+          <section className="district-result-card" key={`district-${competition.id}`}>
+            <div className="district-result-card-header">
+              <div><h3>{competition.name}</h3><p>District-level results for promoted students.</p></div>
+              <span className="district-result-level">District level</span>
+            </div>
+            <div className="district-result-table-wrap">
+              <table className="data-table"><thead><tr><th>Student</th><th>Score</th><th>Grade</th><th>Approval</th></tr></thead><tbody>
+                {competition.entries.map((result) => (
+                  <tr key={result.id}><td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td><td>{result.score ?? '—'}</td><td>{result.grade || '—'}</td><td>{result.approval_status}</td></tr>
+                ))}
+                {!competition.entries.length && <tr><td colSpan="4" className="district-result-empty">No district results recorded yet.</td></tr>}
+              </tbody></table>
+            </div>
+          </section>
+        ))}
+
+        <section className="district-result-card">
+          <div className="district-result-card-header"><div><h3>Record district result</h3><p>Add a result for a promoted student.</p></div></div>
+          <form className="district-form-grid" onSubmit={handleAddDistrictResult}>
+            <label>Competition<select required value={districtResultForm.competition} onChange={(event) => setDistrictResultForm({ ...districtResultForm, competition: event.target.value })}><option value="">Select district competition</option>{districtLevelCompetitions.map((competition) => <option key={competition.id} value={competition.id}>{competition.name}</option>)}</select></label>
+            <label>Student<select required value={districtResultForm.student} onChange={(event) => setDistrictResultForm({ ...districtResultForm, student: event.target.value })}><option value="">Select promoted student</option>{promotedStudents.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name}</option>)}</select></label>
+            <label>Score<input required type="number" min="0" max="100" value={districtResultForm.score} onChange={(event) => setDistrictResultForm({ ...districtResultForm, score: event.target.value })} /></label>
+            <label>Status<select value={districtResultForm.status} onChange={(event) => setDistrictResultForm({ ...districtResultForm, status: event.target.value })}><option value="finished">Finished</option><option value="registered">Registered</option><option value="disqualified">Disqualified</option></select></label>
+            <button type="submit" className="btn-primary" disabled={submitting}>Save district result</button>
+          </form>
+        </section>
+      </div>
+    );
+  };
 
   const renderAnnouncementsView = () => (
     <div className="cards-container">
@@ -459,7 +528,7 @@ export default function DistrictManagerPage() {
             <button type="button" className="sport-teacher-profile-button" onClick={() => setProfileMenuOpen((open) => !open)} aria-label="Open profile menu" aria-expanded={profileMenuOpen} title={currentUser?.username || 'Profile'}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M4.5 20c.8-3.5 3.5-5.5 7.5-5.5s6.7 2 7.5 5.5" /></svg>
             </button>
-            {profileMenuOpen && <div className="sport-teacher-profile-menu"><button type="button" onClick={() => setProfileMenuOpen(false)}>Profile</button><button type="button" onClick={() => setProfileMenuOpen(false)}>Change password</button></div>}
+            {profileMenuOpen && <div className="sport-teacher-profile-menu"><button type="button" onClick={() => setProfileMenuOpen(false)}>Profile</button><button type="button" onClick={() => setProfileMenuOpen(false)}>Change password</button><button type="button" onClick={logout}>Logout</button></div>}
           </div>
           <button type="button" className="sport-teacher-navigation-toggle" onClick={() => setSidebarOpen((open) => !open)} aria-label="Open navigation menu" aria-expanded={sidebarOpen} title="Open navigation menu">
             <span /><span /><span />
@@ -474,7 +543,6 @@ export default function DistrictManagerPage() {
             {item.label}
           </button>
         ))}
-        <button type="button" className="sport-teacher-logout-button" onClick={logout}>Logout</button>
       </aside>
 
       <main className="sport-teacher-prototype-content district-manager-content">
@@ -482,7 +550,15 @@ export default function DistrictManagerPage() {
         {loading ? <DashboardSkeleton label="Loading district manager dashboard" /> : (
           <>
             {activeMenu === 'home' && renderHomeView()}
-            {activeMenu === 'results' && renderResultsView()}
+            {activeMenu === 'results' && (
+              <>
+                <div className="district-results-tabs" role="tablist" aria-label="Results views">
+                  <button type="button" className={resultsTab === 'school' ? 'is-active' : ''} onClick={() => setResultsTab('school')} role="tab" aria-selected={resultsTab === 'school'}>School results</button>
+                  <button type="button" className={resultsTab === 'district' ? 'is-active' : ''} onClick={() => setResultsTab('district')} role="tab" aria-selected={resultsTab === 'district'}>District results</button>
+                </div>
+                {renderResultsView()}
+              </>
+            )}
             {activeMenu === 'announcements' && renderAnnouncementsView()}
             {activeMenu === 'reports' && renderReportsView()}
           </>
