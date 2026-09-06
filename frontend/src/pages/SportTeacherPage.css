@@ -962,7 +962,7 @@
 
 .sport-teacher-club-checkbox-list {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   max-height: calc(100vh - 260px);
   overflow-y: auto;
 }
@@ -970,9 +970,9 @@
 .sport-teacher-club-checkbox-list label {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-  padding: 12px;
+  padding: 8px 10px;
   border: 1px solid #e2e8f0;
   border-radius: 7px;
   background: white;
@@ -1001,8 +1001,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border: 1px solid #c7d2fe;
   border-radius: 7px;
   background: #f4f5ff;
@@ -1010,7 +1010,7 @@
 
 .sport-teacher-registered-club span {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -1026,7 +1026,7 @@
 
 .sport-teacher-registered-club button {
   flex-shrink: 0;
-  padding: 6px 9px;
+  padding: 4px 8px;
   border: 1px solid #fecaca;
   border-radius: 5px;
   background: #fff1f2;

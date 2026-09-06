@@ -1492,7 +1492,6 @@ const SportTeacherPage = () => {
           <h2>Register club</h2>
           <button type="button" onClick={() => closeModal('registerClubs')} aria-label="Close club registration">&times;</button>
         </div>
-        <p className="sport-teacher-drawer-kicker">Choose clubs for {schoolName}</p>
         <p className="sport-teacher-club-limit">Maximum active clubs: <strong>{clubLimit}</strong>. Currently registered: <strong>{schoolClubs.filter((club) => club.is_active).length}</strong>.</p>
         <form onSubmit={handleRegisterClubs}>
           <div className="sport-teacher-club-checkbox-list">
