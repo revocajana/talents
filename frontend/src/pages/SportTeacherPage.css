@@ -247,6 +247,84 @@
   gap: 14px;
 }
 
+.sport-teacher-talent-donut-layout {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+}
+
+.sport-teacher-talent-donut {
+  display: grid;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  place-items: center;
+}
+
+.sport-teacher-talent-donut::before {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: white;
+  content: '';
+}
+
+.sport-teacher-talent-donut > div {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  color: #0f172a;
+}
+
+.sport-teacher-talent-donut strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.sport-teacher-talent-donut span {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.sport-teacher-talent-donut-legend {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sport-teacher-talent-legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.sport-teacher-talent-legend-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sport-teacher-talent-legend-name i {
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.sport-teacher-talent-legend-item strong {
+  flex-shrink: 0;
+  color: #0f172a;
+}
+
 .sport-teacher-talent-bar-label {
   display: flex;
   justify-content: space-between;
@@ -1948,6 +2026,15 @@
 
   .sport-teacher-overview-card-heading {
     flex-wrap: wrap;
+  }
+
+  .sport-teacher-talent-donut-layout {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .sport-teacher-talent-donut-legend {
+    width: 100%;
   }
 
   .sport-teacher-attention-grid {

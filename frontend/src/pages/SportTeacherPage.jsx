@@ -880,8 +880,19 @@ const SportTeacherPage = () => {
       const talentName = entry.talent_name || 'Unassigned talent';
       counts[talentName] = (counts[talentName] || 0) + 1;
       return counts;
-    }, {})).sort(([, countA], [, countB]) => countB - countA).slice(0, 6);
-    const highestTalentCount = talentParticipation[0]?.[1] || 1;
+    }, {})).sort(([, countA], [, countB]) => countB - countA);
+    const totalTalentAssignments = talentParticipation.reduce((total, [, count]) => total + count, 0);
+    const talentChartColors = ['#0e1db6', '#4682b4', '#38a169', '#d69e2e', '#c05621', '#805ad5', '#319795', '#b83280'];
+    let talentChartOffset = 0;
+    const talentChartSegments = talentParticipation.map(([name, count], index) => {
+      const percentage = totalTalentAssignments ? (count / totalTalentAssignments) * 100 : 0;
+      const segment = { name, count, percentage, color: talentChartColors[index % talentChartColors.length], start: talentChartOffset };
+      talentChartOffset += percentage;
+      return segment;
+    });
+    const talentChartGradient = talentChartSegments.length
+      ? `conic-gradient(${talentChartSegments.map((segment) => `${segment.color} ${segment.start}% ${segment.start + segment.percentage}%`).join(', ')})`
+      : '#e8edf3';
     const resultProgress = {
       scored: schoolResultRows.filter((row) => row.hasScore).length,
       pending: schoolResultRows.filter((row) => !row.hasScore).length,
@@ -940,13 +951,18 @@ const SportTeacherPage = () => {
             <button type="button" onClick={() => setActiveTab('talents')}>View talents</button>
           </div>
           {talentParticipation.length ? (
-            <div className="sport-teacher-talent-bars">
-              {talentParticipation.map(([name, count]) => (
-                <div className="sport-teacher-talent-bar-row" key={name}>
-                  <div className="sport-teacher-talent-bar-label"><span>{name}</span><strong>{count}</strong></div>
-                  <div className="sport-teacher-talent-bar-track"><span style={{ width: `${Math.max((count / highestTalentCount) * 100, 8)}%` }} /></div>
-                </div>
-              ))}
+            <div className="sport-teacher-talent-donut-layout">
+              <div className="sport-teacher-talent-donut" style={{ background: talentChartGradient }} aria-label="Talent participation donut chart">
+                <div><strong>{totalTalentAssignments}</strong><span>assigned</span></div>
+              </div>
+              <div className="sport-teacher-talent-donut-legend">
+                {talentChartSegments.map((segment) => (
+                  <div className="sport-teacher-talent-legend-item" key={segment.name}>
+                    <span className="sport-teacher-talent-legend-name"><i style={{ background: segment.color }} />{segment.name}</span>
+                    <strong>{segment.count}</strong>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : <p className="sport-teacher-overview-empty">No talents have been assigned yet.</p>}
         </section>
