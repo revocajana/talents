@@ -148,7 +148,7 @@ class ResultPromotion(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['result', 'to_level'], name='unique_result_promotion_level'),
+            models.UniqueConstraint(fields=['result_detail', 'to_level'], name='unique_detail_promotion_level'),
         ]
 
 
