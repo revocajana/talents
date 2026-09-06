@@ -1677,26 +1677,18 @@ const SportTeacherPage = () => {
               <h2>{selectedClub.name}</h2>
               <button type="button" onClick={() => { setSelectedClub(null); setDrawerWidth(380); }} aria-label="Close club management">&times;</button>
             </div>
-            <p className="sport-teacher-drawer-kicker">Club details</p>
             <p>{selectedClub.focus || 'This club is selected for the school.'}</p>
             <p className="sport-teacher-drawer-kicker">Students in this club</p>
             {selectedClubStudents.length ? (
               <table className="sport-teacher-drawer-table">
-                <thead><tr><th>Name</th><th>Form</th><th>Other talents</th></tr></thead>
+                <thead><tr><th>Name</th><th>Form</th></tr></thead>
                 <tbody>
-                  {selectedClubStudents.map((student) => {
-                    const otherTalents = studentTalents
-                      .filter((entry) => Number(entry.student) === Number(student.id))
-                      .map((entry) => entry.talent_name || 'Talent')
-                      .join(', ');
-                    return (
-                      <tr key={student.id}>
-                        <td>{student.first_name} {student.last_name} ({student.gender || '—'})</td>
-                        <td>{getStudentEducationLevel(student)}</td>
-                        <td>{otherTalents || 'None'}</td>
-                      </tr>
-                    );
-                  })}
+                  {selectedClubStudents.map((student) => (
+                    <tr key={student.id}>
+                      <td>{student.first_name} {student.last_name} ({student.gender || '—'})</td>
+                      <td>{getStudentEducationLevel(student)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             ) : <p className="sport-teacher-empty-message">No students assigned to this club.</p>}
