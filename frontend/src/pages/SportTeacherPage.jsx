@@ -285,12 +285,13 @@ const SportTeacherPage = () => {
     try {
       const rawScore = scoreOverride !== undefined ? scoreOverride : resultScores[row.id] ?? row.score;
       const score = rawScore === '' || rawScore === null ? null : Number(rawScore);
+      const isTalentResult = Boolean(row.talentId || row.detail);
       let participationId = row.participation;
       let participationResponse;
       if (row.participation) {
-        participationResponse = await apiService.updateParticipation(row.participation, { status: 'finished', score });
+        participationResponse = await apiService.updateParticipation(row.participation, { status: 'finished' });
       } else if (row.competitionId) {
-        participationResponse = await apiService.createParticipation({ competition: row.competitionId, student: row.student, score, status: 'finished' });
+        participationResponse = await apiService.createParticipation({ competition: row.competitionId, student: row.student, score: isTalentResult ? null : score, status: 'finished' });
         participationId = participationResponse.data.id;
       } else {
         setError('No school-level competition is available for this school.');
@@ -305,10 +306,10 @@ const SportTeacherPage = () => {
       let resultId = row.result;
       let resultResponse;
       if (!resultId) {
-        resultResponse = await apiService.createResult({ participation: participationId, score, award: 'none' });
+        resultResponse = await apiService.createResult({ participation: participationId, score: isTalentResult ? null : score, award: 'none' });
         resultId = resultResponse.data.id;
         setResults((current) => [...current, resultResponse.data]);
-      } else if (score !== null) {
+      } else if (!isTalentResult && score !== null) {
         resultResponse = await apiService.updateResult(resultId, { score });
         setResults((current) => current.map((item) => Number(item.id) === Number(resultId) ? resultResponse.data : item));
       }
