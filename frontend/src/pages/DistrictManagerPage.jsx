@@ -14,8 +14,8 @@ const EyeIcon = ({ visible = false }) => (
 
 const MENU_ITEMS = [
   { key: 'home', label: 'Home' },
-  { key: 'school-results', label: 'School results' },
-  { key: 'district-results', label: 'District results' },
+  { key: 'school-results', label: 'School-level results' },
+  { key: 'district-results', label: 'District-level results' },
   { key: 'announcements', label: 'Announcements' },
   { key: 'reports', label: 'Reports' },
 ];
@@ -521,7 +521,7 @@ export default function DistrictManagerPage() {
       return (
         <div className="district-results-stack">
           <div className="district-results-heading">
-            <div><h2>School results</h2><p>Submitted results from schools in your district. Select students to promote them to a district competition.</p></div>
+            <div><h2>School-level results</h2><p>Submitted results from schools in your district. Select students to promote them to a district competition.</p></div>
           </div>
           {submittedSchoolCompetitions.map((competition) => (
             <section className="district-result-card" key={competition.id}>
@@ -559,7 +559,7 @@ export default function DistrictManagerPage() {
     return (
       <div className="district-results-stack">
         <div className="district-results-heading">
-          <div><h2>District results</h2><p>Promoted students are shown talent by talent. Edit and save each district score here.</p></div>
+          <div><h2>District-level results</h2><p>Promoted students are shown talent by talent. Edit and save each district score here.</p></div>
         </div>
 
         {districtResultsByCompetition.map((competition) => (
