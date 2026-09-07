@@ -140,36 +140,28 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
             if not source_competition:
                 return Response({'error': 'The selected school competition does not belong to your district.'}, status=status.HTTP_404_NOT_FOUND)
 
+            if not detail_ids:
+                return Response({'error': 'Select talent results to promote.'}, status=status.HTTP_400_BAD_REQUEST)
+
             promoted = []
             errors = []
             with transaction.atomic():
-                for student_id in student_ids:
-                    source_participation = CompetitionParticipation.objects.filter(
-                        competition=source_competition,
-                        student_id=student_id,
-                        student__school__district_id=request.user.district_id,
-                    ).first()
-                    if not source_participation:
-                        errors.append(f'Student {student_id} is not registered for the selected school competition.')
-                        continue
-                    source_result = Result.objects.filter(participation=source_participation).first()
-                    if not source_result:
-                        errors.append(f'Student {student_id} has no recorded school result.')
-                        continue
-                    detail_scores = [
-                        detail.percentage_score if detail.percentage_score is not None else detail.raw_score
-                        for detail in source_result.details.all()
-                    ]
-                    source_score = source_result.score if source_result.score is not None else source_participation.score
-                    if source_score is None and detail_scores:
-                        source_score = max(detail_scores)
+                source_details = ResultDetail.objects.select_related('result__participation__student').filter(
+                    id__in=detail_ids,
+                    result__participation__competition=source_competition,
+                    result__participation__student__school__district_id=request.user.district_id,
+                )
+                for source_detail in source_details:
+                    source_result = source_detail.result
+                    source_participation = source_result.participation
+                    source_score = source_detail.percentage_score if source_detail.percentage_score is not None else source_detail.raw_score
                     if source_score is None or source_score < 50:
-                        errors.append(f'Student {student_id} must have a score of at least 50% to be promoted.')
+                        errors.append(f'{source_detail.talent.talent.name} for student {source_participation.student_id} must have a score of at least 50%.')
                         continue
 
                     target_participation, _ = CompetitionParticipation.objects.get_or_create(
                         competition=target_competition,
-                        student_id=student_id,
+                        student_id=source_participation.student_id,
                         defaults={'status': 'finished', 'score': None},
                     )
                     target_participation.status = 'finished'
@@ -178,13 +170,18 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                         participation=target_participation,
                         defaults={'score': None, 'approval_status': 'pending'},
                     )
+                    target_detail, _ = ResultDetail.objects.get_or_create(
+                        result=target_result,
+                        talent=source_detail.talent,
+                        defaults={'raw_score': 0, 'percentage_score': None},
+                    )
                     promotion, _ = ResultPromotion.objects.get_or_create(
                         result=source_result,
-                        result_detail=None,
+                        result_detail=source_detail,
                         to_level='district',
-                        defaults={'from_level': 'school', 'promoted_by': request.user, 'notes': f'Promoted to district competition {target_competition.name}'},
+                        defaults={'from_level': 'school', 'promoted_by': request.user, 'notes': f'Promoted talent to district competition {target_competition.name}'},
                     )
-                    promoted.append({'student_id': int(student_id), 'result_id': target_result.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
+                    promoted.append({'student_id': int(source_participation.student_id), 'result_id': target_result.id, 'result_detail_id': target_detail.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
 
             return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted})
         
