@@ -9,6 +9,10 @@
 }
 
 .district-manager-content {
+  width: calc(100% - 165px);
+  margin-left: 165px;
+  padding: 32px 18px;
+  box-sizing: border-box;
   font-size: 16px;
   font-weight: 400;
 }
@@ -464,6 +468,46 @@
   grid-column: 1 / -1;
 }
 
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.calendar-controls button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #dbe4ee;
+  border-radius: 6px;
+  background: #fff;
+  color: #0e1db6;
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.calendar-controls button:hover,
+.calendar-controls button:focus-visible {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  outline: none;
+}
+
+.calendar-controls .calendar-today-button {
+  width: auto;
+  margin-left: 4px;
+  padding: 0 8px;
+  color: #475569;
+  font-size: 11px;
+}
+
 .calendar-weekdays,
 .calendar-grid {
   display: grid;
@@ -485,9 +529,9 @@
 
 .calendar-day {
   display: grid;
+  width: 38px;
+  height: 38px;
   place-items: center;
-  aspect-ratio: 1;
-  max-width: 38px;
   margin: auto;
   border-radius: 50%;
   background: #fff;
@@ -496,8 +540,14 @@
 }
 
 .calendar-day.has-competition {
-  background: #2563eb;
+  background: #0E1DB6;
   color: #fff;
+  font-weight: 700;
+}
+
+.calendar-day.is-today:not(.has-competition) {
+  box-shadow: inset 0 0 0 2px #0E1DB6;
+  color: #0E1DB6;
   font-weight: 700;
 }
 
@@ -537,7 +587,7 @@
 }
 
 .calendar-event-dot {
-  background: #2563eb;
+  background: #0E1DB6;
 }
 
 .district-manager-page .stats-overview,
@@ -701,6 +751,20 @@
   text-align: center !important;
 }
 
+.district-score-input {
+  width: 78px;
+  padding: 7px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #0f172a;
+  font: inherit;
+}
+
+.district-score-input:focus {
+  border-color: #0e1db6;
+  outline: 2px solid rgba(14, 29, 182, 0.15);
+}
+
 .district-section-heading h2 {
   margin-bottom: 0.35rem;
 }
@@ -757,6 +821,14 @@
   resize: vertical;
 }
 
+@media (max-width: 980px) {
+  .district-manager-content {
+    width: 100%;
+    margin-left: 0;
+    padding: 32px 20px;
+  }
+}
+
 @media (max-width: 768px) {
   .district-manager-heading,
   .district-section-heading,
@@ -806,5 +878,13 @@
     width: 64px;
     height: 64px;
   }
+
   .district-results-heading,
-  .district-result-card-header,
+  .district-result-card-header {
+    flex-direction: column;
+  }
+
+  .district-competition-date-grid {
+    grid-template-columns: 1fr;
+  }
+}

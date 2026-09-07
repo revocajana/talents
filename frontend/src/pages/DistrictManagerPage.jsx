@@ -32,6 +32,8 @@ export default function DistrictManagerPage() {
   const [competitions, setCompetitions] = useState([]);
   const [students, setStudents] = useState([]);
   const [studentTalents, setStudentTalents] = useState([]);
+  const [clubMemberships, setClubMemberships] = useState([]);
+  const [educationLevels, setEducationLevels] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [results, setResults] = useState([]);
   const [participations, setParticipations] = useState([]);
@@ -60,6 +62,7 @@ export default function DistrictManagerPage() {
   const [showProfilePassword, setShowProfilePassword] = useState(false);
   const [showProfilePasswordConfirmation, setShowProfilePasswordConfirmation] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
   const districtName = currentUser?.district_name
     || allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name
     || 'Assigned District';
@@ -85,7 +88,7 @@ export default function DistrictManagerPage() {
         setLoading(true);
         setError(null);
 
-        const [userRes, districtsRes, schoolsRes, wardsRes, competitionsRes, studentsRes, talentsRes, announcementsRes, resultsRes, participationsRes, promotionsRes, submissionsRes] = await Promise.all([
+        const [userRes, districtsRes, schoolsRes, wardsRes, competitionsRes, studentsRes, talentsRes, clubMembershipsRes, educationLevelsRes, announcementsRes, resultsRes, participationsRes, promotionsRes, submissionsRes] = await Promise.all([
           apiService.getCurrentUser(),
           apiService.getDistricts(),
           apiService.getSchools(),
@@ -93,6 +96,8 @@ export default function DistrictManagerPage() {
           apiService.getCompetitions(),
           apiService.getStudents(),
           apiService.getStudentTalents(),
+          apiService.getClubMemberships(),
+          apiService.getEducationLevels({ is_active: true }),
           apiService.getAnnouncements({ is_active: true }),
           apiService.getResults(),
           apiService.getParticipations(),
@@ -115,6 +120,8 @@ export default function DistrictManagerPage() {
         setCompetitions(competitionList);
         setStudents(studentList);
         setStudentTalents(talentList);
+        setClubMemberships(clubMembershipsRes.data.results || []);
+        setEducationLevels(educationLevelsRes.data.results || []);
         setAnnouncements(announcementList);
         setResults(resultsRes.data.results || []);
         setParticipations(participationsRes.data.results || []);
@@ -231,24 +238,35 @@ export default function DistrictManagerPage() {
     const dates = new Set();
     districtCompetitions.forEach((competition) => {
       if (!competition.start_date) return;
-      const date = new Date(`${competition.start_date}T00:00:00`);
-      const end = competition.end_date ? new Date(`${competition.end_date}T00:00:00`) : date;
-      while (date <= end) {
-        dates.add(date.toISOString().slice(0, 10));
-        date.setDate(date.getDate() + 1);
-      }
+      dates.add(competition.start_date);
     });
     return dates;
   }, [districtCompetitions]);
 
   const calendarDays = useMemo(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    return { monthLabel: today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), firstDay, daysInMonth, year, month };
-  }, []);
+    return { monthLabel: calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), firstDay, daysInMonth, year, month };
+  }, [calendarDate]);
+
+  const calendarEvents = useMemo(() => districtCompetitions
+    .filter((competition) => competition.start_date)
+    .filter((competition) => {
+      const start = new Date(`${competition.start_date}T00:00:00`);
+      const end = competition.end_date ? new Date(`${competition.end_date}T00:00:00`) : start;
+      return start.getFullYear() <= calendarDays.year && end.getFullYear() >= calendarDays.year
+        && start <= new Date(calendarDays.year, calendarDays.month + 1, 0)
+        && end >= new Date(calendarDays.year, calendarDays.month, 1);
+    })
+    .sort((first, second) => first.start_date.localeCompare(second.start_date)), [calendarDays, districtCompetitions]);
+
+  const moveCalendarMonth = (offset) => {
+    setCalendarDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+  };
+
+  const goToCurrentMonth = () => setCalendarDate(new Date());
 
   const handleDeleteAnnouncement = async (announcementId) => {
     try {
@@ -371,25 +389,46 @@ export default function DistrictManagerPage() {
     }
   };
 
-  const handlePromoteStudents = async () => {
-    if (!selectedPromotionStudents.length) return;
-    const source = pendingPromotionStudents.find((item) => selectedPromotionStudents.includes(Number(item.student)));
-    if (!source) return;
+  const handlePromoteStudents = async (sourceCompetitionId, studentIds = selectedPromotionStudents) => {
+    const targetCompetition = districtLevelCompetitions[0];
+    if (!studentIds.length || !sourceCompetitionId || !targetCompetition) {
+      setError(targetCompetition ? 'Select at least one student to promote.' : 'Create a district competition before promoting students.');
+      return;
+    }
     setSubmitting(true);
     try {
       await apiService.promoteStudents({
-        student_ids: selectedPromotionStudents,
-        competition_id: source.competition,
+        student_ids: studentIds,
+        competition_id: sourceCompetitionId,
+        district_competition_id: targetCompetition.id,
         from_level: 'school',
         to_level: 'district',
       });
       setSelectedPromotionStudents([]);
-      refreshData();
+      const [resultsRes, participationsRes, promotionsRes] = await Promise.all([apiService.getResults(), apiService.getParticipations(), apiService.getResultPromotions()]);
+      setResults(resultsRes.data.results || []);
+      setParticipations(participationsRes.data.results || []);
+      setPromotions(promotionsRes.data.results || []);
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to promote students');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSaveDistrictScore = async (resultId, score) => {
+    try {
+      await apiService.updateResult(resultId, { score: score === '' ? null : Number(score) });
+      const resultsRes = await apiService.getResults();
+      setResults(resultsRes.data.results || []);
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.score?.[0] || 'Failed to save district result');
+    }
+  };
+
+  const getStudentClassName = (student) => {
+    const educationLevelId = student?.education_level?.id ?? student?.education_level;
+    return educationLevels.find((level) => Number(level.id) === Number(educationLevelId))?.name || '—';
   };
 
   const handleAddDistrictResult = async (event) => {
@@ -474,10 +513,10 @@ export default function DistrictManagerPage() {
         </section>
 
         <section className="district-home-card district-calendar-card">
-          <div className="district-card-heading"><div><h2>Competition calendar</h2><p>Blue circles mark competition days</p></div><span className="district-card-kicker">{calendarDays.monthLabel}</span></div>
+          <div className="district-card-heading"><div><h2>Competition calendar</h2><p>Blue circles mark competition days</p></div><div className="calendar-controls"><button type="button" onClick={() => moveCalendarMonth(-1)} aria-label="Previous month" title="Previous month">‹</button><span>{calendarDays.monthLabel}</span><button type="button" onClick={() => moveCalendarMonth(1)} aria-label="Next month" title="Next month">›</button><button type="button" className="calendar-today-button" onClick={goToCurrentMonth}>Today</button></div></div>
           <div className="calendar-weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <span key={day}>{day}</span>)}</div>
-          <div className="calendar-grid">{Array.from({ length: calendarDays.firstDay }).map((_, index) => <span className="calendar-day is-empty" key={`empty-${index}`} />)}{Array.from({ length: calendarDays.daysInMonth }, (_, index) => { const day = index + 1; const dateKey = `${calendarDays.year}-${String(calendarDays.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; return <span className={`calendar-day ${competitionDates.has(dateKey) ? 'has-competition' : ''}`} key={dateKey}>{day}</span>; })}</div>
-          <div className="calendar-events">{districtCompetitions.filter((competition) => competition.start_date).slice(0, 5).map((competition) => <div key={competition.id}><span className="calendar-event-dot" /> <strong>{competition.name}</strong><small>{competition.start_date}{competition.end_date ? ` - ${competition.end_date}` : ''}</small></div>)}</div>
+          <div className="calendar-grid">{Array.from({ length: calendarDays.firstDay }).map((_, index) => <span className="calendar-day is-empty" key={`empty-${index}`} />)}{Array.from({ length: calendarDays.daysInMonth }, (_, index) => { const day = index + 1; const dateKey = `${calendarDays.year}-${String(calendarDays.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const isToday = new Date().toISOString().slice(0, 10) === dateKey; return <span className={`calendar-day ${competitionDates.has(dateKey) ? 'has-competition' : ''} ${isToday ? 'is-today' : ''}`} key={dateKey} title={competitionDates.has(dateKey) ? 'Competition day' : undefined}>{day}</span>; })}</div>
+          <div className="calendar-events">{calendarEvents.length ? calendarEvents.map((competition) => <div key={competition.id}><span className="calendar-event-dot" /> <strong>{competition.name}</strong><small>{competition.start_date}{competition.end_date ? ` - ${competition.end_date}` : ''}</small></div>) : <p className="district-empty-state">No competitions this month.</p>}</div>
         </section>
       </div>
     </>
@@ -502,20 +541,20 @@ export default function DistrictManagerPage() {
       return (
         <div className="district-results-stack">
           <div className="district-results-heading">
-            <div><h2>School results</h2><p>Submitted results from schools in your district. These results are read-only.</p></div>
+            <div><h2>School results</h2><p>Submitted results from schools in your district. Select students to promote them to a district competition.</p></div>
           </div>
           {submittedSchoolCompetitions.map((competition) => (
             <section className="district-result-card" key={competition.id}>
               <div className="district-result-card-header">
                 <div><h3>{competition.name}</h3><p>Submitted school-level results.</p></div>
-                <span className="district-result-level">Read only</span>
+                <button type="button" className="btn-primary" onClick={() => handlePromoteStudents(competition.id, selectedPromotionStudents.filter((studentId) => competition.entries.some((entry) => Number(entry.student?.id) === Number(studentId))))} disabled={submitting || !selectedPromotionStudents.length}>{submitting ? 'Processing...' : `Promote selected (${selectedPromotionStudents.filter((studentId) => competition.entries.some((entry) => Number(entry.student?.id) === Number(studentId))).length})`}</button>
               </div>
               <div className="district-result-table-wrap">
-                <table className="data-table"><thead><tr><th>Student</th><th>School</th><th>Score</th><th>Grade</th><th>Approval</th></tr></thead><tbody>
+                <table className="data-table"><thead><tr><th>Select</th><th>Student</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
                   {competition.entries.map(({ participation, result, student, school }) => (
-                    <tr key={participation.id}><td>{student ? `${student.first_name} ${student.last_name}` : 'Student'}</td><td>{school?.name || 'School'}</td><td>{result?.score ?? participation.score ?? '—'}</td><td>{result?.grade || '—'}</td><td>{result?.approval_status || participation.status}</td></tr>
+                    <tr key={participation.id}><td><input type="checkbox" checked={selectedPromotionStudents.includes(Number(student?.id))} onChange={(event) => setSelectedPromotionStudents((current) => event.target.checked ? [...new Set([...current, Number(student.id)])] : current.filter((id) => id !== Number(student.id)))} aria-label={`Select ${student?.first_name || 'student'} for promotion`} /></td><td>{student ? `${student.first_name} ${student.last_name}` : 'Student'}</td><td>{getStudentClassName(student)}</td><td>{school?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(student?.id) && membership.is_active)?.club_name || '—'}</td><td>{result?.score ?? participation.score ?? '—'}</td><td>{result?.grade || '—'}</td></tr>
                   ))}
-                  {!competition.entries.length && <tr><td colSpan="5" className="district-result-empty">No submitted results available yet.</td></tr>}
+                  {!competition.entries.length && <tr><td colSpan="7" className="district-result-empty">No submitted results available yet.</td></tr>}
                 </tbody></table>
               </div>
             </section>
@@ -539,10 +578,7 @@ export default function DistrictManagerPage() {
     return (
       <div className="district-results-stack">
         <div className="district-results-heading">
-          <div><h2>District results</h2><p>Results grouped by district competition.</p></div>
-          <button type="button" className="btn-primary" onClick={handlePromoteStudents} disabled={!selectedPromotionStudents.length || submitting}>
-            {submitting ? 'Processing...' : `Promote selected (${selectedPromotionStudents.length})`}
-          </button>
+          <div><h2>District results</h2><p>Promoted students start with a score of 0. Edit and save each district result here.</p></div>
         </div>
 
         {districtResultsByCompetition.map((competition) => (
@@ -552,11 +588,11 @@ export default function DistrictManagerPage() {
               <span className="district-result-level">District level</span>
             </div>
             <div className="district-result-table-wrap">
-              <table className="data-table"><thead><tr><th>Student</th><th>Score</th><th>Grade</th><th>Approval</th></tr></thead><tbody>
+                <table className="data-table"><thead><tr><th>Student</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
                 {competition.entries.map((result) => (
-                  <tr key={result.id}><td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td><td>{result.score ?? '—'}</td><td>{result.grade || '—'}</td><td>{result.approval_status}</td></tr>
+                  <tr key={result.id}><td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td><td>{getStudentClassName(result.student)}</td><td>{districtSchools.find((school) => Number(school.id) === Number(result.student?.school?.id ?? result.student?.school))?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(result.student?.id) && membership.is_active)?.club_name || '—'}</td><td><input className="district-score-input" type="number" min="0" max="100" defaultValue={result.score ?? 0} onBlur={(event) => handleSaveDistrictScore(result.id, event.target.value)} aria-label={`Score for ${result.student_name || 'student'}`} /></td><td>{result.grade || 'F'}</td></tr>
                 ))}
-                {!competition.entries.length && <tr><td colSpan="4" className="district-result-empty">No district results recorded yet.</td></tr>}
+                {!competition.entries.length && <tr><td colSpan="6" className="district-result-empty">No district results recorded yet.</td></tr>}
               </tbody></table>
             </div>
           </section>
