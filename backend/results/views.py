@@ -129,6 +129,10 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                     if not source_result:
                         errors.append(f'Student {student_id} has no recorded school result.')
                         continue
+                    source_score = source_result.score if source_result.score is not None else source_participation.score
+                    if source_score is None or source_score < 50:
+                        errors.append(f'Student {student_id} must have a score of at least 50% to be promoted.')
+                        continue
 
                     target_participation, _ = CompetitionParticipation.objects.get_or_create(
                         competition=target_competition,

@@ -532,7 +532,8 @@ export default function DistrictManagerPage() {
             const result = results.find((item) => Number(item.participation) === Number(participation.id));
             const student = districtStudents.find((item) => Number(item.id) === Number(participation.student));
             const school = districtSchools.find((item) => Number(item.id) === Number(student?.school?.id ?? student?.school));
-            return { participation, result, student, school };
+            const score = result?.score ?? participation.score;
+            return { participation, result, student, school, isEligibleForPromotion: score !== null && score !== undefined && Number(score) >= 50 };
           });
         return { ...competition, entries };
       });
@@ -551,8 +552,8 @@ export default function DistrictManagerPage() {
               </div>
               <div className="district-result-table-wrap">
                 <table className="data-table"><thead><tr><th>Select</th><th>Student</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
-                  {competition.entries.map(({ participation, result, student, school }) => (
-                    <tr key={participation.id}><td><input type="checkbox" checked={selectedPromotionStudents.includes(Number(student?.id))} onChange={(event) => setSelectedPromotionStudents((current) => event.target.checked ? [...new Set([...current, Number(student.id)])] : current.filter((id) => id !== Number(student.id)))} aria-label={`Select ${student?.first_name || 'student'} for promotion`} /></td><td>{student ? `${student.first_name} ${student.last_name}` : 'Student'}</td><td>{getStudentClassName(student)}</td><td>{school?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(student?.id) && membership.is_active)?.club_name || '—'}</td><td>{result?.score ?? participation.score ?? '—'}</td><td>{result?.grade || '—'}</td></tr>
+                  {competition.entries.map(({ participation, result, student, school, isEligibleForPromotion }) => (
+                    <tr key={participation.id}><td><input type="checkbox" checked={isEligibleForPromotion && selectedPromotionStudents.includes(Number(student?.id))} disabled={!isEligibleForPromotion} onChange={(event) => setSelectedPromotionStudents((current) => event.target.checked ? [...new Set([...current, Number(student.id)])] : current.filter((id) => id !== Number(student.id)))} aria-label={isEligibleForPromotion ? `Select ${student?.first_name || 'student'} for promotion` : `${student?.first_name || 'Student'} is not eligible for promotion`} /></td><td>{student ? `${student.first_name} ${student.last_name}` : 'Student'}</td><td>{getStudentClassName(student)}</td><td>{school?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(student?.id) && membership.is_active)?.club_name || '—'}</td><td>{result?.score ?? participation.score ?? '—'}</td><td>{result?.grade || '—'}</td></tr>
                   ))}
                   {!competition.entries.length && <tr><td colSpan="7" className="district-result-empty">No submitted results available yet.</td></tr>}
                 </tbody></table>
