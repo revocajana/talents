@@ -6,6 +6,12 @@ import logo from '../assets/Logo1.png';
 import './SportTeacherPage.css';
 import '../styles/districtmanager.css';
 
+const EyeIcon = ({ visible = false }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    {visible ? <><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></> : <><path d="M3 3l18 18" /><path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a18.5 18.5 0 0 1-3.1 3.7M6.2 6.8C3.5 8.4 2 12 2 12s3.5 6 10 6a10.7 10.7 0 0 0 4-.8" /></>}
+  </svg>
+);
+
 const MENU_ITEMS = [
   { key: 'home', label: 'Home' },
   { key: 'school-results', label: 'School results' },
@@ -46,6 +52,14 @@ export default function DistrictManagerPage() {
   const [isResizingCompetitionDrawer, setIsResizingCompetitionDrawer] = useState(false);
   const [competitionForm, setCompetitionForm] = useState({ name: '', description: '', start_date: '', end_date: '', status: 'draft' });
   const [competitionSubmitting, setCompetitionSubmitting] = useState(false);
+  const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileMessage, setProfileMessage] = useState(null);
+  const [passwordDrawerOpen, setPasswordDrawerOpen] = useState(false);
+  const [profilePasswordForm, setProfilePasswordForm] = useState({ new_password: '', confirm_password: '' });
+  const [showProfilePassword, setShowProfilePassword] = useState(false);
+  const [showProfilePasswordConfirmation, setShowProfilePasswordConfirmation] = useState(false);
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
   const districtName = currentUser?.district_name
     || allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name
     || 'Assigned District';
@@ -242,6 +256,57 @@ export default function DistrictManagerPage() {
       setAnnouncements((items) => items.filter((item) => item.id !== announcementId));
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete announcement');
+    }
+  };
+
+  const openProfileDrawer = () => {
+    setProfileMenuOpen(false);
+    setProfileEmail(currentUser?.email || '');
+    setProfileMessage(null);
+    setProfileDrawerOpen(true);
+  };
+
+  const handleSaveProfile = async (event) => {
+    event.preventDefault();
+    setProfileSubmitting(true);
+    setProfileMessage(null);
+    try {
+      const response = await apiService.updateUser(currentUser.id, { email: profileEmail.trim() });
+      setCurrentUser(response.data);
+      setProfileMessage({ type: 'success', text: 'Profile updated successfully.' });
+    } catch (err) {
+      const responseErrors = err.response?.data;
+      setProfileMessage({ type: 'error', text: responseErrors?.email?.[0] || responseErrors?.detail || 'Failed to update profile' });
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
+
+  const openChangePasswordDrawer = () => {
+    setProfileMenuOpen(false);
+    setProfilePasswordForm({ new_password: '', confirm_password: '' });
+    setShowProfilePassword(false);
+    setShowProfilePasswordConfirmation(false);
+    setPasswordDrawerOpen(true);
+  };
+
+  const handleChangePassword = async (event) => {
+    event.preventDefault();
+    if (profilePasswordForm.new_password !== profilePasswordForm.confirm_password) {
+      setError('New passwords do not match.');
+      return;
+    }
+    setProfileSubmitting(true);
+    setError(null);
+    try {
+      await apiService.updateUserPassword(currentUser.id, profilePasswordForm.new_password);
+      setProfilePasswordForm({ new_password: '', confirm_password: '' });
+      setPasswordDrawerOpen(false);
+    } catch (err) {
+      const responseErrors = err.response?.data;
+      setError(responseErrors?.detail || responseErrors?.password?.[0] || 'Failed to change password');
+    } finally {
+      setProfileSubmitting(false);
     }
   };
 
@@ -605,7 +670,7 @@ export default function DistrictManagerPage() {
             <button type="button" className="sport-teacher-profile-button" onClick={() => setProfileMenuOpen((open) => !open)} aria-label="Open profile menu" aria-expanded={profileMenuOpen} title={currentUser?.username || 'Profile'}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M4.5 20c.8-3.5 3.5-5.5 7.5-5.5s6.7 2 7.5 5.5" /></svg>
             </button>
-            {profileMenuOpen && <div className="sport-teacher-profile-menu"><button type="button" onClick={() => setProfileMenuOpen(false)}>Profile</button><button type="button" onClick={() => setProfileMenuOpen(false)}>Change password</button><button type="button" onClick={logout}>Logout</button></div>}
+            {profileMenuOpen && <div className="sport-teacher-profile-menu"><button type="button" onClick={openProfileDrawer}>Profile</button><button type="button" onClick={openChangePasswordDrawer}>Change password</button><button type="button" onClick={logout}>Logout</button></div>}
           </div>
           <button type="button" className="sport-teacher-navigation-toggle" onClick={() => setSidebarOpen((open) => !open)} aria-label="Open navigation menu" aria-expanded={sidebarOpen} title="Open navigation menu">
             <span /><span /><span />
@@ -646,6 +711,26 @@ export default function DistrictManagerPage() {
               <div className="district-competition-date-grid"><label>Start date *<input type="date" value={competitionForm.start_date} onChange={(event) => setCompetitionForm({ ...competitionForm, start_date: event.target.value })} required /></label><label>End date<input type="date" value={competitionForm.end_date} onChange={(event) => setCompetitionForm({ ...competitionForm, end_date: event.target.value })} min={competitionForm.start_date || undefined} /></label></div>
               <div className="district-competition-form-actions"><label>Status<select value={competitionForm.status} onChange={(event) => setCompetitionForm({ ...competitionForm, status: event.target.value })}><option value="draft">Draft</option><option value="pending_approval">Pending approval</option><option value="approved">Approved</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>{selectedCompetition && <button type="button" className="district-competition-delete" onClick={handleDeleteCompetition} disabled={competitionSubmitting}>Delete</button>}<button type="submit" className="district-primary-button" disabled={competitionSubmitting}>{competitionSubmitting ? 'Saving...' : selectedCompetition ? 'Save changes' : 'Create competition'}</button></div>
             </form>
+          </aside>
+        </>
+      )}
+      {profileDrawerOpen && (
+        <>
+          <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close profile" onClick={() => setProfileDrawerOpen(false)} />
+          <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer district-competition-drawer" style={{ '--drawer-width': `${competitionDrawerWidth}px` }} aria-label="Profile details">
+            <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingCompetitionDrawer(true); }} role="separator" aria-label="Resize profile panel" />
+            <div className="sport-teacher-search-drawer-header"><h2>Profile</h2><button type="button" onClick={() => setProfileDrawerOpen(false)} aria-label="Close profile">&times;</button></div>
+            <form onSubmit={handleSaveProfile} className="sport-teacher-profile-form"><div className="sport-teacher-profile-details"><div><span>Username:</span><strong>{currentUser?.username || '-'}</strong></div><div><span>Firstname:</span><strong>{currentUser?.first_name || '-'}</strong></div><div><span>Lastname:</span><strong>{currentUser?.last_name || '-'}</strong></div><div><span>Role:</span><strong>{currentUser?.role || '-'}</strong></div><div><span>District:</span><strong>{districtName}</strong></div></div><label>Email<input type="email" value={profileEmail} onChange={(event) => setProfileEmail(event.target.value)} /></label>{profileMessage && <div className={`district-profile-message is-${profileMessage.type}`} role="status">{profileMessage.text}</div>}<button type="submit" className="sport-teacher-profile-submit" disabled={profileSubmitting}>{profileSubmitting ? 'Saving...' : 'Save profile'}</button></form>
+          </aside>
+        </>
+      )}
+      {passwordDrawerOpen && (
+        <>
+          <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close change password" onClick={() => setPasswordDrawerOpen(false)} />
+          <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer district-competition-drawer" style={{ '--drawer-width': `${competitionDrawerWidth}px` }} aria-label="Change password">
+            <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingCompetitionDrawer(true); }} role="separator" aria-label="Resize password panel" />
+            <div className="sport-teacher-search-drawer-header"><h2>Change password</h2><button type="button" onClick={() => setPasswordDrawerOpen(false)} aria-label="Close change password">&times;</button></div>
+            <form onSubmit={handleChangePassword} className="sport-teacher-profile-form"><label>New password<span className="sport-teacher-password-control"><input type={showProfilePassword ? 'text' : 'password'} value={profilePasswordForm.new_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, new_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePassword((visible) => !visible)} aria-label={showProfilePassword ? 'Hide new password' : 'Show new password'}><EyeIcon visible={showProfilePassword} /></button></span></label><label>Confirm password<span className="sport-teacher-password-control"><input type={showProfilePasswordConfirmation ? 'text' : 'password'} value={profilePasswordForm.confirm_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePasswordConfirmation((visible) => !visible)} aria-label={showProfilePasswordConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon visible={showProfilePasswordConfirmation} /></button></span></label><button type="submit" className="sport-teacher-profile-submit" disabled={profileSubmitting}>{profileSubmitting ? 'Saving...' : 'Save password'}</button></form>
           </aside>
         </>
       )}

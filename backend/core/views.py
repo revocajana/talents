@@ -113,7 +113,14 @@ class UserViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = User.objects.select_related('school', 'student').all()
     serializer_class = UserSerializer
     permission_classes = [ConfigurationPermission]
-    scope_paths = {'school': 'school_id'}
+    scope_paths = {
+        'school': 'school_id',
+        'country': 'country_id',
+        'zone': 'zone_id',
+        'region': 'region_id',
+        'district': 'district_id',
+        'ward': 'ward_id',
+    }
 
     def get_permissions(self):
         if self.action in {'update', 'partial_update'}:

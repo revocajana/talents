@@ -349,6 +349,24 @@
   font-size: 13px;
 }
 
+.district-profile-message {
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.district-profile-message.is-success {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.district-profile-message.is-error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 .district-competition-form-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
