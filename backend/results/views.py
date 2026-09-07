@@ -156,7 +156,13 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                     if not source_result:
                         errors.append(f'Student {student_id} has no recorded school result.')
                         continue
+                    detail_scores = [
+                        detail.percentage_score if detail.percentage_score is not None else detail.raw_score
+                        for detail in source_result.details.all()
+                    ]
                     source_score = source_result.score if source_result.score is not None else source_participation.score
+                    if source_score is None and detail_scores:
+                        source_score = max(detail_scores)
                     if source_score is None or source_score < 50:
                         errors.append(f'Student {student_id} must have a score of at least 50% to be promoted.')
                         continue
@@ -164,18 +170,14 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                     target_participation, _ = CompetitionParticipation.objects.get_or_create(
                         competition=target_competition,
                         student_id=student_id,
-                        defaults={'status': 'finished', 'score': 0},
+                        defaults={'status': 'finished', 'score': None},
                     )
                     target_participation.status = 'finished'
-                    target_participation.score = 0
                     target_participation.save(update_fields=['status', 'score'])
                     target_result, _ = Result.objects.get_or_create(
                         participation=target_participation,
-                        defaults={'score': 0, 'approval_status': 'pending'},
+                        defaults={'score': None, 'approval_status': 'pending'},
                     )
-                    if target_result.score != 0:
-                        target_result.score = 0
-                        target_result.save(update_fields=['score', 'updated_at'])
                     promotion, _ = ResultPromotion.objects.get_or_create(
                         result=source_result,
                         result_detail=None,

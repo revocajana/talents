@@ -1471,9 +1471,9 @@ const SportTeacherPage = () => {
       {higherLevelCompetitions.map((competition) => (
         <section className="sport-teacher-results-card" key={competition.id}>
           <div className="sport-teacher-results-card-header"><div><h2>{competition.name}</h2><p>Read-only results for students promoted from your school.</p></div><span className="sport-teacher-read-only-badge">Read only</span></div>
-          <div className="sport-teacher-results-table-wrap"><table className="sport-teacher-results-table"><thead><tr><th>Student</th><th>Score</th><th>Rank</th></tr></thead><tbody>
-            {competition.resultRows.map((result) => <tr key={result.id}><td>{result.student_name}</td><td><strong>{result.score ?? 0}%</strong></td><td>{result.rank ?? '—'}</td></tr>)}
-            {!competition.resultRows.length && <tr><td colSpan="3" className="sport-teacher-results-empty">No results available yet.</td></tr>}
+          <div className="sport-teacher-results-table-wrap"><table className="sport-teacher-results-table"><thead><tr><th>Student</th><th>Score</th><th>Grade</th><th>Rank</th></tr></thead><tbody>
+            {competition.resultRows.map((result) => <tr key={result.id}><td>{result.student_name}</td><td><strong>{result.score === null || result.score === undefined ? 'Not recorded' : `${result.score}%`}</strong></td><td>{result.grade || '—'}</td><td>{result.rank ?? '—'}</td></tr>)}
+            {!competition.resultRows.length && <tr><td colSpan="4" className="sport-teacher-results-empty">No results available yet.</td></tr>}
           </tbody></table></div>
         </section>
       ))}
