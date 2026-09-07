@@ -40,9 +40,30 @@ export default function DistrictManagerPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [schoolSubmissions, setSchoolSubmissions] = useState([]);
+  const [selectedCompetition, setSelectedCompetition] = useState(null);
+  const [competitionDrawerOpen, setCompetitionDrawerOpen] = useState(false);
+  const [competitionDrawerWidth, setCompetitionDrawerWidth] = useState(420);
+  const [isResizingCompetitionDrawer, setIsResizingCompetitionDrawer] = useState(false);
+  const [competitionForm, setCompetitionForm] = useState({ name: '', description: '', start_date: '', end_date: '', status: 'draft' });
+  const [competitionSubmitting, setCompetitionSubmitting] = useState(false);
   const districtName = currentUser?.district_name
     || allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name
     || 'Assigned District';
+
+  useEffect(() => {
+    if (!isResizingCompetitionDrawer) return undefined;
+    const handlePointerMove = (event) => {
+      const nextWidth = window.innerWidth - event.clientX;
+      setCompetitionDrawerWidth(Math.max(320, Math.min(nextWidth, Math.min(760, window.innerWidth - 24))));
+    };
+    const stopResizing = () => setIsResizingCompetitionDrawer(false);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResizing);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResizing);
+    };
+  }, [isResizingCompetitionDrawer]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -127,9 +148,12 @@ export default function DistrictManagerPage() {
     if (!visibleDistrictId) return competitions;
     return competitions.filter((competition) => {
       const locationId = competition.location ?? competition.district ?? competition.region ?? competition.zone ?? competition.country;
-      return Number(locationId) === visibleDistrictId || competition.level === 'district';
+      const isDistrictLocation = competition.level === 'district' && Number(locationId) === visibleDistrictId;
+      const belongsToDistrictSchool = Array.isArray(competition.schools)
+        && competition.schools.some((schoolId) => districtSchools.some((school) => Number(school.id) === Number(schoolId)));
+      return Number(locationId) === visibleDistrictId || isDistrictLocation || belongsToDistrictSchool;
     });
-  }, [competitions, visibleDistrictId]);
+  }, [competitions, districtSchools, visibleDistrictId]);
 
   const schoolCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.level === 'school'), [districtCompetitions]);
   const districtLevelCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.level === 'district'), [districtCompetitions]);
@@ -221,6 +245,67 @@ export default function DistrictManagerPage() {
     }
   };
 
+  const openCompetitionEditor = (competition = null) => {
+    setSelectedCompetition(competition);
+    setCompetitionForm({
+      name: competition?.name || '',
+      description: competition?.description || '',
+      start_date: competition?.start_date || '',
+      end_date: competition?.end_date || '',
+      status: competition?.status || 'draft',
+    });
+    setCompetitionDrawerOpen(true);
+  };
+
+  const closeCompetitionEditor = () => {
+    setCompetitionDrawerOpen(false);
+    setSelectedCompetition(null);
+    setCompetitionForm({ name: '', description: '', start_date: '', end_date: '', status: 'draft' });
+  };
+
+  const handleSaveCompetition = async (event) => {
+    event.preventDefault();
+    setCompetitionSubmitting(true);
+    setError(null);
+    try {
+      const payload = {
+        name: competitionForm.name.trim(),
+        description: competitionForm.description.trim(),
+        start_date: competitionForm.start_date,
+        end_date: competitionForm.end_date || null,
+        level: 'district',
+        status: competitionForm.status,
+      };
+      if (selectedCompetition) {
+        await apiService.patchCompetition(selectedCompetition.id, payload);
+      } else {
+        await apiService.createCompetition({ ...payload, schools: [] });
+      }
+      closeCompetitionEditor();
+      const competitionsRes = await apiService.getCompetitions();
+      setCompetitions(competitionsRes.data.results || []);
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to save competition');
+    } finally {
+      setCompetitionSubmitting(false);
+    }
+  };
+
+  const handleDeleteCompetition = async () => {
+    if (!selectedCompetition || !window.confirm('Delete this competition?')) return;
+    setCompetitionSubmitting(true);
+    setError(null);
+    try {
+      await apiService.deleteCompetition(selectedCompetition.id);
+      closeCompetitionEditor();
+      setCompetitions((items) => items.filter((item) => item.id !== selectedCompetition.id));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete competition');
+    } finally {
+      setCompetitionSubmitting(false);
+    }
+  };
+
   const handlePromoteStudents = async () => {
     if (!selectedPromotionStudents.length) return;
     const source = pendingPromotionStudents.find((item) => selectedPromotionStudents.includes(Number(item.student)));
@@ -303,9 +388,18 @@ export default function DistrictManagerPage() {
         </section>
 
         <section className="district-home-card">
-          <div className="district-card-heading"><div><h2>Competition management</h2><p>District events and school submissions</p></div><button type="button" className="district-text-button" onClick={() => setActiveMenu('district-results')}>Open results</button></div>
-          <div className="competition-management-list"><div><span>Active competitions</span><strong>{districtCompetitions.filter((item) => item.status !== 'completed' && item.status !== 'cancelled').length}</strong></div><div><span>District competitions</span><strong>{districtLevelCompetitions.length}</strong></div><div><span>Submitted school results</span><strong>{schoolSubmissions.filter((item) => item.status === 'submitted').length}</strong></div></div>
-          <button type="button" className="district-primary-button" onClick={() => setActiveMenu('district-results')}>Manage competitions</button>
+          <div className="district-card-heading"><div><h2>Competition management</h2><p>Create and manage Sengerema district events</p></div><button type="button" className="district-primary-button district-card-action" onClick={() => openCompetitionEditor()}>Add competition</button></div>
+          <div className="district-competition-list">
+            {districtLevelCompetitions.map((competition) => (
+              <button type="button" className="district-competition-row is-editable" key={competition.id} onClick={() => openCompetitionEditor(competition)} aria-label={`Edit ${competition.name}`}>
+                <strong className="district-competition-title">{competition.name}</strong>
+                <span className={`district-competition-status is-${competition.status || 'draft'}`}>{competition.status || 'draft'}</span>
+                <small>{competition.start_date || 'Date not set'}{competition.end_date ? ` - ${competition.end_date}` : ''}</small>
+              </button>
+            ))}
+            {!districtLevelCompetitions.length && <p className="district-empty-state">No district competitions created yet.</p>}
+          </div>
+          <div className="district-competition-footer"><span>{districtLevelCompetitions.length} district events · {schoolSubmissions.filter((item) => item.status === 'submitted').length} submissions</span><button type="button" className="district-text-button" onClick={() => setActiveMenu('district-results')}>Open results</button></div>
         </section>
 
         <section className="district-home-card">
@@ -539,6 +633,22 @@ export default function DistrictManagerPage() {
           </>
         )}
       </main>
+      {competitionDrawerOpen && (
+        <>
+          <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close competition form" onClick={closeCompetitionEditor} />
+          <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer district-competition-drawer" style={{ '--drawer-width': `${competitionDrawerWidth}px` }} aria-label="District competition form">
+            <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingCompetitionDrawer(true); }} role="separator" aria-label="Resize competition panel" />
+            <div className="sport-teacher-search-drawer-header"><h2>{selectedCompetition ? 'Edit competition' : 'Add competition'}</h2><button type="button" onClick={closeCompetitionEditor} aria-label="Close competition form">&times;</button></div>
+            <form onSubmit={handleSaveCompetition} className="sport-teacher-profile-form">
+              <p className="district-drawer-note">This event will be visible to schools in {districtName}.</p>
+              <label>Competition name *<input type="text" value={competitionForm.name} onChange={(event) => setCompetitionForm({ ...competitionForm, name: event.target.value })} maxLength="150" required /></label>
+              <label>Description<textarea value={competitionForm.description} onChange={(event) => setCompetitionForm({ ...competitionForm, description: event.target.value })} rows="5" /></label>
+              <div className="district-competition-date-grid"><label>Start date *<input type="date" value={competitionForm.start_date} onChange={(event) => setCompetitionForm({ ...competitionForm, start_date: event.target.value })} required /></label><label>End date<input type="date" value={competitionForm.end_date} onChange={(event) => setCompetitionForm({ ...competitionForm, end_date: event.target.value })} min={competitionForm.start_date || undefined} /></label></div>
+              <div className="district-competition-form-actions"><label>Status<select value={competitionForm.status} onChange={(event) => setCompetitionForm({ ...competitionForm, status: event.target.value })}><option value="draft">Draft</option><option value="pending_approval">Pending approval</option><option value="approved">Approved</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>{selectedCompetition && <button type="button" className="district-competition-delete" onClick={handleDeleteCompetition} disabled={competitionSubmitting}>Delete</button>}<button type="submit" className="district-primary-button" disabled={competitionSubmitting}>{competitionSubmitting ? 'Saving...' : selectedCompetition ? 'Save changes' : 'Create competition'}</button></div>
+            </form>
+          </aside>
+        </>
+      )}
     </div>
   );
 }

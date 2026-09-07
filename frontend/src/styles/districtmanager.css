@@ -240,6 +240,181 @@
   font-weight: 700;
 }
 
+.district-card-action {
+  width: auto;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 12px;
+}
+
+.district-competition-list {
+  display: grid;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.district-competition-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) auto;
+  gap: 5px 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 0;
+  border-bottom: 1px solid #eef2f7;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+.district-competition-row:last-child {
+  border-bottom: 0;
+}
+
+.district-competition-row.is-editable {
+  cursor: pointer;
+}
+
+.district-competition-row.is-editable:hover,
+.district-competition-row.is-editable:focus-visible {
+  background: #f8faff;
+  outline: none;
+}
+
+.district-competition-title {
+  min-width: 0;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.district-competition-status {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.district-competition-status.is-approved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.district-competition-status.is-completed {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.district-competition-status.is-cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.district-competition-row small {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.district-competition-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 13px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.district-competition-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.district-drawer-note {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-left: 3px solid #2563eb;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 13px;
+}
+
+.district-competition-form-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.district-competition-form-actions label {
+  display: grid;
+  gap: 5px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.district-competition-form-actions select {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+}
+
+.district-competition-form-actions .district-primary-button {
+  width: auto;
+  margin: 0;
+  min-width: 108px;
+  align-self: end;
+}
+
+.district-competition-delete {
+  align-self: end;
+  padding: 9px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+  background: #fff;
+  color: #dc2626;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.district-competition-delete:hover {
+  background: #fef2f2;
+}
+
+@media (max-width: 520px) {
+  .district-competition-form-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .district-competition-form-actions label {
+    grid-column: 1 / -1;
+  }
+
+  .district-competition-form-actions .district-primary-button,
+  .district-competition-delete {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 .district-text-button {
   padding: 0;
   background: transparent;

@@ -1,5 +1,6 @@
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -28,6 +29,16 @@ class CompetitionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         'zone': 'schools__zone_id', 'region': 'schools__region_id',
         'district': 'schools__district_id', 'ward': 'schools__ward_id',
     }
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated and user.role == 'district_manager' and user.district_id:
+            district_type = ContentType.objects.get_for_model(District)
+            return self.queryset.filter(
+                Q(schools__district_id=user.district_id)
+                | Q(content_type=district_type, object_id=user.district_id)
+            ).distinct()
+        return super().get_queryset()
 
     def perform_create(self, serializer):
         user = self.request.user
