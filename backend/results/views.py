@@ -16,6 +16,17 @@ from core.permissions import AuthenticatedReadOnly, StudentDataPermission, Scope
 
 from core.permissions import IsSportTeacher
 
+
+def ensure_school_result_editable(result):
+    """Prevent school results from changing after the school submits them."""
+    if SchoolCompetitionSubmission.objects.filter(
+        school_id=result.participation.student.school_id,
+        competition_id=result.participation.competition_id,
+        status__in={'submitted', 'approved'},
+    ).exists():
+        from rest_framework.exceptions import ValidationError
+        raise ValidationError('Submitted or approved school results are locked.')
+
 class ResultViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Result.objects.select_related('participation__student', 'participation__competition').prefetch_related('details').all()
     serializer_class = ResultSerializer
@@ -31,6 +42,14 @@ class ResultViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         'region': 'participation__student__school__region_id', 'district': 'participation__student__school__district_id',
         'ward': 'participation__student__school__ward_id',
     }
+
+    def perform_create(self, serializer):
+        ensure_school_result_editable(Result(participation=serializer.validated_data['participation']))
+        serializer.save()
+
+    def perform_update(self, serializer):
+        ensure_school_result_editable(self.get_object())
+        serializer.save()
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
@@ -56,6 +75,14 @@ class ResultDetailViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         'region': 'result__participation__student__school__region_id', 'district': 'result__participation__student__school__district_id',
         'ward': 'result__participation__student__school__ward_id',
     }
+
+    def perform_create(self, serializer):
+        ensure_school_result_editable(serializer.validated_data['result'])
+        serializer.save()
+
+    def perform_update(self, serializer):
+        ensure_school_result_editable(self.get_object().result)
+        serializer.save()
 
 
 class ResultPromotionViewSet(viewsets.ModelViewSet):

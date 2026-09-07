@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as apiService from '../services/apiService';
 import './SportTeacherPage.css';
@@ -78,6 +78,8 @@ const SportTeacherPage = () => {
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [resultScores, setResultScores] = useState({});
+  const resultAutosaveTimers = useRef(new Map());
+  const [resultSaveStates, setResultSaveStates] = useState({});
   const [studentEditForm, setStudentEditForm] = useState({
     first_name: '',
     last_name: '',
@@ -208,6 +210,11 @@ const SportTeacherPage = () => {
     }
   }, [schoolId]);
 
+  useEffect(() => () => {
+    resultAutosaveTimers.current.forEach((timer) => window.clearTimeout(timer));
+    resultAutosaveTimers.current.clear();
+  }, []);
+
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -274,42 +281,84 @@ const SportTeacherPage = () => {
     });
   };
   const closeStudentEditor = () => setSelectedStudent(null);
-  const handleSaveResult = async (row) => {
+  const handleSaveResult = async (row, scoreOverride) => {
     try {
-      const score = resultScores[row.id] === '' ? null : Number(resultScores[row.id] ?? row.score);
+      const rawScore = scoreOverride !== undefined ? scoreOverride : resultScores[row.id] ?? row.score;
+      const score = rawScore === '' || rawScore === null ? null : Number(rawScore);
       let participationId = row.participation;
+      let participationResponse;
       if (row.participation) {
-        await apiService.updateParticipation(row.participation, { status: 'finished' });
+        participationResponse = await apiService.updateParticipation(row.participation, { status: 'finished', score });
       } else if (row.competitionId) {
-        const participationResponse = await apiService.createParticipation({ competition: row.competitionId, student: row.student, score: null, status: 'finished' });
+        participationResponse = await apiService.createParticipation({ competition: row.competitionId, student: row.student, score, status: 'finished' });
         participationId = participationResponse.data.id;
       } else {
         setError('No school-level competition is available for this school.');
         return;
       }
+      setParticipations((current) => {
+        const updated = participationResponse.data;
+        return current.some((item) => Number(item.id) === Number(updated.id))
+          ? current.map((item) => Number(item.id) === Number(updated.id) ? updated : item)
+          : [...current, updated];
+      });
       let resultId = row.result;
+      let resultResponse;
       if (!resultId) {
-        const resultResponse = await apiService.createResult({ participation: participationId, score: null, award: 'none' });
+        resultResponse = await apiService.createResult({ participation: participationId, score, award: 'none' });
         resultId = resultResponse.data.id;
+        setResults((current) => [...current, resultResponse.data]);
+      } else if (score !== null) {
+        resultResponse = await apiService.updateResult(resultId, { score });
+        setResults((current) => current.map((item) => Number(item.id) === Number(resultId) ? resultResponse.data : item));
       }
       if (row.detail) {
-        await apiService.updateResultDetail(row.detail.id, {
+        const detailResponse = await apiService.updateResultDetail(row.detail.id, {
           raw_score: score ?? 0,
           percentage_score: score,
         });
+        setResultDetails((current) => current.map((item) => Number(item.id) === Number(row.detail.id) ? detailResponse.data : item));
       } else if (row.talentId) {
-        await apiService.createResultDetail({
+        const detailResponse = await apiService.createResultDetail({
           result: resultId,
           talent: row.talentId,
           raw_score: score ?? 0,
           percentage_score: score,
         });
+        setResultDetails((current) => [...current, detailResponse.data]);
       }
-      await loadData();
-      showSuccess('Result saved successfully');
+      setResultSaveStates((current) => ({ ...current, [row.id]: 'saved' }));
+      window.setTimeout(() => setResultSaveStates((current) => ({ ...current, [row.id]: '' })), 1800);
     } catch (err) {
+      setResultSaveStates((current) => ({ ...current, [row.id]: 'failed' }));
       setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to save result');
     }
+  };
+
+  const scheduleResultAutosave = (row, value) => {
+    const existingTimer = resultAutosaveTimers.current.get(row.id);
+    if (existingTimer) window.clearTimeout(existingTimer);
+    setResultSaveStates((current) => ({ ...current, [row.id]: 'pending' }));
+    const timer = window.setTimeout(() => {
+      setResultSaveStates((current) => ({ ...current, [row.id]: 'saving' }));
+      handleSaveResult(row, value);
+      resultAutosaveTimers.current.delete(row.id);
+    }, 900);
+    resultAutosaveTimers.current.set(row.id, timer);
+  };
+
+  const getGradeForScore = (score) => {
+    if (score === '' || score === null || score === undefined) return '—';
+    const numericScore = Number(score);
+    if (Number.isNaN(numericScore)) return '—';
+    if (numericScore >= 90) return 'A+';
+    if (numericScore >= 75) return 'A';
+    if (numericScore >= 60) return 'B+';
+    if (numericScore >= 50) return 'B';
+    if (numericScore >= 40) return 'C';
+    if (numericScore >= 30) return 'D';
+    if (numericScore >= 20) return 'E';
+    return 'F';
   };
 
   const handleSaveStudent = async (event) => {
@@ -1406,8 +1455,8 @@ const SportTeacherPage = () => {
             );
           })()}
           <div className="sport-teacher-results-table-wrap">
-            <table className="sport-teacher-results-table"><thead><tr><th>Student</th><th>Talent</th><th>Score</th><th>Status</th></tr></thead><tbody>
-              {competition.rows.map((row) => <tr key={row.id}><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={resultScores[row.id] ?? row.score ?? ''} disabled={schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'submitted' || schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'approved'} onChange={(event) => setResultScores({ ...resultScores, [row.id]: event.target.value })} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /><button type="button" className="sport-teacher-inline-save" disabled={schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'submitted' || schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'approved'} onClick={() => handleSaveResult(row)}>Save</button></span></td><td>{getStatusBadge(row.status, row.score, row.hasScore)}</td></tr>)}
+            <table className="sport-teacher-results-table"><thead><tr><th>Student</th><th>Talent</th><th>Score</th><th>Grade</th><th>Status</th></tr></thead><tbody>
+              {competition.rows.map((row) => { const saveState = resultSaveStates[row.id]; const currentScore = resultScores[row.id] ?? row.score ?? ''; return <tr key={row.id}><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={currentScore} disabled={schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'submitted' || schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'approved'} onChange={(event) => { const value = event.target.value; setResultScores((current) => ({ ...current, [row.id]: value })); scheduleResultAutosave(row, value); }} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /></span></td><td className="sport-teacher-inline-grade">{saveState === 'pending' || saveState === 'saving' ? <span className="sport-teacher-save-spinner" aria-label="Saving result" /> : getGradeForScore(currentScore)}</td><td>{getStatusBadge(row.status, currentScore, row.hasScore)}</td></tr>; })}
             </tbody></table>
           </div>
         </section>
