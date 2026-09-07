@@ -448,8 +448,9 @@ export default function DistrictManagerPage() {
         </section>
 
         <section className="district-home-card">
-          <div className="district-card-heading"><div><h2>School performance</h2><p>Ranked by average recorded score</p></div><span className="district-card-kicker">Top 5</span></div>
-          <div className="school-ranking">{schoolRanking.length ? schoolRanking.map((school, index) => <div className="school-ranking-row" key={school.name}><span className="school-rank">{index + 1}</span><div className="school-ranking-name"><strong>{school.name}</strong><small>{school.students} students · {school.participation} entries</small></div><b>{school.averageScore}%</b></div>) : <p className="district-empty-state">No school performance data yet.</p>}</div>
+          <div className="district-card-heading"><div><h2>Recent announcements</h2><p>Publish or remove district updates</p></div><button type="button" className="district-text-button" onClick={() => setActiveMenu('announcements')}>View all</button></div>
+          <div className="recent-announcements">{relevantAnnouncements.slice(0, 3).map((announcement) => <div className="recent-announcement-row" key={announcement.id}><div><strong>{announcement.title}</strong><small>{announcement.content || 'No details available.'}</small></div><button type="button" className="district-icon-button" onClick={() => handleDeleteAnnouncement(announcement.id)} title="Delete announcement" aria-label={`Delete ${announcement.title}`}>×</button></div>)}{!relevantAnnouncements.length && <p className="district-empty-state">No active announcements yet.</p>}</div>
+          <button type="button" className="district-primary-button" onClick={() => setActiveMenu('announcements')}>Publish announcement</button>
         </section>
 
         <section className="district-home-card">
@@ -468,9 +469,8 @@ export default function DistrictManagerPage() {
         </section>
 
         <section className="district-home-card">
-          <div className="district-card-heading"><div><h2>Recent announcements</h2><p>Publish or remove district updates</p></div><button type="button" className="district-text-button" onClick={() => setActiveMenu('announcements')}>View all</button></div>
-          <div className="recent-announcements">{relevantAnnouncements.slice(0, 3).map((announcement) => <div className="recent-announcement-row" key={announcement.id}><div><strong>{announcement.title}</strong><small>{announcement.content || 'No details available.'}</small></div><button type="button" className="district-icon-button" onClick={() => handleDeleteAnnouncement(announcement.id)} title="Delete announcement" aria-label={`Delete ${announcement.title}`}>×</button></div>)}{!relevantAnnouncements.length && <p className="district-empty-state">No active announcements yet.</p>}</div>
-          <button type="button" className="district-primary-button" onClick={() => setActiveMenu('announcements')}>Publish announcement</button>
+          <div className="district-card-heading"><div><h2>School performance</h2><p>Ranked by average recorded score</p></div><span className="district-card-kicker">Top 5</span></div>
+          <div className="school-ranking">{schoolRanking.length ? schoolRanking.map((school, index) => <div className="school-ranking-row" key={school.name}><span className="school-rank">{index + 1}</span><div className="school-ranking-name"><strong>{school.name}</strong><small>{school.students} students · {school.participation} entries</small></div><b>{school.averageScore}%</b></div>) : <p className="district-empty-state">No school performance data yet.</p>}</div>
         </section>
 
         <section className="district-home-card district-calendar-card">
