@@ -59,6 +59,55 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.talent-admin-user-header {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.talent-admin-user-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0;
+}
+
+.talent-admin-filter-field {
+  display: flex;
+  min-width: 0;
+}
+
+.talent-admin-filter-field select,
+.talent-admin-filter-field input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 32px;
+  height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+}
+
+.talent-admin-filter-field input {
+  min-width: 180px;
+}
+
+.talent-admin-role-filter {
+  min-width: 150px;
+}
+
+.talent-admin-search-field {
+  flex: 1 1 180px;
+  min-width: 180px;
+  max-width: 220px;
+}
+
 .talent-admin-add-school-button {
   align-self: center;
   width: max-content !important;
