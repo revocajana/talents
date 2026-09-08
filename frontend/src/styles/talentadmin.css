@@ -40,6 +40,132 @@
   font-size: 15px;
 }
 
+.talent-admin-table-card {
+  width: min(100%, 1100px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #dbe4ee;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.talent-admin-table-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.talent-admin-add-school-button {
+  align-self: center;
+  width: max-content !important;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.talent-admin-table-header h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+}
+
+.talent-admin-table-header p:last-child {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.talent-admin-table-wrap {
+  overflow-x: auto;
+}
+
+.talent-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.talent-admin-table th,
+.talent-admin-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid #eef2f7;
+  color: #334155;
+  text-align: left;
+}
+
+.talent-admin-table th {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.talent-admin-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0e1db6;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.talent-admin-link-button:hover,
+.talent-admin-link-button:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.talent-admin-empty {
+  padding: 28px !important;
+  color: #64748b !important;
+  text-align: center !important;
+}
+
+.talent-admin-school-drawer {
+  overflow-y: auto;
+}
+
+.talent-admin-drawer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.talent-admin-delete-button {
+  padding: 9px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+  background: #fff;
+  color: #b91c1c;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.talent-admin-delete-button:hover {
+  background: #fef2f2;
+}
+
+@media (max-width: 640px) {
+  .talent-admin-table-header {
+    display: grid;
+  }
+
+  .talent-admin-table-header .talent-admin-add-school-button {
+    width: max-content !important;
+  }
+}
+
 .district-manager-content > .cards-container {
   width: min(100%, 1100px);
   margin: 0 auto;

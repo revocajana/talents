@@ -58,6 +58,7 @@ class SchoolSerializer(serializers.ModelSerializer):
             'district',
             'ward',
             'phone',
+            'physical_address',
             'email',
             'is_approved',
             'created_at',

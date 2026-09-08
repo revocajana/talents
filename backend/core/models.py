@@ -86,6 +86,7 @@ class School(models.Model):
     district = models.ForeignKey(District, on_delete=models.PROTECT, related_name="schools")
     ward = models.ForeignKey(Ward, on_delete=models.PROTECT, related_name="schools")
     phone = models.CharField(max_length=20, blank=True, null=True)
+    physical_address = models.CharField(max_length=255, blank=True)
     email = models.EmailField(blank=True, null=True)
     student_count = models.PositiveIntegerField(default=0)
     is_approved = models.BooleanField(default=False)
