@@ -11,6 +11,18 @@ const NAV_ITEMS = [
 ];
 
 const emptySchool = { registry_number: '', name: '', ownership_type: 'Government', country: '', zone: '', region: '', district: '', ward: '', phone: '', physical_address: '', email: '' };
+const emptyUser = { username: '', first_name: '', last_name: '', email: '', role: 'sport_teacher', school: '', password: '' };
+const USER_ROLE_OPTIONS = [
+  ['talent_admin', 'Talent Admin'],
+  ['region_manager', 'Region Manager'],
+  ['zone_manager', 'Zone Manager'],
+  ['district_manager', 'District Manager'],
+  ['ward_manager', 'Ward Manager'],
+  ['head_teacher', 'Head Teacher'],
+  ['sport_teacher', 'Sport Teacher'],
+  ['student', 'Student'],
+  ['parent', 'Parent'],
+];
 const formatRoleLabel = (role = '') => role.split('_').map((part) => part ? part.charAt(0).toUpperCase() + part.slice(1) : '').join(' ');
 
 export default function TalentAdminPage() {
@@ -33,12 +45,12 @@ export default function TalentAdminPage() {
   const [schoolSubmitting, setSchoolSubmitting] = useState(false);
   const [selectedUserRole, setSelectedUserRole] = useState('all');
   const [userSearch, setUserSearch] = useState('');
+  const [userDrawerOpen, setUserDrawerOpen] = useState(false);
+  const [userForm, setUserForm] = useState(emptyUser);
+  const [userSubmitting, setUserSubmitting] = useState(false);
   const activeItem = NAV_ITEMS.find(([key]) => key === activeTab) || NAV_ITEMS[0];
 
-  const userRoleOptions = useMemo(() => {
-    const uniqueRoles = [...new Set(users.map((user) => user.role).filter(Boolean))];
-    return uniqueRoles.map((role) => ({ value: role, label: formatRoleLabel(role) }));
-  }, [users]);
+  const userRoleOptions = useMemo(() => USER_ROLE_OPTIONS.map(([value, label]) => ({ value, label })), []);
 
   const filteredUsers = useMemo(() => {
     const normalizedSearch = userSearch.trim().toLowerCase();
@@ -119,6 +131,36 @@ export default function TalentAdminPage() {
     } catch (requestError) { const details = requestError.response?.data; const fieldError = details && Object.values(details).flat?.().find(Boolean); setError(fieldError || details?.detail || details?.non_field_errors?.[0] || 'Failed to save school'); } finally { setSchoolSubmitting(false); }
   };
 
+  const closeUserEditor = () => { setUserDrawerOpen(false); setUserForm(emptyUser); };
+  const saveUser = async (event) => {
+    event.preventDefault(); setUserSubmitting(true); setError(null);
+    const payload = {
+      username: userForm.username,
+      first_name: userForm.first_name,
+      last_name: userForm.last_name,
+      email: userForm.email || '',
+      role: userForm.role,
+      school: userForm.school ? Number(userForm.school) : null,
+      password: userForm.password,
+    };
+
+    if (!payload.username || !payload.first_name || !payload.last_name || !payload.password || !payload.role) {
+      setError('Please complete all required user fields.');
+      setUserSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await apiService.createUser(payload);
+      setUsers((current) => [response.data, ...current]);
+      closeUserEditor();
+    } catch (requestError) {
+      const details = requestError.response?.data;
+      const fieldError = details && Object.values(details).flat?.().find(Boolean);
+      setError(fieldError || details?.detail || details?.non_field_errors?.[0] || 'Failed to create user');
+    } finally { setUserSubmitting(false); }
+  };
+
   const deleteSchool = async () => {
     if (!selectedSchool || !window.confirm(`Delete ${selectedSchool.name}?`)) return;
     setSchoolSubmitting(true);
@@ -132,7 +174,7 @@ export default function TalentAdminPage() {
   return <div className="sport-teacher-page talent-admin-page">
     <header className="sport-teacher-app-bar"><div className="sport-teacher-brand"><img src={logo} alt="Talanta logo" /><span>Talanta Management System</span></div><button type="button" className="sport-teacher-navigation-toggle" onClick={() => setNavigationOpen((open) => !open)} aria-label="Open navigation menu" aria-expanded={navigationOpen}><span /><span /><span /></button></header>
     <aside className={`sport-teacher-navigation ${navigationOpen ? 'is-open' : ''}`}><div className="sport-teacher-navigation-heading">Talent Administration</div>{NAV_ITEMS.map(([key, label]) => <button type="button" key={key} className={activeTab === key ? 'active' : ''} onClick={() => { setActiveTab(key); setNavigationOpen(false); }}>{label}</button>)}<button type="button" className="sport-teacher-logout-button" onClick={logout}>Logout</button></aside>
-    <main className="sport-teacher-prototype-content talent-admin-content">{error && <div className="talent-admin-alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Dismiss error">&times;</button></div>}{loading ? <DashboardSkeleton label="Loading talent administration" /> : activeTab === 'schools' ? <section className="talent-admin-table-card"><div className="talent-admin-table-header"><div><h1>Schools</h1></div><button type="button" className="district-primary-button talent-admin-add-school-button" onClick={() => openSchoolEditor()}>Add school</button></div><div className="talent-admin-table-wrap"><table className="talent-admin-table"><thead><tr><th>Reg.No</th><th>School Name</th><th>Location</th><th>Phone</th><th>Physical address</th></tr></thead><tbody>{schools.map((school) => <tr key={school.id}><td><button type="button" className="talent-admin-link-button" onClick={() => openSchoolEditor(school)}>{school.registry_number}</button></td><td>{school.name}</td><td>{getLocation(school)}</td><td>{school.phone || '—'}</td><td>{school.physical_address || '—'}</td></tr>)}{!schools.length && <tr><td colSpan="5" className="talent-admin-empty">No schools found.</td></tr>}</tbody></table></div></section> : activeTab === 'users' ? <section className="talent-admin-table-card"><div className="talent-admin-table-header talent-admin-user-header"><div className="talent-admin-user-toolbar"><label className="talent-admin-filter-field talent-admin-role-filter"><select value={selectedUserRole} onChange={(event) => setSelectedUserRole(event.target.value)}><option value="all">All roles</option>{userRoleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label><label className="talent-admin-filter-field talent-admin-search-field"><input type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search users" /></label></div></div><div className="talent-admin-table-wrap"><table className="talent-admin-table"><thead><tr><th>Name</th><th>Role</th><th>School</th><th>Email</th><th>Phone</th></tr></thead><tbody>{filteredUsers.map((user) => <tr key={user.id}><td>{getUserDisplayName(user)}</td><td>{formatRoleLabel(user.role)}</td><td>{getSchoolName(user.school)}</td><td>{user.email || '—'}</td><td>{user.phone || '—'}</td></tr>)}{!filteredUsers.length && <tr><td colSpan="5" className="talent-admin-empty">No users found for this role.</td></tr>}</tbody></table></div></section> : <section className="talent-admin-placeholder"><p className="sport-teacher-eyebrow">Talent Administration</p><h1>{activeItem[1]}</h1><p>{activeItem[2]}</p></section>}</main>
-    {schoolDrawerOpen && <><button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close school form" onClick={closeSchoolEditor} /><aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer" aria-label="School editor"><div className="sport-teacher-search-drawer-header"><h2>{selectedSchool ? 'Edit school' : 'Add school'}</h2><button type="button" onClick={closeSchoolEditor} aria-label="Close school form">&times;</button></div><form onSubmit={saveSchool} className="sport-teacher-profile-form">{floatingInput('School Reg. No *', 'registry_number', { required: true, maxLength: '50' })}{floatingInput('School name *', 'name', { required: true, maxLength: '150' })}<label>Ownership type<select required value={schoolForm.ownership_type} onChange={(event) => updateField('ownership_type', event.target.value)}>{ownershipTypes.map((type) => <option key={type.id} value={type.name}>{type.name}</option>)}</select></label>{locationField('Country', 'country', countries)}{locationField('Zone', 'zone', filteredZones, !schoolForm.country)}{locationField('Region', 'region', filteredRegions, !schoolForm.zone)}{locationField('District', 'district', filteredDistricts, !schoolForm.region)}{locationField('Ward', 'ward', filteredWards, !schoolForm.district)}{floatingTextarea('Physical address', 'physical_address', { rows: 3, maxLength: '255' })}{floatingInput('Phone', 'phone', { maxLength: '20' })}<div className="talent-admin-drawer-actions">{selectedSchool && <button type="button" className="talent-admin-delete-button" onClick={deleteSchool} disabled={schoolSubmitting}>Delete</button>}<button type="submit" className="district-primary-button" disabled={schoolSubmitting}>{schoolSubmitting ? 'Saving...' : 'Save school'}</button></div></form></aside></>}
+    <main className="sport-teacher-prototype-content talent-admin-content">{error && <div className="talent-admin-alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Dismiss error">&times;</button></div>}{loading ? <DashboardSkeleton label="Loading talent administration" /> : activeTab === 'schools' ? <section className="talent-admin-table-card"><div className="talent-admin-table-header"><div><h1>Schools</h1></div><button type="button" className="district-primary-button talent-admin-add-school-button" onClick={() => openSchoolEditor()}>Add school</button></div><div className="talent-admin-table-wrap"><table className="talent-admin-table"><thead><tr><th>Reg.No</th><th>School Name</th><th>Location</th><th>Phone</th><th>Physical address</th></tr></thead><tbody>{schools.map((school) => <tr key={school.id}><td><button type="button" className="talent-admin-link-button" onClick={() => openSchoolEditor(school)}>{school.registry_number}</button></td><td>{school.name}</td><td>{getLocation(school)}</td><td>{school.phone || '—'}</td><td>{school.physical_address || '—'}</td></tr>)}{!schools.length && <tr><td colSpan="5" className="talent-admin-empty">No schools found.</td></tr>}</tbody></table></div></section> : activeTab === 'users' ? <section className="talent-admin-table-card"><div className="talent-admin-table-header talent-admin-user-header"><div className="talent-admin-user-toolbar"><label className="talent-admin-filter-field talent-admin-role-filter"><select value={selectedUserRole} onChange={(event) => setSelectedUserRole(event.target.value)}><option value="all">All roles</option>{userRoleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label><label className="talent-admin-filter-field talent-admin-search-field"><input type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search users" /></label><button type="button" className="district-primary-button talent-admin-add-user-button" onClick={() => setUserDrawerOpen(true)}>Add user</button></div></div><div className="talent-admin-table-wrap"><table className="talent-admin-table"><thead><tr><th>Name</th><th>Role</th><th>School</th><th>Email</th><th>Phone</th></tr></thead><tbody>{filteredUsers.map((user) => <tr key={user.id}><td>{getUserDisplayName(user)}</td><td>{formatRoleLabel(user.role)}</td><td>{getSchoolName(user.school)}</td><td>{user.email || '—'}</td><td>{user.phone || '—'}</td></tr>)}{!filteredUsers.length && <tr><td colSpan="5" className="talent-admin-empty">No users found for this role.</td></tr>}</tbody></table></div></section> : <section className="talent-admin-placeholder"><p className="sport-teacher-eyebrow">Talent Administration</p><h1>{activeItem[1]}</h1><p>{activeItem[2]}</p></section>}</main>
+    {userDrawerOpen && <><button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close user form" onClick={closeUserEditor} /><aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer" aria-label="User editor"><div className="sport-teacher-search-drawer-header"><h2>Add user</h2><button type="button" onClick={closeUserEditor} aria-label="Close user form">&times;</button></div><form onSubmit={saveUser} className="sport-teacher-profile-form"><label>Username *<input required value={userForm.username} onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))} /></label><div className="sport-teacher-registration-form-grid"><label>First name *<input required value={userForm.first_name} onChange={(event) => setUserForm((current) => ({ ...current, first_name: event.target.value }))} /></label><label>Last name *<input required value={userForm.last_name} onChange={(event) => setUserForm((current) => ({ ...current, last_name: event.target.value }))} /></label></div><label>Email<input type="email" value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))} /></label><div className="sport-teacher-registration-form-grid"><label>Role<select value={userForm.role} onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))}>{USER_ROLE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>School<select value={userForm.school} onChange={(event) => setUserForm((current) => ({ ...current, school: event.target.value }))}><option value="">No school</option>{schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}</select></label></div><label>Password *<input type="password" required minLength="8" value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} /></label><div className="talent-admin-drawer-actions"><button type="submit" className="district-primary-button" disabled={userSubmitting}>{userSubmitting ? 'Saving...' : 'Save user'}</button></div></form></aside></>}{schoolDrawerOpen && <><button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close school form" onClick={closeSchoolEditor} /><aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer" aria-label="School editor"><div className="sport-teacher-search-drawer-header"><h2>{selectedSchool ? 'Edit school' : 'Add school'}</h2><button type="button" onClick={closeSchoolEditor} aria-label="Close school form">&times;</button></div><form onSubmit={saveSchool} className="sport-teacher-profile-form">{floatingInput('School Reg. No *', 'registry_number', { required: true, maxLength: '50' })}{floatingInput('School name *', 'name', { required: true, maxLength: '150' })}<label>Ownership type<select required value={schoolForm.ownership_type} onChange={(event) => updateField('ownership_type', event.target.value)}>{ownershipTypes.map((type) => <option key={type.id} value={type.name}>{type.name}</option>)}</select></label>{locationField('Country', 'country', countries)}{locationField('Zone', 'zone', filteredZones, !schoolForm.country)}{locationField('Region', 'region', filteredRegions, !schoolForm.zone)}{locationField('District', 'district', filteredDistricts, !schoolForm.region)}{locationField('Ward', 'ward', filteredWards, !schoolForm.district)}{floatingTextarea('Physical address', 'physical_address', { rows: 3, maxLength: '255' })}{floatingInput('Phone', 'phone', { maxLength: '20' })}<div className="talent-admin-drawer-actions">{selectedSchool && <button type="button" className="talent-admin-delete-button" onClick={deleteSchool} disabled={schoolSubmitting}>Delete</button>}<button type="submit" className="district-primary-button" disabled={schoolSubmitting}>{schoolSubmitting ? 'Saving...' : 'Save school'}</button></div></form></aside></>}
   </div>;
 }

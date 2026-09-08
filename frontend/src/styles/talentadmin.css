@@ -108,7 +108,8 @@
   max-width: 220px;
 }
 
-.talent-admin-add-school-button {
+.talent-admin-add-school-button,
+.talent-admin-add-user-button {
   align-self: center;
   width: max-content !important;
   min-width: 0;
