@@ -170,7 +170,7 @@ export default function DistrictManagerPage() {
   const districtCompetitions = useMemo(() => {
     if (!visibleDistrictId) return competitions;
     return competitions.filter((competition) => {
-      const locationId = competition.location ?? competition.district ?? competition.region ?? competition.zone ?? competition.country;
+      const locationId = competition.object_id ?? competition.district ?? competition.region ?? competition.zone ?? competition.country;
       const isDistrictLocation = competition.level === 'district' && Number(locationId) === visibleDistrictId;
       const belongsToDistrictSchool = Array.isArray(competition.schools)
         && competition.schools.some((schoolId) => districtSchools.some((school) => Number(school.id) === Number(schoolId)));
@@ -180,6 +180,7 @@ export default function DistrictManagerPage() {
 
   const schoolCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.level === 'school'), [districtCompetitions]);
   const districtLevelCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.level === 'district'), [districtCompetitions]);
+  const calendarCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.status !== 'cancelled' && /^\d{4}-\d{2}-\d{2}$/.test(competition.start_date || '')), [districtCompetitions]);
   const relevantAnnouncements = useMemo(() => announcements.filter((announcement) => {
     if (!announcement.is_active || (announcement.expires_at && new Date(announcement.expires_at) < new Date())) return false;
     if (announcement.scope === 'national') return true;
@@ -235,12 +236,11 @@ export default function DistrictManagerPage() {
 
   const competitionDates = useMemo(() => {
     const dates = new Set();
-    districtCompetitions.forEach((competition) => {
-      if (!competition.start_date) return;
+    calendarCompetitions.forEach((competition) => {
       dates.add(competition.start_date);
     });
     return dates;
-  }, [districtCompetitions]);
+  }, [calendarCompetitions]);
 
   const calendarDays = useMemo(() => {
     const year = calendarDate.getFullYear();
@@ -250,8 +250,7 @@ export default function DistrictManagerPage() {
     return { monthLabel: calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), firstDay, daysInMonth, year, month };
   }, [calendarDate]);
 
-  const calendarEvents = useMemo(() => districtCompetitions
-    .filter((competition) => competition.start_date)
+  const calendarEvents = useMemo(() => calendarCompetitions
     .filter((competition) => {
       const start = new Date(`${competition.start_date}T00:00:00`);
       const end = competition.end_date ? new Date(`${competition.end_date}T00:00:00`) : start;
@@ -259,7 +258,7 @@ export default function DistrictManagerPage() {
         && start <= new Date(calendarDays.year, calendarDays.month + 1, 0)
         && end >= new Date(calendarDays.year, calendarDays.month, 1);
     })
-    .sort((first, second) => first.start_date.localeCompare(second.start_date)), [calendarDays, districtCompetitions]);
+    .sort((first, second) => first.start_date.localeCompare(second.start_date)), [calendarDays, calendarCompetitions]);
 
   const moveCalendarMonth = (offset) => {
     setCalendarDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
