@@ -214,6 +214,12 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
                 raise ValidationError({'school': 'Your account is not assigned to a school.'})
             serializer.save(scope='school', school_id=user.school_id, is_active=True)
             return
+        if user.role == 'district_manager':
+            if not user.district_id:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'district': 'Your account is not assigned to a district.'})
+            serializer.save(scope='district', district_id=user.district_id, school=None, is_active=True)
+            return
         serializer.save()
 
     def perform_update(self, serializer):
@@ -221,7 +227,21 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         if user.role == 'sport_teacher':
             serializer.save(scope='school', school_id=user.school_id, is_active=True)
             return
+        if user.role == 'district_manager':
+            announcement = self.get_object()
+            if announcement.scope != 'district' or announcement.district_id != user.district_id:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('You can edit only your district announcements.')
+            serializer.save(scope='district', district_id=user.district_id, school=None)
+            return
         serializer.save()
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        if user.role == 'district_manager' and (instance.scope != 'district' or instance.district_id != user.district_id):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('You can delete only your district announcements.')
+        super().perform_destroy(instance)
 
 
 class CountryClubViewSet(viewsets.ModelViewSet):

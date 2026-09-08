@@ -821,6 +821,98 @@
   resize: vertical;
 }
 
+.district-announcements-page {
+  width: min(100%, 1100px);
+  margin: 0 auto;
+}
+
+.district-announcements-card {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.district-announcements-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.district-announcements-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+}
+
+.district-announcements-header p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.district-announcements-list {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.district-announcement-item {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.district-announcement-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.district-announcement-item-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.district-announcement-item-heading > span {
+  flex-shrink: 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.district-announcement-title {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0e1db6;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.district-announcement-title:hover,
+.district-announcement-title:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.district-announcement-item p {
+  margin: 8px 0 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.district-announcement-drawer-form {
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+
 @media (max-width: 980px) {
   .district-manager-content {
     width: 100%;

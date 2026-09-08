@@ -41,6 +41,9 @@ export default function DistrictManagerPage() {
   const [selectedSchoolStudents, setSelectedSchoolStudents] = useState([]);
   const [selectedResultStudents, setSelectedResultStudents] = useState([]);
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', expires_at: '' });
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [announcementDrawerOpen, setAnnouncementDrawerOpen] = useState(false);
+  const [announcementSubmitting, setAnnouncementSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedPromotionStudents, setSelectedPromotionStudents] = useState([]);
   const [activeMenu, setActiveMenu] = useState('home');
@@ -183,6 +186,9 @@ export default function DistrictManagerPage() {
     if (announcement.scope === 'district') return Number(announcement.district) === visibleDistrictId;
     return Number(announcement.district) === visibleDistrictId || Number(announcement.region) === Number(allDistricts.find((district) => Number(district.id) === visibleDistrictId)?.region);
   }), [allDistricts, announcements, visibleDistrictId]);
+  const higherLevelAnnouncements = useMemo(() => relevantAnnouncements.filter((announcement) => ['national', 'zone', 'region'].includes(announcement.scope)), [relevantAnnouncements]);
+  const lowerLevelAnnouncements = useMemo(() => relevantAnnouncements.filter((announcement) => announcement.scope === 'district' && Number(announcement.district) === visibleDistrictId), [relevantAnnouncements, visibleDistrictId]);
+  const homeAnnouncements = useMemo(() => relevantAnnouncements.filter((announcement) => ['national', 'zone', 'region', 'district'].includes(announcement.scope)), [relevantAnnouncements]);
   const pendingPromotionStudents = useMemo(() => {
     const schoolCompetitionIds = new Set(schoolCompetitions.map((competition) => Number(competition.id)));
     const studentMap = new Map(districtStudents.map((student) => [Number(student.id), student]));
@@ -262,6 +268,8 @@ export default function DistrictManagerPage() {
   const goToCurrentMonth = () => setCalendarDate(new Date());
 
   const handleDeleteAnnouncement = async (announcementId) => {
+    const announcement = announcements.find((item) => Number(item.id) === Number(announcementId));
+    if (announcement?.scope !== 'district') return;
     try {
       await apiService.deleteAnnouncement(announcementId);
       setAnnouncements((items) => items.filter((item) => item.id !== announcementId));
@@ -433,22 +441,57 @@ export default function DistrictManagerPage() {
 
   const handleCreateAnnouncement = async (event) => {
     event.preventDefault();
-    setSubmitting(true);
+    setAnnouncementSubmitting(true);
     try {
-      await apiService.createAnnouncement({
+      const announcementData = {
         title: announcementForm.title.trim(),
         content: announcementForm.content.trim(),
         scope: 'district',
         district: visibleDistrictId,
         expires_at: announcementForm.expires_at || null,
         is_active: true,
-      });
+      };
+      if (selectedAnnouncement) {
+        await apiService.updateAnnouncement(selectedAnnouncement.id, announcementData);
+      } else {
+        await apiService.createAnnouncement(announcementData);
+      }
       setAnnouncementForm({ title: '', content: '', expires_at: '' });
-      refreshData();
+      setSelectedAnnouncement(null);
+      setAnnouncementDrawerOpen(false);
+      const announcementsRes = await apiService.getAnnouncements({ is_active: true });
+      setAnnouncements(announcementsRes.data.results || []);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create announcement');
     } finally {
-      setSubmitting(false);
+      setAnnouncementSubmitting(false);
+    }
+  };
+
+  const openAnnouncementEditor = (announcement = null) => {
+    if (announcement && announcement.scope !== 'district') return;
+    setSelectedAnnouncement(announcement);
+    setAnnouncementForm({
+      title: announcement?.title || '',
+      content: announcement?.content || '',
+      expires_at: announcement?.expires_at ? announcement.expires_at.slice(0, 10) : '',
+    });
+    setAnnouncementDrawerOpen(true);
+  };
+
+  const handleDeleteDistrictAnnouncement = async () => {
+    if (!selectedAnnouncement || selectedAnnouncement.scope !== 'district' || !window.confirm('Delete this announcement?')) return;
+    setAnnouncementSubmitting(true);
+    try {
+      await apiService.deleteAnnouncement(selectedAnnouncement.id);
+      setAnnouncements((items) => items.filter((item) => item.id !== selectedAnnouncement.id));
+      setSelectedAnnouncement(null);
+      setAnnouncementDrawerOpen(false);
+      setAnnouncementForm({ title: '', content: '', expires_at: '' });
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete announcement');
+    } finally {
+      setAnnouncementSubmitting(false);
     }
   };
 
@@ -465,8 +508,7 @@ export default function DistrictManagerPage() {
 
         <section className="district-home-card">
           <div className="district-card-heading"><div><h2>Recent announcements</h2><p>Publish or remove district updates</p></div><button type="button" className="district-text-button" onClick={() => setActiveMenu('announcements')}>View all</button></div>
-          <div className="recent-announcements">{relevantAnnouncements.slice(0, 3).map((announcement) => <div className="recent-announcement-row" key={announcement.id}><div><strong>{announcement.title}</strong><small>{announcement.content || 'No details available.'}</small></div><button type="button" className="district-icon-button" onClick={() => handleDeleteAnnouncement(announcement.id)} title="Delete announcement" aria-label={`Delete ${announcement.title}`}>×</button></div>)}{!relevantAnnouncements.length && <p className="district-empty-state">No active announcements yet.</p>}</div>
-          <button type="button" className="district-primary-button" onClick={() => setActiveMenu('announcements')}>Publish announcement</button>
+          <div className="recent-announcements">{homeAnnouncements.slice(0, 3).map((announcement) => <div className="recent-announcement-row" key={announcement.id}><div><strong>{announcement.title}</strong><small>{announcement.content || 'No details available.'}</small></div></div>)}{!homeAnnouncements.length && <p className="district-empty-state">No active announcements yet.</p>}</div>
         </section>
 
         <section className="district-home-card">
@@ -584,37 +626,35 @@ export default function DistrictManagerPage() {
   };
 
   const renderAnnouncementsView = () => (
-    <div className="cards-container">
-      <section className="admin-section">
-        <div className="section-header">
-          <h2>Announcements</h2>
-          <p>District updates and notices</p>
+    <div className="district-announcements-page">
+      <section className="district-announcements-card">
+        <div className="district-announcements-header">
+          <div><h2>Higher-level announcements ({higherLevelAnnouncements.length})</h2><p>Read-only announcements from national, zone, and region leadership.</p></div>
         </div>
+        <div className="district-announcements-list">
+          {higherLevelAnnouncements.map((announcement) => (
+            <article key={announcement.id} className="district-announcement-item">
+              <div className="district-announcement-item-heading"><strong className="district-announcement-readonly-title">{announcement.title}</strong><span>Read only · {announcement.scope} · {announcement.published_at || announcement.created_at ? new Date(announcement.published_at || announcement.created_at).toLocaleDateString('en-GB') : 'Date unavailable'}</span></div>
+              <p>{announcement.content || 'No details available.'}</p>
+            </article>
+          ))}
+          {!higherLevelAnnouncements.length && <p className="district-empty-state">No higher-level announcements available.</p>}
+        </div>
+      </section>
 
-        <form className="district-announcement-form" onSubmit={handleCreateAnnouncement}>
-          <input required placeholder="Announcement title" value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} />
-          <textarea required placeholder="Write the district announcement" value={announcementForm.content} onChange={(event) => setAnnouncementForm({ ...announcementForm, content: event.target.value })} rows="4" />
-          <label>Expires on (optional)<input type="date" value={announcementForm.expires_at} onChange={(event) => setAnnouncementForm({ ...announcementForm, expires_at: event.target.value })} /></label>
-          <button type="submit" className="btn-primary" disabled={submitting}>Publish announcement</button>
-        </form>
-        <div className="reports-grid">
-          {relevantAnnouncements.length > 0 ? (
-            relevantAnnouncements.map((announcement) => (
-              <div className="report-card" key={announcement.id}>
-                <h4>{announcement.title}</h4>
-                <p>{announcement.content || 'No details available.'}</p>
-                <ul className="stats-list">
-                  <li><span>Scope:</span> {announcement.scope}</li>
-                  <li><span>Status:</span> {announcement.is_active ? 'Active' : 'Inactive'}</li>
-                </ul>
-              </div>
-            ))
-          ) : (
-            <div className="report-card">
-              <h4>No announcements</h4>
-              <p>There are no active announcements for this district yet.</p>
-            </div>
-          )}
+      <section className="district-announcements-card">
+        <div className="district-announcements-header">
+          <div><h2>District announcements ({lowerLevelAnnouncements.length})</h2><p>Announcements published by {districtName} for the district audience.</p></div>
+          <button type="button" className="district-primary-button district-card-action" onClick={() => openAnnouncementEditor()}>Add announcement</button>
+        </div>
+        <div className="district-announcements-list">
+          {lowerLevelAnnouncements.map((announcement) => (
+            <article key={announcement.id} className="district-announcement-item">
+              <div className="district-announcement-item-heading"><button type="button" className="district-announcement-title" onClick={() => openAnnouncementEditor(announcement)}>{announcement.title}</button><span>District · {announcement.published_at || announcement.created_at ? new Date(announcement.published_at || announcement.created_at).toLocaleDateString('en-GB') : 'Date unavailable'}</span></div>
+              <p>{announcement.content || 'No details available.'}</p>
+            </article>
+          ))}
+          {!lowerLevelAnnouncements.length && <p className="district-empty-state">No district announcements yet.</p>}
         </div>
       </section>
     </div>
@@ -717,6 +757,26 @@ export default function DistrictManagerPage() {
               <label>Description<textarea value={competitionForm.description} onChange={(event) => setCompetitionForm({ ...competitionForm, description: event.target.value })} rows="5" /></label>
               <div className="district-competition-date-grid"><label>Start date *<input type="date" value={competitionForm.start_date} onChange={(event) => setCompetitionForm({ ...competitionForm, start_date: event.target.value })} required /></label><label>End date<input type="date" value={competitionForm.end_date} onChange={(event) => setCompetitionForm({ ...competitionForm, end_date: event.target.value })} min={competitionForm.start_date || undefined} /></label></div>
               <div className="district-competition-form-actions"><label>Status<select value={competitionForm.status} onChange={(event) => setCompetitionForm({ ...competitionForm, status: event.target.value })}><option value="draft">Draft</option><option value="pending_approval">Pending approval</option><option value="approved">Approved</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>{selectedCompetition && <button type="button" className="district-competition-delete" onClick={handleDeleteCompetition} disabled={competitionSubmitting}>Delete</button>}<button type="submit" className="district-primary-button" disabled={competitionSubmitting}>{competitionSubmitting ? 'Saving...' : selectedCompetition ? 'Save changes' : 'Create competition'}</button></div>
+            </form>
+          </aside>
+        </>
+      )}
+      {announcementDrawerOpen && (
+        <>
+          <button type="button" className="sport-teacher-drawer-backdrop sport-teacher-registration-backdrop" aria-label="Close announcement form" onClick={() => setAnnouncementDrawerOpen(false)} />
+          <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer district-competition-drawer" style={{ '--drawer-width': `${competitionDrawerWidth}px` }} aria-label="District announcement form">
+            <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingCompetitionDrawer(true); }} role="separator" aria-label="Resize announcement panel" />
+            <div className="sport-teacher-search-drawer-header"><h2>{selectedAnnouncement ? 'Edit announcement' : 'New announcement'}</h2><button type="button" onClick={() => setAnnouncementDrawerOpen(false)} aria-label="Close announcement form">&times;</button></div>
+            <form onSubmit={handleCreateAnnouncement}>
+              <div className="sport-teacher-announcement-form district-announcement-drawer-form">
+                <label>Title *<input type="text" value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} maxLength="200" required /></label>
+                <label>Message *<textarea value={announcementForm.content} onChange={(event) => setAnnouncementForm({ ...announcementForm, content: event.target.value })} rows="7" required /></label>
+                <div className="sport-teacher-announcement-form-actions">
+                  <label>Expires on (optional)<input type="date" value={announcementForm.expires_at} onChange={(event) => setAnnouncementForm({ ...announcementForm, expires_at: event.target.value })} /></label>
+                  {selectedAnnouncement && <button type="button" className="sport-teacher-announcement-delete" onClick={handleDeleteDistrictAnnouncement} disabled={announcementSubmitting}>Delete</button>}
+                  <button type="submit" disabled={announcementSubmitting}>{announcementSubmitting ? 'Publishing...' : selectedAnnouncement ? 'Save changes' : 'Publish'}</button>
+                </div>
+              </div>
             </form>
           </aside>
         </>
