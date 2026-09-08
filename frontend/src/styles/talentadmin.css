@@ -156,6 +156,57 @@
   background: #fef2f2;
 }
 
+.talent-admin-floating-field {
+  position: relative;
+  display: block;
+  margin-top: 6px;
+}
+
+.talent-admin-floating-field input,
+.talent-admin-floating-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 12px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+}
+
+.talent-admin-floating-field textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.talent-admin-floating-field span {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 0 3px;
+  background: #fff;
+  color: #64748b;
+  font-size: 13px;
+  pointer-events: none;
+  transition: transform 0.15s ease, color 0.15s ease, font-size 0.15s ease;
+}
+
+.talent-admin-floating-field input:focus,
+.talent-admin-floating-field textarea:focus {
+  border-color: #0e1db6;
+  outline: 2px solid rgba(14, 29, 182, 0.12);
+}
+
+.talent-admin-floating-field input:focus + span,
+.talent-admin-floating-field textarea:focus + span,
+.talent-admin-floating-field input:not(:placeholder-shown) + span,
+.talent-admin-floating-field textarea:not(:placeholder-shown) + span {
+  top: 0;
+  color: #0e1db6;
+  font-size: 11px;
+  transform: translateY(-50%);
+}
+
 @media (max-width: 640px) {
   .talent-admin-table-header {
     display: grid;
