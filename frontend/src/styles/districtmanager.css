@@ -765,6 +765,34 @@
   outline: 2px solid rgba(14, 29, 182, 0.15);
 }
 
+.district-result-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.district-promoted-label {
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.district-demote-button {
+  padding: 6px 9px;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  background: #fff;
+  color: #b91c1c;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.district-demote-button:hover {
+  background: #fef2f2;
+}
+
 .district-section-heading h2 {
   margin-bottom: 0.35rem;
 }

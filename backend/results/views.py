@@ -94,6 +94,36 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
         serializer.save(promoted_by=self.request.user)
 
     @action(detail=False, methods=['post'], permission_classes=[AuthenticatedReadOnly])
+    def demote(self, request):
+        if request.user.role != 'district_manager' or not request.user.district_id:
+            return Response({'error': 'Only a district manager can remove a district promotion.'}, status=status.HTTP_403_FORBIDDEN)
+        target_result_id = request.data.get('target_result_id')
+        target_detail_id = request.data.get('target_detail_id')
+        if not target_result_id or not target_detail_id:
+            return Response({'error': 'target_result_id and target_detail_id are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        target_detail = ResultDetail.objects.select_related('result__participation__student').filter(
+            id=target_detail_id,
+            result_id=target_result_id,
+            result__participation__competition__level='district',
+            result__participation__student__school__district_id=request.user.district_id,
+        ).first()
+        if not target_detail:
+            return Response({'error': 'District talent result not found.'}, status=status.HTTP_404_NOT_FOUND)
+        promotion = ResultPromotion.objects.filter(
+            to_level='district',
+            result_detail__talent_id=target_detail.talent_id,
+            result_detail__result__participation__student_id=target_detail.result.participation.student_id,
+            result_detail__result__participation__student__school__district_id=request.user.district_id,
+        ).first()
+        with transaction.atomic():
+            if promotion:
+                promotion.result_detail.promoted_to = ''
+                promotion.result_detail.save(update_fields=['promoted_to'])
+                promotion.delete()
+            target_detail.delete()
+        return Response({'demoted': True, 'target_detail_id': int(target_detail_id)})
+
+    @action(detail=False, methods=['post'], permission_classes=[AuthenticatedReadOnly])
     def promote(self, request):
         """Promote students to next competition level."""
         detail_ids = request.data.get('result_detail_ids', [])
@@ -303,4 +333,13 @@ class SchoolCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelView
         submission.submitted_by = request.user
         submission.submitted_at = timezone.now()
         submission.save(update_fields=['status', 'submitted_by', 'submitted_at'])
+        return Response(self.get_serializer(submission).data)
+
+    @action(detail=True, methods=['post'])
+    def reopen(self, request, pk=None):
+        submission = self.get_object()
+        if request.user.role != 'district_manager' or submission.school.district_id != request.user.district_id:
+            return Response({'detail': 'Only the assigned district manager can reopen this submission.'}, status=status.HTTP_403_FORBIDDEN)
+        submission.status = 'draft'
+        submission.save(update_fields=['status'])
         return Response(self.get_serializer(submission).data)

@@ -1,6 +1,7 @@
 export const getSchoolResultSubmissions = (params = {}) => api.get('/school-result-submissions/', { params });
 export const createSchoolResultSubmission = (data) => api.post('/school-result-submissions/', data);
 export const submitSchoolResultSubmission = (id) => api.post(`/school-result-submissions/${id}/submit/`);
+export const reopenSchoolResultSubmission = (id) => api.post(`/school-result-submissions/${id}/reopen/`);
 import axios from 'axios';
 
 const API_HOST = import.meta.env.VITE_API_URL
@@ -232,6 +233,7 @@ export const getResultById = (id) => api.get(`/results/${id}/`);
 export const createResult = (data) => api.post('/results/', data);
 export const promoteStudents = (data) => api.post('/result-promotions/promote/', data);
 export const getResultPromotions = (params = {}) => api.get('/result-promotions/', { params });
+export const demoteResultTalent = (data) => api.post('/result-promotions/demote/', data);
 
 export const getResultDetails = (params = {}) => api.get('/result-details/', { params });
 export const getAllResultDetails = (params = {}) => getAllRecords('/result-details/', params);

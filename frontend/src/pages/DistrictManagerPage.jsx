@@ -187,9 +187,10 @@ export default function DistrictManagerPage() {
   const relevantAnnouncements = useMemo(() => announcements.filter((announcement) => {
     if (!announcement.is_active || (announcement.expires_at && new Date(announcement.expires_at) < new Date())) return false;
     if (announcement.scope === 'national') return true;
+    if (announcement.scope === 'zone') return Number(announcement.zone) === Number(currentUser?.zone);
     if (announcement.scope === 'district') return Number(announcement.district) === visibleDistrictId;
     return Number(announcement.district) === visibleDistrictId || Number(announcement.region) === Number(allDistricts.find((district) => Number(district.id) === visibleDistrictId)?.region);
-  }), [allDistricts, announcements, visibleDistrictId]);
+  }), [allDistricts, announcements, currentUser?.zone, visibleDistrictId]);
   const higherLevelAnnouncements = useMemo(() => relevantAnnouncements.filter((announcement) => ['national', 'zone', 'region'].includes(announcement.scope)), [relevantAnnouncements]);
   const lowerLevelAnnouncements = useMemo(() => relevantAnnouncements.filter((announcement) => announcement.scope === 'district' && Number(announcement.district) === visibleDistrictId), [relevantAnnouncements, visibleDistrictId]);
   const homeAnnouncements = useMemo(() => relevantAnnouncements.filter((announcement) => ['national', 'zone', 'region', 'district'].includes(announcement.scope)), [relevantAnnouncements]);
@@ -445,6 +446,27 @@ export default function DistrictManagerPage() {
     }
   };
 
+  const handleDemoteTalent = async (resultId, detailId) => {
+    if (!window.confirm('Remove this talent from district level?')) return;
+    try {
+      await apiService.demoteResultTalent({ target_result_id: resultId, target_detail_id: detailId });
+      const [resultsRes, promotionsRes] = await Promise.all([apiService.getResults(), apiService.getResultPromotions()]);
+      setResults(resultsRes.data.results || []);
+      setPromotions(promotionsRes.data.results || []);
+    } catch (err) {
+      setError(err.response?.data?.detail || err.response?.data?.error || 'Failed to remove district promotion');
+    }
+  };
+
+  const handleReopenSchoolSubmission = async (submissionId) => {
+    try {
+      const response = await apiService.reopenSchoolResultSubmission(submissionId);
+      setSchoolSubmissions((items) => items.map((item) => item.id === submissionId ? response.data : item));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to reopen school results');
+    }
+  };
+
   const getStudentClassName = (student) => {
     const educationLevelId = student?.education_level?.id ?? student?.education_level;
     return educationLevels.find((level) => Number(level.id) === Number(educationLevelId))?.name || '—';
@@ -563,9 +585,10 @@ export default function DistrictManagerPage() {
             const student = districtStudents.find((item) => Number(item.id) === Number(participation.student));
             const school = districtSchools.find((item) => Number(item.id) === Number(student?.school?.id ?? student?.school));
             const details = result?.details || [];
-            return details.length
-              ? details.map((detail) => ({ participation, result, detail, student, school, isEligibleForPromotion: detail.percentage_score !== null && detail.percentage_score !== undefined && Number(detail.percentage_score) >= 50 }))
-              : [{ participation, result, detail: null, student, school, isEligibleForPromotion: false }];
+            const promotedDetailIds = new Set(promotions.filter((promotion) => promotion.to_level === 'district' && promotion.result_detail).map((promotion) => Number(promotion.result_detail)));
+            return details
+              .filter((detail) => detail.percentage_score !== null && detail.percentage_score !== undefined && Number(detail.percentage_score) >= 50)
+              .map((detail) => ({ participation, result, detail, student, school, isPromoted: promotedDetailIds.has(Number(detail.id)), isEligibleForPromotion: !promotedDetailIds.has(Number(detail.id)) && Number(detail.percentage_score) >= 50 }));
           });
         return { ...competition, entries };
       });
@@ -579,13 +602,13 @@ export default function DistrictManagerPage() {
           {submittedSchoolCompetitions.map((competition) => (
             <section className="district-result-card" key={competition.id}>
               <div className="district-result-card-header">
-                <div><h3>{competition.name}</h3><p>Submitted school-level results.</p></div>
-                <button type="button" className="btn-primary" onClick={() => handlePromoteStudents(competition.id, selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))))} disabled={submitting || !selectedPromotionStudents.length}>{submitting ? 'Processing...' : `Promote selected (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}</button>
+                <div><h3>{competition.name}</h3><p>Submitted school-level results. Only scores of 50% or higher are shown.</p></div>
+                <div className="district-result-header-actions"><button type="button" className="btn-primary" onClick={() => handlePromoteStudents(competition.id, selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))))} disabled={submitting || !selectedPromotionStudents.length}>{submitting ? 'Processing...' : `Promote selected (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}</button>{schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id))?.status === 'submitted' && <button type="button" className="district-text-button" onClick={() => handleReopenSchoolSubmission(schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id)).id)}>Set draft</button>}</div>
               </div>
               <div className="district-result-table-wrap">
                 <table className="data-table"><thead><tr><th>Select</th><th>Student</th><th>Talent</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
-                  {competition.entries.map(({ participation, detail, student, school, isEligibleForPromotion }) => (
-                    <tr key={`${participation.id}-${detail?.id || 'overall'}`}><td><input type="checkbox" checked={isEligibleForPromotion && selectedPromotionStudents.includes(Number(detail?.id))} disabled={!isEligibleForPromotion} onChange={(event) => setSelectedPromotionStudents((current) => event.target.checked ? [...new Set([...current, Number(detail.id)])] : current.filter((id) => id !== Number(detail.id)))} aria-label={isEligibleForPromotion ? `Select ${student?.first_name || 'student'} ${detail?.talent_name || 'talent'} for promotion` : `${student?.first_name || 'Student'} is not eligible for promotion`} /></td><td>{student ? `${student.first_name} ${student.last_name}` : 'Student'}</td><td>{detail?.talent_name || 'Overall result'}</td><td>{getStudentClassName(student)}</td><td>{school?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(student?.id) && membership.is_active)?.club_name || '—'}</td><td>{detail?.percentage_score ?? '—'}</td><td>{detail?.percentage_score === null || detail?.percentage_score === undefined ? '—' : detail.percentage_score >= 90 ? 'A+' : detail.percentage_score >= 75 ? 'A' : detail.percentage_score >= 60 ? 'B+' : detail.percentage_score >= 50 ? 'B' : detail.percentage_score >= 40 ? 'C' : detail.percentage_score >= 30 ? 'D' : detail.percentage_score >= 20 ? 'E' : 'F'}</td></tr>
+                  {competition.entries.map(({ participation, detail, student, school, isPromoted, isEligibleForPromotion }) => (
+                    <tr key={`${participation.id}-${detail.id}`}><td>{isPromoted ? <span className="district-promoted-label">Promoted</span> : <input type="checkbox" checked={isEligibleForPromotion && selectedPromotionStudents.includes(Number(detail.id))} disabled={!isEligibleForPromotion} onChange={(event) => setSelectedPromotionStudents((current) => event.target.checked ? [...new Set([...current, Number(detail.id)])] : current.filter((id) => id !== Number(detail.id)))} aria-label={`Select ${student?.first_name || 'student'} ${detail.talent_name || 'talent'} for promotion`} />}</td><td>{student ? `${student.first_name} ${student.last_name}` : 'Student'}</td><td>{detail.talent_name}</td><td>{getStudentClassName(student)}</td><td>{school?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(student?.id) && membership.is_active)?.club_name || '—'}</td><td>{detail.percentage_score}</td><td>{detail.percentage_score >= 90 ? 'A+' : detail.percentage_score >= 75 ? 'A' : detail.percentage_score >= 60 ? 'B+' : detail.percentage_score >= 50 ? 'B' : detail.percentage_score >= 40 ? 'C' : detail.percentage_score >= 30 ? 'D' : detail.percentage_score >= 20 ? 'E' : 'F'}</td></tr>
                   ))}
                   {!competition.entries.length && <tr><td colSpan="8" className="district-result-empty">No submitted results available yet.</td></tr>}
                 </tbody></table>
@@ -622,11 +645,11 @@ export default function DistrictManagerPage() {
               <span className="district-result-level">District level</span>
             </div>
             <div className="district-result-table-wrap">
-                <table className="data-table"><thead><tr><th>Student</th><th>Talent</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
+                <table className="data-table"><thead><tr><th>Student</th><th>Talent</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th><th>Action</th></tr></thead><tbody>
                 {competition.entries.map((result) => (
-                  <tr key={`${result.id}-${result.detail?.id || 'overall'}`}><td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td><td>{result.detail?.talent_name || 'Overall result'}</td><td>{getStudentClassName(result.student)}</td><td>{districtSchools.find((school) => Number(school.id) === Number(result.student?.school?.id ?? result.student?.school))?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(result.student?.id) && membership.is_active)?.club_name || '—'}</td><td><input className="district-score-input" type="number" min="0" max="100" defaultValue={result.detail ? (result.detail.percentage_score ?? '') : (result.score ?? '')} onBlur={(event) => handleSaveDistrictScore(result.id, result.detail?.id, event.target.value)} aria-label={`Score for ${result.student_name || 'student'} ${result.detail?.talent_name || 'result'}`} /></td><td>{result.detail ? (result.detail.percentage_score === null || result.detail.percentage_score === undefined ? 'Not recorded' : result.detail.percentage_score >= 90 ? 'A+' : result.detail.percentage_score >= 75 ? 'A' : result.detail.percentage_score >= 60 ? 'B+' : result.detail.percentage_score >= 50 ? 'B' : result.detail.percentage_score >= 40 ? 'C' : result.detail.percentage_score >= 30 ? 'D' : result.detail.percentage_score >= 20 ? 'E' : 'F') : result.grade || 'Not recorded'}</td></tr>
+                  <tr key={`${result.id}-${result.detail?.id || 'overall'}`}><td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td><td>{result.detail?.talent_name || 'Overall result'}</td><td>{getStudentClassName(result.student)}</td><td>{districtSchools.find((school) => Number(school.id) === Number(result.student?.school?.id ?? result.student?.school))?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(result.student?.id) && membership.is_active)?.club_name || '—'}</td><td><input className="district-score-input" type="number" min="0" max="100" defaultValue={result.detail ? (result.detail.percentage_score ?? '') : (result.score ?? '')} onBlur={(event) => handleSaveDistrictScore(result.id, result.detail?.id, event.target.value)} aria-label={`Score for ${result.student_name || 'student'} ${result.detail?.talent_name || 'result'}`} /></td><td>{result.detail ? (result.detail.percentage_score === null || result.detail.percentage_score === undefined ? 'Not recorded' : result.detail.percentage_score >= 90 ? 'A+' : result.detail.percentage_score >= 75 ? 'A' : result.detail.percentage_score >= 60 ? 'B+' : result.detail.percentage_score >= 50 ? 'B' : result.detail.percentage_score >= 40 ? 'C' : result.detail.percentage_score >= 30 ? 'D' : result.detail.percentage_score >= 20 ? 'E' : 'F') : result.grade || 'Not recorded'}</td><td>{result.detail && <button type="button" className="district-demote-button" onClick={() => handleDemoteTalent(result.id, result.detail.id)}>De-promote</button>}</td></tr>
                 ))}
-                {!competition.entries.length && <tr><td colSpan="7" className="district-result-empty">No district results recorded yet.</td></tr>}
+                {!competition.entries.length && <tr><td colSpan="8" className="district-result-empty">No district results recorded yet.</td></tr>}
               </tbody></table>
             </div>
           </section>

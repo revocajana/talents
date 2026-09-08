@@ -200,6 +200,20 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
 
+    def validate(self, attrs):
+        scope = attrs.get('scope', getattr(self.instance, 'scope', None))
+        target_fields = {
+            'zone': 'zone',
+            'region': 'region',
+            'district': 'district',
+            'school': 'school',
+        }
+        target_field = target_fields.get(scope)
+        target = attrs[target_field] if target_field in attrs else getattr(self.instance, f'{target_field}_id', None)
+        if target_field and not target:
+            raise serializers.ValidationError({target_field: f'{target_field.title()} is required for {scope} announcements.'})
+        return attrs
+
 
 class CountryClubSerializer(serializers.ModelSerializer):
     class Meta:
