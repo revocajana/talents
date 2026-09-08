@@ -50,7 +50,19 @@ export default function TalentAdminPage() {
   const getHeadTeacher = (schoolId) => headTeachers.find((user) => Number(user.school) === Number(schoolId));
   const getAddress = (school) => [getName(regions, school.region), getName(districts, school.district), getName(wards, school.ward)].filter((part) => part !== '—').join(' • ') || '—';
 
-  const openSchoolEditor = (school = null) => { setSelectedSchool(school); setSchoolForm(school ? { ...emptySchool, ...school } : emptySchool); setSchoolDrawerOpen(true); };
+  const openSchoolEditor = (school = null) => {
+    setSelectedSchool(school);
+    setSchoolForm(school ? {
+      ...emptySchool,
+      ...school,
+      country: String(school.country || ''),
+      zone: String(school.zone || ''),
+      region: String(school.region || ''),
+      district: String(school.district || ''),
+      ward: String(school.ward || ''),
+    } : emptySchool);
+    setSchoolDrawerOpen(true);
+  };
   const closeSchoolEditor = () => { setSchoolDrawerOpen(false); setSelectedSchool(null); setSchoolForm(emptySchool); };
   const updateField = (field, value) => setSchoolForm((current) => {
     const next = { ...current, [field]: value };
