@@ -128,6 +128,7 @@ export const getAllSchools = (params = {}) => getAllRecords('/schools/', params)
 export const getRegistrationLocations = () => api.get('/registration-locations/');
 export const createSchool = (data) => api.post('/schools/', data);
 export const updateSchool = (id, data) => api.put(`/schools/${id}/`, data);
+export const patchSchool = (id, data) => api.patch(`/schools/${id}/`, data);
 export const deleteSchool = (id) => api.delete(`/schools/${id}/`);
 
 // ==================== USER MANAGEMENT ====================

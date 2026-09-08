@@ -83,11 +83,16 @@ class SchoolViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     public_registration = True
     queryset = School.objects.filter(is_approved=True).select_related('country', 'zone', 'region', 'district', 'ward')
     serializer_class = SchoolSerializer
-    permission_classes = [PublicSchoolRegistrationPermission]
+    permission_classes = [ConfigurationPermission]
     scope_paths = {
         'country': 'country_id', 'zone': 'zone_id', 'region': 'region_id',
         'district': 'district_id', 'ward': 'ward_id', 'school': 'id',
     }
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [PublicSchoolRegistrationPermission()]
+        return [ConfigurationPermission()]
 
     def get_queryset(self):
         qs = super().get_queryset()
