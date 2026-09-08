@@ -38,6 +38,7 @@ export default function DistrictManagerPage() {
   const [results, setResults] = useState([]);
   const [participations, setParticipations] = useState([]);
   const [promotions, setPromotions] = useState([]);
+  const [resultDetails, setResultDetails] = useState([]);
   const [selectedSchoolStudents, setSelectedSchoolStudents] = useState([]);
   const [selectedResultStudents, setSelectedResultStudents] = useState([]);
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', expires_at: '' });
@@ -90,7 +91,7 @@ export default function DistrictManagerPage() {
         setLoading(true);
         setError(null);
 
-        const [userRes, districtsRes, schoolsRes, wardsRes, competitionsRes, studentsRes, talentsRes, clubMembershipsRes, educationLevelsRes, announcementsRes, resultsRes, participationsRes, promotionsRes, submissionsRes] = await Promise.all([
+        const [userRes, districtsRes, schoolsRes, wardsRes, competitionsRes, studentsRes, talentsRes, clubMembershipsRes, educationLevelsRes, announcementsRes, resultsRes, participationsRes, promotionsRes, resultDetailsRes, submissionsRes] = await Promise.all([
           apiService.getCurrentUser(),
           apiService.getDistricts(),
           apiService.getSchools(),
@@ -104,6 +105,7 @@ export default function DistrictManagerPage() {
           apiService.getResults(),
           apiService.getParticipations(),
           apiService.getResultPromotions(),
+          apiService.getAllResultDetails(),
           apiService.getSchoolResultSubmissions(),
         ]);
 
@@ -128,6 +130,7 @@ export default function DistrictManagerPage() {
         setResults(resultsRes.data.results || []);
         setParticipations(participationsRes.data.results || []);
         setPromotions(promotionsRes.data.results || []);
+        setResultDetails(resultDetailsRes.data.results || []);
         setSchoolSubmissions(submissionsRes.data.results || []);
 
         const defaultDistrict = userRes.data?.district || districtList[0]?.id || '';
@@ -190,6 +193,15 @@ export default function DistrictManagerPage() {
   const higherLevelAnnouncements = useMemo(() => relevantAnnouncements.filter((announcement) => ['national', 'zone', 'region'].includes(announcement.scope)), [relevantAnnouncements]);
   const lowerLevelAnnouncements = useMemo(() => relevantAnnouncements.filter((announcement) => announcement.scope === 'district' && Number(announcement.district) === visibleDistrictId), [relevantAnnouncements, visibleDistrictId]);
   const homeAnnouncements = useMemo(() => relevantAnnouncements.filter((announcement) => ['national', 'zone', 'region', 'district'].includes(announcement.scope)), [relevantAnnouncements]);
+  const promotedTalentIds = useMemo(() => {
+    const promotedDetailIds = new Set(promotions
+      .filter((promotion) => promotion.to_level === 'district' && promotion.result_detail)
+      .map((promotion) => Number(promotion.result_detail)));
+    return new Set(resultDetails
+      .filter((detail) => promotedDetailIds.has(Number(detail.id)))
+      .map((detail) => Number(detail.talent)));
+  }, [promotions, resultDetails]);
+  const promotedDistrictTalents = useMemo(() => districtTalents.filter((entry) => promotedTalentIds.has(Number(entry.id))), [districtTalents, promotedTalentIds]);
   const pendingPromotionStudents = useMemo(() => {
     const schoolCompetitionIds = new Set(schoolCompetitions.map((competition) => Number(competition.id)));
     const studentMap = new Map(districtStudents.map((student) => [Number(student.id), student]));
@@ -214,16 +226,16 @@ export default function DistrictManagerPage() {
 
   const talentParticipation = useMemo(() => {
     const counts = new Map();
-    districtTalents.forEach((entry) => {
+    promotedDistrictTalents.forEach((entry) => {
       const talentName = entry.talent_name || 'Other talent';
       counts.set(talentName, (counts.get(talentName) || 0) + 1);
     });
-    const total = districtTalents.length;
+    const total = promotedDistrictTalents.length;
     return [...counts.entries()]
       .sort(([, firstCount], [, secondCount]) => secondCount - firstCount)
       .slice(0, 5)
       .map(([name, count]) => ({ name, count, percentage: total ? Math.round((count / total) * 100) : 0 }));
-  }, [districtTalents]);
+  }, [promotedDistrictTalents]);
 
   const schoolRanking = useMemo(() => districtSchools.map((school) => {
     const schoolStudents = districtStudents.filter((student) => Number(student.school?.id ?? student.school) === Number(school.id));
@@ -498,10 +510,10 @@ export default function DistrictManagerPage() {
     <>
       <div className="district-home-grid">
         <section className="district-home-card talent-card">
-          <div className="district-card-heading"><div><h2>Talent participation</h2><p>Share of registered talent records</p></div><span className="district-card-kicker">{districtTalents.length} records</span></div>
+          <div className="district-card-heading"><div><h2>Talent participation</h2><p>Share of talents promoted to district level</p></div><span className="district-card-kicker">{promotedDistrictTalents.length} promoted</span></div>
           <div className="talent-chart-layout">
             <div className="talent-donut" style={{ background: `conic-gradient(${talentParticipation.map((item, index) => `${['#0e1db6', '#16a085', '#f59e0b', '#e05252', '#7c3aed'][index]} ${talentParticipation.slice(0, index).reduce((sum, entry) => sum + entry.percentage, 0)}% ${talentParticipation.slice(0, index + 1).reduce((sum, entry) => sum + entry.percentage, 0)}%`).join(', ') || '#e5e7eb 0 100%'}` }}><div /></div>
-            <div className="talent-legend">{talentParticipation.length ? talentParticipation.map((item, index) => <div className="talent-legend-row" key={item.name}><span className="legend-dot" style={{ background: ['#0e1db6', '#16a085', '#f59e0b', '#e05252', '#7c3aed'][index] }} /> <span>{item.name}</span><strong>{item.percentage}%</strong></div>) : <p>No talent records yet.</p>}</div>
+            <div className="talent-legend">{talentParticipation.length ? talentParticipation.map((item, index) => <div className="talent-legend-row" key={item.name}><span className="legend-dot" style={{ background: ['#0e1db6', '#16a085', '#f59e0b', '#e05252', '#7c3aed'][index] }} /> <span>{item.name}</span><strong>{item.percentage}%</strong></div>) : <p>No promoted talents yet.</p>}</div>
           </div>
         </section>
 
