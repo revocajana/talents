@@ -119,6 +119,7 @@ class User(AbstractUser):
         ("parent", "Parent"),
     ]
     role = models.CharField(max_length=30, choices=ROLE_CHOICES)
+    phone = models.CharField(max_length=20, blank=True, null=True)
     school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
     student = models.OneToOneField('students.Student', on_delete=models.SET_NULL, null=True, blank=True, related_name="user")
     country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True, related_name="scoped_users")

@@ -11,7 +11,7 @@ from .models import (
 )
 from .serializers import (
 	SchoolClubSerializer, StudentClubMembershipSerializer, StudentTalentSerializer,
-	EvaluationScoreSerializer,
+	EvaluationScoreSerializer, UserSerializer,
 )
 
 
@@ -167,6 +167,16 @@ class FoundationRulesTests(TestCase):
 		result.save()
 		result.refresh_from_db()
 		self.assertEqual(result.grade, 'A')
+
+	def test_user_serializer_exposes_phone_number(self):
+		user = User.objects.create_user(
+			username='phone-user',
+			password='secret123',
+			role='sport_teacher',
+			phone='+255712345678',
+		)
+		serialized = UserSerializer(user).data
+		self.assertEqual(serialized['phone'], '+255712345678')
 
 
 class UserScopeAdminTests(TestCase):

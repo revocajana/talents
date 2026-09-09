@@ -105,7 +105,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'password', 'first_name', 'last_name', 'email',
+            'id', 'username', 'password', 'first_name', 'last_name', 'email', 'phone',
             'role', 'school', 'school_name', 'student', 'country', 'zone', 'region', 'district', 'district_name', 'ward',
         ]
 
