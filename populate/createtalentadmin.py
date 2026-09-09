@@ -16,7 +16,7 @@ import django
 
 django.setup()
 
-from core.models import User
+from core.models import User # type: ignore
 
 
 USERNAME = 'talent.admin'
