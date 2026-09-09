@@ -64,14 +64,62 @@
   justify-content: flex-end;
 }
 
-.talent-admin-user-toolbar {
+.talent-admin-user-tools {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  gap: 12px;
+  width: min(100%, 1100px);
+  margin: 0 auto 12px;
+}
+
+.talent-admin-role-tabs-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #dbe4ee;
+  border-radius: 10px;
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.talent-admin-role-tabs {
+  display: flex;
+  align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 4px 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 8px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.talent-admin-role-tab {
+  flex: 0 0 auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 0;
+  background: #fff;
+  color: #334155;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.talent-admin-role-tab.is-active {
+  background: #0e1db6;
+  border-color: #0e1db6;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(14, 29, 182, 0.2);
+}
+
+.talent-admin-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .talent-admin-filter-field {
