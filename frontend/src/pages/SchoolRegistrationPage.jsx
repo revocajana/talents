@@ -13,6 +13,7 @@ const initialForm = {
   district: '',
   ward: '',
   phone: '',
+  physical_address: '',
   email: '',
 };
 
@@ -113,6 +114,7 @@ export default function SchoolRegistrationPage() {
         district: Number(form.district),
         ward: Number(form.ward),
         phone: form.phone,
+        physical_address: form.physical_address,
         email: form.email,
       });
       setSubmitted(true);
@@ -144,16 +146,17 @@ export default function SchoolRegistrationPage() {
           <form onSubmit={handleSubmit} className="registration-form">
             {loading ? <p>Loading locations...</p> : null}
             <div className="registration-grid">
-              <label>School name<input name="name" value={form.name} onChange={updateField} required /></label>
-              <label>Registry number<input name="registry_number" value={form.registry_number} onChange={updateField} required /></label>
+              <label>School name<input name="name" value={form.name} onChange={updateField} placeholder="e.g. Sengerema Secondary School" required /></label>
+              <label>Registry number<input name="registry_number" value={form.registry_number} onChange={updateField} placeholder="e.g. S2047" required /></label>
               <label>Ownership type<select name="ownership_type" value={form.ownership_type} onChange={updateField} required disabled={loading || !ownershipOptions.length}><option value="">Select ownership type</option>{ownershipOptions.map((option) => <option key={option.id} value={option.name}>{option.name}</option>)}</select></label>
               <label>Country<select name="country" value={form.country} onChange={updateField} required disabled={loading}><option value="">Select country</option>{countries.map((country) => <option key={country.id} value={country.id}>{country.name}</option>)}</select></label>
               <label>Zone<select name="zone" value={form.zone} onChange={updateField} required disabled={loading || !form.country}><option value="">Select zone</option>{countryZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}</select></label>
               <label>Region<select name="region" value={form.region} onChange={updateField} required disabled={!form.zone}><option value="">Select region</option>{zoneRegions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label>
               <label>District<select name="district" value={form.district} onChange={updateField} required disabled={!form.region}><option value="">Select district</option>{regionDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}</select></label>
               <label>Ward<select name="ward" value={form.ward} onChange={updateField} required disabled={!form.district}><option value="">Select ward</option>{districtWards.map((ward) => <option key={ward.id} value={ward.id}>{ward.name}</option>)}</select></label>
-              <label>School phone<input name="phone" type="tel" value={form.phone} onChange={updateField} required /></label>
-              <label>School email<input name="email" type="email" value={form.email} onChange={updateField} required /></label>
+              <label>School phone<input name="phone" type="tel" value={form.phone} onChange={updateField} placeholder="e.g. +255 712 345 678" required /></label>
+              <label>Physical address<input name="physical_address" type="text" value={form.physical_address} onChange={updateField} placeholder="P.O.Box 278 Sengerema" /></label>
+              <label>School email<input name="email" type="email" value={form.email} onChange={updateField} placeholder="e.g. school@example.com" required /></label>
             </div>
             {schoolsError && <div className="alert error">{schoolsError}</div>}
             <div className="registration-actions">

@@ -1618,18 +1618,18 @@ const SportTeacherPage = () => {
         </div>
         <form onSubmit={handleRegisterStudent}>
           <div className="sport-teacher-registration-form-grid">
-            <label>First Name *<input type="text" value={studentForm.first_name} onChange={(event) => setStudentForm({ ...studentForm, first_name: event.target.value })} required /></label>
-            <label>Last Name *<input type="text" value={studentForm.last_name} onChange={(event) => setStudentForm({ ...studentForm, last_name: event.target.value })} required /></label>
+            <label>First Name *<input type="text" value={studentForm.first_name} placeholder="e.g. John" onChange={(event) => setStudentForm({ ...studentForm, first_name: event.target.value })} required /></label>
+            <label>Last Name *<input type="text" value={studentForm.last_name} placeholder="e.g. Nyerere" onChange={(event) => setStudentForm({ ...studentForm, last_name: event.target.value })} required /></label>
             <label>Gender *<select value={studentForm.gender} onChange={(event) => setStudentForm({ ...studentForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option></select></label>
-            <label>Date of Birth<input type="date" value={studentForm.date_of_birth} onChange={(event) => setStudentForm({ ...studentForm, date_of_birth: event.target.value })} /></label>
+            <label>Date of Birth<input type="date" value={studentForm.date_of_birth} placeholder="YYYY-MM-DD" onChange={(event) => setStudentForm({ ...studentForm, date_of_birth: event.target.value })} /></label>
           </div>
           <div className="sport-teacher-registration-form-grid sport-teacher-registration-level-club-row">
             <label>Class / Level<select value={studentForm.education_level} onChange={(event) => setStudentForm({ ...studentForm, education_level: event.target.value })}><option value="">Not specified</option>{educationLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label>
             <label>Assign school club <select value={studentForm.club} onChange={(event) => setStudentForm({ ...studentForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
           </div>
           <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-row">
-            <label>Password *<span className="sport-teacher-password-control"><input type={showRegistrationPassword ? 'text' : 'password'} value={studentForm.password} onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationPassword((visible) => !visible)} aria-label={showRegistrationPassword ? 'Hide password' : 'Show password'}><EyeIcon visible={showRegistrationPassword} /></button></span></label>
-            <label>Confirm Password *<span className="sport-teacher-password-control"><input type={showRegistrationConfirmation ? 'text' : 'password'} value={studentForm.confirm_password} onChange={(event) => setStudentForm({ ...studentForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationConfirmation((visible) => !visible)} aria-label={showRegistrationConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon visible={showRegistrationConfirmation} /></button></span></label>
+            <label>Password *<span className="sport-teacher-password-control"><input type={showRegistrationPassword ? 'text' : 'password'} value={studentForm.password} placeholder="Min 8 characters" onChange={(event) => setStudentForm({ ...studentForm, password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationPassword((visible) => !visible)} aria-label={showRegistrationPassword ? 'Hide password' : 'Show password'}><EyeIcon visible={showRegistrationPassword} /></button></span></label>
+            <label>Confirm Password *<span className="sport-teacher-password-control"><input type={showRegistrationConfirmation ? 'text' : 'password'} value={studentForm.confirm_password} placeholder="Re-enter password" onChange={(event) => setStudentForm({ ...studentForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowRegistrationConfirmation((visible) => !visible)} aria-label={showRegistrationConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon visible={showRegistrationConfirmation} /></button></span></label>
           </div>
           <fieldset className="sport-teacher-registration-talents">
             <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
@@ -1696,16 +1696,16 @@ const SportTeacherPage = () => {
         <p className="sport-teacher-drawer-kicker">{selectedStudent.student_id}</p>
         <form onSubmit={handleSaveStudent}>
           <div className="sport-teacher-registration-form-grid">
-            <label>First Name *<input type="text" value={studentEditForm.first_name} onChange={(event) => setStudentEditForm({ ...studentEditForm, first_name: event.target.value })} required /></label>
-            <label>Last Name *<input type="text" value={studentEditForm.last_name} onChange={(event) => setStudentEditForm({ ...studentEditForm, last_name: event.target.value })} required /></label>
+            <label>First Name *<input type="text" value={studentEditForm.first_name} placeholder="e.g. John" onChange={(event) => setStudentEditForm({ ...studentEditForm, first_name: event.target.value })} required /></label>
+            <label>Last Name *<input type="text" value={studentEditForm.last_name} placeholder="e.g. Nyerere" onChange={(event) => setStudentEditForm({ ...studentEditForm, last_name: event.target.value })} required /></label>
             <label>Gender *<select value={studentEditForm.gender} onChange={(event) => setStudentEditForm({ ...studentEditForm, gender: event.target.value })} required><option value="M">Male</option><option value="F">Female</option></select></label>
-            <label>Date of Birth<input type="date" value={studentEditForm.date_of_birth} onChange={(event) => setStudentEditForm({ ...studentEditForm, date_of_birth: event.target.value })} /></label>
+            <label>Date of Birth<input type="date" value={studentEditForm.date_of_birth} placeholder="YYYY-MM-DD" onChange={(event) => setStudentEditForm({ ...studentEditForm, date_of_birth: event.target.value })} /></label>
             <label>Class / Level<select value={studentEditForm.education_level} onChange={(event) => setStudentEditForm({ ...studentEditForm, education_level: event.target.value })}><option value="">Not specified</option>{educationLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label>
             <label>Assign club<select value={studentEditForm.club} onChange={(event) => setStudentEditForm({ ...studentEditForm, club: event.target.value })} disabled={!registrationClubs.length}><option value="">{registrationClubs.length ? 'No club' : 'No club registered for this school'}</option>{registrationClubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}</select></label>
           </div>
           <div className="sport-teacher-registration-form-grid sport-teacher-registration-password-row">
-            <label>New Password<span className="sport-teacher-password-control"><input type={showEditPassword ? 'text' : 'password'} value={studentEditForm.new_password} onChange={(event) => setStudentEditForm({ ...studentEditForm, new_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditPassword((visible) => !visible)} aria-label={showEditPassword ? 'Hide new password' : 'Show new password'}><EyeIcon visible={showEditPassword} /></button></span></label>
-            <label>Confirm Password<span className="sport-teacher-password-control"><input type={showEditConfirmation ? 'text' : 'password'} value={studentEditForm.confirm_password} onChange={(event) => setStudentEditForm({ ...studentEditForm, confirm_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditConfirmation((visible) => !visible)} aria-label={showEditConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon visible={showEditConfirmation} /></button></span></label>
+            <label>New Password<span className="sport-teacher-password-control"><input type={showEditPassword ? 'text' : 'password'} value={studentEditForm.new_password} placeholder="Min 8 characters" onChange={(event) => setStudentEditForm({ ...studentEditForm, new_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditPassword((visible) => !visible)} aria-label={showEditPassword ? 'Hide new password' : 'Show new password'}><EyeIcon visible={showEditPassword} /></button></span></label>
+            <label>Confirm Password<span className="sport-teacher-password-control"><input type={showEditConfirmation ? 'text' : 'password'} value={studentEditForm.confirm_password} placeholder="Re-enter password" onChange={(event) => setStudentEditForm({ ...studentEditForm, confirm_password: event.target.value })} minLength="8" /><button type="button" onClick={() => setShowEditConfirmation((visible) => !visible)} aria-label={showEditConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon visible={showEditConfirmation} /></button></span></label>
           </div>
           <fieldset className="sport-teacher-registration-talents">
             <legend>Assign talents <span className="sport-teacher-optional-label">Optional</span></legend>
@@ -1732,8 +1732,8 @@ const SportTeacherPage = () => {
         </div>
         <form onSubmit={handleCreateAnnouncement}>
           <div className="sport-teacher-announcement-form">
-            <label>Title *<input type="text" value={announcementForm.title} onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} maxLength="200" required /></label>
-            <label>Message *<textarea value={announcementForm.content} onChange={(event) => setAnnouncementForm({ ...announcementForm, content: event.target.value })} rows="7" required /></label>
+            <label>Title *<input type="text" value={announcementForm.title} placeholder="e.g. School sports meeting" onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })} maxLength="200" required /></label>
+            <label>Message *<textarea value={announcementForm.content} placeholder="Type the announcement details here..." onChange={(event) => setAnnouncementForm({ ...announcementForm, content: event.target.value })} rows="7" required /></label>
             <div className="sport-teacher-announcement-form-actions">
               <label>Expires on (optional)<input type="date" value={announcementForm.expires_at} onChange={(event) => setAnnouncementForm({ ...announcementForm, expires_at: event.target.value })} /></label>
               {selectedAnnouncement && <button type="button" className="sport-teacher-announcement-delete" onClick={handleDeleteAnnouncement} disabled={announcementSubmitting}>Delete</button>}
@@ -1755,8 +1755,8 @@ const SportTeacherPage = () => {
           <button type="button" onClick={() => closeModal('competition')} aria-label="Close competition form">&times;</button>
         </div>
         <form onSubmit={handleSaveCompetition} className="sport-teacher-profile-form">
-          <label>Competition name *<input type="text" value={competitionForm.name} onChange={(event) => setCompetitionForm({ ...competitionForm, name: event.target.value })} maxLength="150" required /></label>
-          <label>Description<textarea value={competitionForm.description} onChange={(event) => setCompetitionForm({ ...competitionForm, description: event.target.value })} rows="4" /></label>
+          <label>Competition name *<input type="text" value={competitionForm.name} placeholder="e.g. District Athletics Cup" onChange={(event) => setCompetitionForm({ ...competitionForm, name: event.target.value })} maxLength="150" required /></label>
+          <label>Description<textarea value={competitionForm.description} placeholder="Optional competition summary..." onChange={(event) => setCompetitionForm({ ...competitionForm, description: event.target.value })} rows="4" /></label>
           <div className="sport-teacher-competition-date-grid">
             <label>Start date *<input type="date" value={competitionForm.start_date} onChange={(event) => setCompetitionForm({ ...competitionForm, start_date: event.target.value })} required /></label>
             <label>End date<input type="date" value={competitionForm.end_date} onChange={(event) => setCompetitionForm({ ...competitionForm, end_date: event.target.value })} /></label>
