@@ -129,6 +129,27 @@ export default function TalentAdminPage() {
     const location = entries[roleKey] || [getCountryName(user.country)];
     return location.filter((part) => part && part !== '—').join(' - ') || '—';
   };
+  const getRoleColumnDisplay = (user) => {
+    if (!user) return '—';
+    const roleLabel = formatRoleLabel(user.role);
+    const roleName = roleLabel.replace(/\s+/g, ' ').trim();
+    switch (user.role) {
+      case 'talent_admin':
+        return `${roleName} - ${getCountryName(user.country)}`;
+      case 'zone_manager':
+        return `${roleName} - ${getZoneName(user.zone)}`;
+      case 'region_manager':
+        return `${roleName} - ${getRegionName(user.region)}`;
+      case 'student':
+        return `${roleName} - ${getSchoolName(user.school)}`;
+      case 'parent': {
+        const childNames = getParentChildrenDisplay(user);
+        return `${roleName} - ${childNames === '—' ? 'No children' : childNames}`;
+      }
+      default:
+        return roleLabel;
+    }
+  };
   const getParentLookup = (userId) => parents.find((parent) => Number(parent.user ?? parent.user_id) === Number(userId)) || null;
   const getParentAreaDisplay = (user) => {
     const parentProfile = getParentLookup(user.id);
@@ -359,7 +380,7 @@ export default function TalentAdminPage() {
                 const isAllTab = selectedUserRole === 'all';
                 return <tr key={user.id}>
                   <td><button type="button" className="talent-admin-link-button" onClick={() => openUserEditor(user)}>{user.username || getUserDisplayName(user)}</button></td>
-                  {isAllTab ? <td>{formatRoleLabel(user.role)}</td> : isParentTab ? <td>{getParentAreaDisplay(user)}</td> : <td>{getUserLocationDisplay(user, user.role)}</td>}
+                  {isAllTab ? <td>{getRoleColumnDisplay(user)}</td> : isParentTab ? <td>{getParentAreaDisplay(user)}</td> : <td>{getUserLocationDisplay(user, user.role)}</td>}
                   {isParentTab ? <td>{getParentChildrenDisplay(user)}</td> : <td>{user.email || '?'}</td>}
                   <td>{user.phone || '?'}</td>
                 </tr>;
