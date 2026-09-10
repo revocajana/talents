@@ -1209,12 +1209,13 @@
 
 .sport-teacher-search-drawer input {
   width: 100%;
-  padding: 12px;
+  min-height: 26px;
+  padding: 8px 10px;
   border: 1px solid #cbd5e1;
   border-radius: 7px;
   box-sizing: border-box;
   color: #0f172a;
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .sport-teacher-search-drawer .sport-teacher-club-checkbox-list input[type='checkbox'] {
@@ -1424,9 +1425,10 @@
   top: 0;
   right: 0;
   z-index: 1201;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   visibility: visible;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .sport-teacher-registration-backdrop {
@@ -1434,14 +1436,21 @@
 }
 
 .sport-teacher-registration-drawer form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 4px;
   color: #374151;
 }
 
 .sport-teacher-registration-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 0;
 }
 
 .sport-teacher-registration-form-grid label,
@@ -1455,12 +1464,36 @@
   line-height: 1.35;
 }
 
+.sport-teacher-registration-form-grid label[data-label] {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 38px;
+}
+
+.sport-teacher-registration-form-grid label[data-label]::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 0;
+  left: 10px;
+  z-index: 1;
+  padding: 0 4px;
+  background: #fff;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
 .sport-teacher-registration-form-grid input,
 .sport-teacher-registration-form-grid select,
 .sport-teacher-registration-form-grid textarea {
   width: 100%;
-  min-height: 42px;
-  padding: 10px 12px;
+  min-height: 26px;
+  padding: 14px 8px 6px;
   border: 1px solid #cbd5e1;
   border-radius: 7px;
   background: white;
@@ -1471,8 +1504,18 @@
 }
 
 .sport-teacher-registration-form-grid textarea {
-  min-height: 150px;
+  min-height: 90px;
   resize: vertical;
+}
+
+.sport-teacher-profile-form .sport-teacher-registration-form-grid:last-child {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .sport-teacher-registration-form-grid input:focus,
