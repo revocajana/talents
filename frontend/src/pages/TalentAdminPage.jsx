@@ -44,6 +44,8 @@ export default function TalentAdminPage() {
   const [error, setError] = useState(null);
   const [schools, setSchools] = useState([]);
   const [users, setUsers] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [parents, setParents] = useState([]);
   const [countries, setCountries] = useState([]);
   const [zones, setZones] = useState([]);
   const [regions, setRegions] = useState([]);
@@ -78,19 +80,22 @@ export default function TalentAdminPage() {
         user.email,
         user.phone,
         getSchoolName(user.school),
+        getUserLocationDisplay(user, user.role),
+        getParentAreaDisplay(user),
+        getParentChildrenDisplay(user),
       ].filter(Boolean).join(' ').toLowerCase();
       return searchableValues.includes(normalizedSearch);
     });
-  }, [selectedUserRole, userSearch, users]);
+  }, [selectedUserRole, userSearch, users, students, parents, schools, countries, zones, regions, districts, wards]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [schoolsRes, usersRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, ownershipRes] = await Promise.all([
-          apiService.getAllSchools(), apiService.getUsers(), apiService.getAllCountries(), apiService.getAllZones(), apiService.getAllRegions(), apiService.getAllDistricts(), apiService.getAllWards(), apiService.getSchoolOwnershipTypes(),
+        const [schoolsRes, usersRes, studentsRes, parentsRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, ownershipRes] = await Promise.all([
+          apiService.getAllSchools(), apiService.getUsers(), apiService.getStudents(), apiService.getParents(), apiService.getAllCountries(), apiService.getAllZones(), apiService.getAllRegions(), apiService.getAllDistricts(), apiService.getAllWards(), apiService.getSchoolOwnershipTypes(),
         ]);
-        setSchools(schoolsRes.data.results || []); setUsers(usersRes.data.results || []); setCountries(countriesRes.data.results || []); setZones(zonesRes.data.results || []); setRegions(regionsRes.data.results || []); setDistricts(districtsRes.data.results || []); setWards(wardsRes.data.results || []); setOwnershipTypes(ownershipRes.data.results || []);
+        setSchools(schoolsRes.data.results || []); setUsers(usersRes.data.results || []); setStudents(studentsRes.data.results || []); setParents(parentsRes.data.results || []); setCountries(countriesRes.data.results || []); setZones(zonesRes.data.results || []); setRegions(regionsRes.data.results || []); setDistricts(districtsRes.data.results || []); setWards(wardsRes.data.results || []); setOwnershipTypes(ownershipRes.data.results || []);
       } catch (requestError) { setError(requestError.response?.data?.detail || 'Failed to load school administration data'); } finally { setLoading(false); }
     };
     loadData();
@@ -103,6 +108,44 @@ export default function TalentAdminPage() {
   };
   const getUserDisplayName = (user) => `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || '—';
   const getSchoolName = (schoolId) => schools.find((school) => Number(school.id) === Number(schoolId))?.name || '—';
+  const getCountryName = (countryId) => countries.find((country) => Number(country.id) === Number(countryId))?.name || '—';
+  const getZoneName = (zoneId) => zones.find((zone) => Number(zone.id) === Number(zoneId))?.name || '—';
+  const getRegionName = (regionId) => regions.find((region) => Number(region.id) === Number(regionId))?.name || '—';
+  const getDistrictName = (districtId) => districts.find((district) => Number(district.id) === Number(districtId))?.name || '—';
+  const getWardName = (wardId) => wards.find((ward) => Number(ward.id) === Number(wardId))?.name || '—';
+  const getUserLocationDisplay = (user, role = user?.role) => {
+    if (!user) return '—';
+    const roleKey = role || 'talent_admin';
+    const entries = {
+      talent_admin: [getCountryName(user.country)],
+      region_manager: [getRegionName(user.region), getZoneName(user.zone), getCountryName(user.country)],
+      zone_manager: [getZoneName(user.zone), getCountryName(user.country)],
+      district_manager: [getDistrictName(user.district), getRegionName(user.region), getCountryName(user.country)],
+      ward_manager: [getWardName(user.ward), getDistrictName(user.district), getCountryName(user.country)],
+      head_teacher: [getSchoolName(user.school), getRegionName(user.region), getCountryName(user.country)],
+      sport_teacher: [getSchoolName(user.school), getRegionName(user.region), getCountryName(user.country)],
+      student: [getSchoolName(user.school), getRegionName(user.region), getCountryName(user.country)],
+    };
+    const location = entries[roleKey] || [getCountryName(user.country)];
+    return location.filter((part) => part && part !== '—').join(' - ') || '—';
+  };
+  const getParentLookup = (userId) => parents.find((parent) => Number(parent.user ?? parent.user_id) === Number(userId)) || null;
+  const getParentAreaDisplay = (user) => {
+    const parentProfile = getParentLookup(user.id);
+    const childStudent = students.find((student) => Number(student.parent?.id ?? student.parent_id) === Number(parentProfile?.id));
+    const school = childStudent?.school || schools.find((school) => Number(school.id) === Number(user.school));
+    if (!school) return '—';
+    const ward = getWardName(school.ward);
+    const district = getDistrictName(school.district);
+    return [ward, district].filter((part) => part && part !== '—').join(' - ') || '—';
+  };
+  const getParentChildrenDisplay = (user) => {
+    const parentProfile = getParentLookup(user.id);
+    if (!parentProfile) return '—';
+    const children = students.filter((student) => Number(student.parent?.id ?? student.parent_id) === Number(parentProfile.id));
+    const names = children.map((student) => `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unnamed child');
+    return names.length ? names.join(', ') : '—';
+  };
   const getDefaultCountryValue = () => {
     const tanzania = countries.find((country) => {
       const label = `${country.name || ''} ${country.code || ''}`.toLowerCase();
@@ -303,8 +346,24 @@ export default function TalentAdminPage() {
         <section className="talent-admin-table-card">
           <div className="talent-admin-table-wrap">
             <table className="talent-admin-table">
-              <thead><tr><th>Name</th><th>Role</th><th>School</th><th>Email</th><th>Phone</th></tr></thead>
-              <tbody>{filteredUsers.map((user) => <tr key={user.id}><td><button type="button" className="talent-admin-link-button" onClick={() => openUserEditor(user)}>{user.username || getUserDisplayName(user)}</button></td><td>{formatRoleLabel(user.role)}</td><td>{getSchoolName(user.school)}</td><td>{user.email || '?'}</td><td>{user.phone || '?'}</td></tr>)}{!filteredUsers.length && <tr><td colSpan="5" className="talent-admin-empty">No users found.</td></tr>}</tbody>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  {selectedUserRole === 'all' ? <th>Role</th> : selectedUserRole === 'parent' ? <th>Area</th> : <th>Location</th>}
+                  {selectedUserRole === 'parent' ? <th>Children</th> : <th>Email</th>}
+                  <th>{selectedUserRole === 'parent' ? 'Phone' : 'Phone'}</th>
+                </tr>
+              </thead>
+              <tbody>{filteredUsers.map((user) => {
+                const isParentTab = selectedUserRole === 'parent';
+                const isAllTab = selectedUserRole === 'all';
+                return <tr key={user.id}>
+                  <td><button type="button" className="talent-admin-link-button" onClick={() => openUserEditor(user)}>{user.username || getUserDisplayName(user)}</button></td>
+                  {isAllTab ? <td>{formatRoleLabel(user.role)}</td> : isParentTab ? <td>{getParentAreaDisplay(user)}</td> : <td>{getUserLocationDisplay(user, user.role)}</td>}
+                  {isParentTab ? <td>{getParentChildrenDisplay(user)}</td> : <td>{user.email || '?'}</td>}
+                  <td>{user.phone || '?'}</td>
+                </tr>;
+              })}{!filteredUsers.length && <tr><td colSpan={selectedUserRole === 'parent' ? 4 : 4} className="talent-admin-empty">No users found.</td></tr>}</tbody>
             </table>
           </div>
         </section>
