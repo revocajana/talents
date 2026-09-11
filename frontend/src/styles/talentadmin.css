@@ -314,6 +314,10 @@
   padding: 18px 0 0;
 }
 
+.talent-admin-combined-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .talent-admin-card {
   min-width: 0;
   padding: 18px;
@@ -328,10 +332,91 @@
   height: fit-content;
 }
 
+.talent-admin-card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.talent-admin-card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.talent-admin-inline-search {
+  display: flex;
+  align-items: center;
+}
+
+.talent-admin-inline-search input {
+  width: 180px;
+  min-height: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 12px;
+}
+
 .talent-admin-card h3 {
-  margin: 0 0 16px;
+  margin: 0;
   color: #0f172a;
   font-size: 18px;
+}
+
+.talent-admin-add-button {
+  min-height: 30px;
+  height: 30px;
+  padding: 6px 10px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 6px;
+}
+
+.talent-admin-card-table-wrap {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.talent-admin-card-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.talent-admin-card-table th,
+.talent-admin-card-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #edf2f7;
+  text-align: left;
+  color: #334155;
+}
+
+.talent-admin-card-table thead th {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.talent-admin-card-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.talent-admin-card-table tbody tr:hover {
+  background: #f8fafc;
 }
 
 .talent-admin-form-stack {

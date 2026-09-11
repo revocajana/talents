@@ -7,7 +7,7 @@ import '../styles/talentadmin.css';
 import DashboardSkeleton from '../components/DashboardSkeleton';
 
 const NAV_ITEMS = [
-  ['home', 'Home', 'This is home.'], ['schools', 'Schools', 'Here you will manage schools.'], ['users', 'Users', 'Here you will manage all system users.'], ['demography', 'Demography', 'Here you will manage the geographic hierarchy.'], ['talents', 'Talents', 'Here you will manage talents.'], ['clubs', 'Clubs', 'Here you will manage country clubs.'],
+  ['home', 'Home', 'This is home.'], ['schools', 'Schools', 'Here you will manage schools.'], ['users', 'Users', 'Here you will manage all system users.'], ['demography', 'Demography', 'Here you will manage the geographic hierarchy.'], ['talents', 'Talents', 'Here you will manage talents and clubs.'],
 ];
 const DEMOGRAPHY_LEVELS = [
   ['zone', 'Zone'],
@@ -67,9 +67,13 @@ export default function TalentAdminPage() {
   const [demographyDrawerOpen, setDemographyDrawerOpen] = useState(false);
   const [editingDemographyId, setEditingDemographyId] = useState(null);
   const [talentForm, setTalentForm] = useState({ name: '', category: '', description: '' });
+  const [talentSearch, setTalentSearch] = useState('');
   const [editingTalentId, setEditingTalentId] = useState(null);
+  const [talentDrawerOpen, setTalentDrawerOpen] = useState(false);
   const [clubForm, setClubForm] = useState({ name: '', focus: '', description: '', country: '' });
+  const [clubSearch, setClubSearch] = useState('');
   const [editingClubId, setEditingClubId] = useState(null);
+  const [clubDrawerOpen, setClubDrawerOpen] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [schoolForm, setSchoolForm] = useState(emptySchool);
   const [schoolSubmitting, setSchoolSubmitting] = useState(false);
@@ -234,6 +238,18 @@ export default function TalentAdminPage() {
   const demographyScopedRegions = useMemo(() => regions.filter((region) => !demographyForm.zone || Number(region.zone) === Number(demographyForm.zone)), [regions, demographyForm.zone]);
   const demographyScopedDistricts = useMemo(() => districts.filter((district) => !demographyForm.region || Number(district.region) === Number(demographyForm.region)), [districts, demographyForm.region]);
   const demographyScopedWards = useMemo(() => wards.filter((ward) => !demographyForm.district || Number(ward.district) === Number(demographyForm.district)), [wards, demographyForm.district]);
+  const filteredTalents = useMemo(() => {
+    const searchTerm = talentSearch.trim().toLowerCase();
+    if (!searchTerm) return talents;
+    return talents.filter((talent) => `${talent.name || ''} ${talent.category_name || ''}`.toLowerCase().includes(searchTerm));
+  }, [talentSearch, talents]);
+
+  const filteredCountryClubs = useMemo(() => {
+    const searchTerm = clubSearch.trim().toLowerCase();
+    if (!searchTerm) return countryClubs;
+    return countryClubs.filter((club) => `${club.name || ''} ${club.focus || ''}`.toLowerCase().includes(searchTerm));
+  }, [clubSearch, countryClubs]);
+
   const getDemographyItems = () => {
     switch (demographyLevel) {
       case 'zone':
@@ -331,6 +347,20 @@ export default function TalentAdminPage() {
     setEditingDemographyId(null);
     setDemographyForm({ name: '', zone: '', region: '', district: '', country: String(defaultCountryId || '') });
   };
+  const openTalentEditor = (item = null) => {
+    setEditingTalentId(item?.id ?? null);
+    setTalentForm({
+      name: item?.name || '',
+      category: item?.category ? String(item.category) : (talentCategories[0]?.id ? String(talentCategories[0].id) : ''),
+      description: item?.description || '',
+    });
+    setTalentDrawerOpen(true);
+  };
+  const closeTalentEditor = () => {
+    setTalentDrawerOpen(false);
+    setEditingTalentId(null);
+    setTalentForm({ name: '', category: talentCategories[0]?.id ? String(talentCategories[0].id) : '', description: '' });
+  };
   const handleTalentSubmit = async (event) => {
     event.preventDefault();
     if (!talentForm.name.trim()) return;
@@ -340,8 +370,7 @@ export default function TalentAdminPage() {
       } else {
         await apiService.createTalent(talentForm);
       }
-      setTalentForm({ name: '', category: talentCategories[0]?.id ? String(talentCategories[0].id) : '', description: '' });
-      setEditingTalentId(null);
+      closeTalentEditor();
       await loadData();
     } catch (requestError) {
       setError(requestError.response?.data?.detail || requestError.response?.data?.name || 'Unable to save talent.');
@@ -351,10 +380,26 @@ export default function TalentAdminPage() {
     if (!window.confirm(`Delete ${item.name}?`)) return;
     try {
       await apiService.deleteTalent(item.id);
+      closeTalentEditor();
       await loadData();
     } catch (requestError) {
       setError(requestError.response?.data?.detail || 'Unable to delete talent.');
     }
+  };
+  const openClubEditor = (item = null) => {
+    setEditingClubId(item?.id ?? null);
+    setClubForm({
+      name: item?.name || '',
+      focus: item?.focus || '',
+      description: item?.description || '',
+      country: String(item?.country || defaultCountryId || ''),
+    });
+    setClubDrawerOpen(true);
+  };
+  const closeClubEditor = () => {
+    setClubDrawerOpen(false);
+    setEditingClubId(null);
+    setClubForm({ name: '', focus: '', description: '', country: String(defaultCountryId || '') });
   };
   const handleClubSubmit = async (event) => {
     event.preventDefault();
@@ -366,8 +411,7 @@ export default function TalentAdminPage() {
       } else {
         await apiService.createCountryClub(payload);
       }
-      setClubForm({ name: '', focus: '', description: '', country: String(defaultCountryId || '') });
-      setEditingClubId(null);
+      closeClubEditor();
       await loadData();
     } catch (requestError) {
       setError(requestError.response?.data?.detail || requestError.response?.data?.name || 'Unable to save club.');
@@ -377,6 +421,7 @@ export default function TalentAdminPage() {
     if (!window.confirm(`Delete ${item.name}?`)) return;
     try {
       await apiService.deleteCountryClub(item.id);
+      closeClubEditor();
       await loadData();
     } catch (requestError) {
       setError(requestError.response?.data?.detail || 'Unable to delete club.');
@@ -794,110 +839,136 @@ export default function TalentAdminPage() {
       <section className="talent-admin-table-card">
         <div className="talent-admin-table-header">
           <div>
-            <h1>Talents</h1>
-            <p>Manage talent categories and country talent options.</p>
+            <h1>Talents & Clubs</h1>
+            <p>Manage all talent categories and the country club list.</p>
           </div>
         </div>
-        <div className="talent-admin-demography-layout">
-          <div className="talent-admin-card talent-admin-form-card">
-            <h3>{editingTalentId ? 'Edit talent' : 'Add talent'}</h3>
-            <form onSubmit={handleTalentSubmit} className="talent-admin-form-stack">
-              <label className="talent-admin-floating-field">
-                <input value={talentForm.name} onChange={(event) => setTalentForm((current) => ({ ...current, name: event.target.value }))} placeholder=" " />
-                <span>Talent name</span>
-              </label>
-              <label className="talent-admin-floating-field">
-                <select value={talentForm.category} onChange={(event) => setTalentForm((current) => ({ ...current, category: event.target.value }))}>
-                  <option value="">Select category</option>
-                  {talentCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-                </select>
-                <span>Category</span>
-              </label>
-              <label className="talent-admin-floating-field">
-                <textarea value={talentForm.description} onChange={(event) => setTalentForm((current) => ({ ...current, description: event.target.value }))} placeholder=" " rows="3" />
-                <span>Description</span>
-              </label>
-              <div className="talent-admin-card-actions">
-                <button type="button" className="sport-teacher-secondary-button" onClick={() => { setEditingTalentId(null); setTalentForm({ name: '', category: talentCategories[0]?.id ? String(talentCategories[0].id) : '', description: '' }); }}>
-                  Cancel
-                </button>
-                <button type="submit" className="district-primary-button">{editingTalentId ? 'Update' : 'Add'} talent</button>
-              </div>
-            </form>
-          </div>
+
+        <div className="talent-admin-demography-layout talent-admin-combined-layout">
           <div className="talent-admin-card talent-admin-list-card">
-            <h3>Available talents</h3>
-            <div className="talent-admin-card-grid">
-              {talents.map((talent) => (
-                <article key={talent.id} className="talent-admin-card-item">
-                  <div className="talent-admin-card-item-header">
-                    <strong>{talent.name}</strong>
-                    <span>{talent.category_name || 'General'}</span>
-                  </div>
-                  <p>{talent.description || 'No description added yet.'}</p>
-                  <div className="talent-admin-inline-actions">
-                    <button type="button" className="talent-admin-link-button" onClick={() => { setEditingTalentId(talent.id); setTalentForm({ name: talent.name || '', category: String(talent.category || ''), description: talent.description || '' }); }}>Edit</button>
-                    <button type="button" className="talent-admin-delete-button" onClick={() => handleTalentDelete(talent)}>Delete</button>
-                  </div>
-                </article>
-              ))}
-              {!talents.length && <p className="talent-admin-empty">No talents added yet.</p>}
+            <div className="talent-admin-card-header-row">
+              <h3>Talents</h3>
+              <div className="talent-admin-card-header-actions">
+                <label className="talent-admin-inline-search">
+                  <input type="search" value={talentSearch} onChange={(event) => setTalentSearch(event.target.value)} placeholder="Search talents" aria-label="Search talents" />
+                </label>
+                <button type="button" className="district-primary-button talent-admin-add-button" onClick={() => openTalentEditor()}>
+                  Add talent
+                </button>
+              </div>
+            </div>
+            <div className="talent-admin-card-table-wrap">
+              <table className="talent-admin-card-table">
+                <thead>
+                  <tr>
+                    <th>Talent</th>
+                    <th>Category</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTalents.map((talent) => (
+                    <tr key={talent.id} onClick={() => openTalentEditor(talent)}>
+                      <td>{talent.name}</td>
+                      <td>{talent.category_name || 'General'}</td>
+                    </tr>
+                  ))}
+                  {!filteredTalents.length && <tr><td colSpan="2" className="talent-admin-empty">No talents found.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="talent-admin-card talent-admin-list-card talent-admin-club-card">
+            <div className="talent-admin-card-header-row">
+              <h3>Clubs</h3>
+              <div className="talent-admin-card-header-actions">
+                <label className="talent-admin-inline-search">
+                  <input type="search" value={clubSearch} onChange={(event) => setClubSearch(event.target.value)} placeholder="Search clubs" aria-label="Search clubs" />
+                </label>
+                <button type="button" className="district-primary-button talent-admin-add-button" onClick={() => openClubEditor()}>
+                  Add club
+                </button>
+              </div>
+            </div>
+            <div className="talent-admin-card-table-wrap">
+              <table className="talent-admin-card-table">
+                <thead>
+                  <tr>
+                    <th>Club</th>
+                    <th>Focus</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCountryClubs.map((club) => (
+                    <tr key={club.id} onClick={() => openClubEditor(club)}>
+                      <td>{club.name}</td>
+                      <td>{club.focus || 'General'}</td>
+                    </tr>
+                  ))}
+                  {!filteredCountryClubs.length && <tr><td colSpan="2" className="talent-admin-empty">No clubs found.</td></tr>}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      </section>
-    ) : activeTab === 'clubs' ? (
-      <section className="talent-admin-table-card">
-        <div className="talent-admin-table-header">
-          <div>
-            <h1>Clubs</h1>
-            <p>Manage clubs available for the country.</p>
-          </div>
-        </div>
-        <div className="talent-admin-demography-layout">
-          <div className="talent-admin-card talent-admin-form-card">
-            <h3>{editingClubId ? 'Edit club' : 'Add club'}</h3>
-            <form onSubmit={handleClubSubmit} className="talent-admin-form-stack">
-              <label className="talent-admin-floating-field">
-                <input value={clubForm.name} onChange={(event) => setClubForm((current) => ({ ...current, name: event.target.value }))} placeholder=" " />
-                <span>Club name</span>
-              </label>
-              <label className="talent-admin-floating-field">
-                <input value={clubForm.focus} onChange={(event) => setClubForm((current) => ({ ...current, focus: event.target.value }))} placeholder=" " />
-                <span>Focus</span>
-              </label>
-              <label className="talent-admin-floating-field">
-                <textarea value={clubForm.description} onChange={(event) => setClubForm((current) => ({ ...current, description: event.target.value }))} placeholder=" " rows="3" />
-                <span>Description</span>
-              </label>
-              <div className="talent-admin-card-actions">
-                <button type="button" className="sport-teacher-secondary-button" onClick={() => { setEditingClubId(null); setClubForm({ name: '', focus: '', description: '', country: String(defaultCountryId || '') }); }}>
-                  Cancel
-                </button>
-                <button type="submit" className="district-primary-button">{editingClubId ? 'Update' : 'Add'} club</button>
+
+        {talentDrawerOpen && (
+          <>
+            <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close talent form" onClick={closeTalentEditor} />
+            <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer" aria-label="Talent editor">
+              <div className="sport-teacher-search-drawer-header">
+                <h2>{editingTalentId ? 'Edit talent' : 'Add talent'}</h2>
+                <button type="button" onClick={closeTalentEditor} aria-label="Close talent form">&times;</button>
               </div>
-            </form>
-          </div>
-          <div className="talent-admin-card talent-admin-list-card">
-            <h3>Club directory</h3>
-            <div className="talent-admin-card-grid">
-              {countryClubs.map((club) => (
-                <article key={club.id} className="talent-admin-card-item talent-admin-club-card">
-                  <div className="talent-admin-card-item-header">
-                    <strong>{club.name}</strong>
-                    <span>{club.focus || 'General'}</span>
-                  </div>
-                  <p>{club.description || 'No description added yet.'}</p>
-                  <div className="talent-admin-inline-actions">
-                    <button type="button" className="talent-admin-link-button" onClick={() => { setEditingClubId(club.id); setClubForm({ name: club.name || '', focus: club.focus || '', description: club.description || '', country: String(club.country || defaultCountryId || '') }); }}>Edit</button>
-                    <button type="button" className="talent-admin-delete-button" onClick={() => handleClubDelete(club)}>Delete</button>
-                  </div>
-                </article>
-              ))}
-              {!countryClubs.length && <p className="talent-admin-empty">No clubs added yet.</p>}
-            </div>
-          </div>
-        </div>
+              <form onSubmit={handleTalentSubmit} className="sport-teacher-profile-form">
+                <div className="sport-teacher-registration-form-grid">
+                  <label data-label="Talent name"><input value={talentForm.name} onChange={(event) => setTalentForm((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Football" /></label>
+                </div>
+                <div className="sport-teacher-registration-form-grid">
+                  <label data-label="Talent category"><select value={talentForm.category} onChange={(event) => setTalentForm((current) => ({ ...current, category: event.target.value }))}><option value="">Select category</option>{talentCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+                </div>
+                <div className="sport-teacher-registration-form-grid">
+                  <label data-label="Description"><textarea value={talentForm.description} onChange={(event) => setTalentForm((current) => ({ ...current, description: event.target.value }))} rows="4" placeholder="Optional description" /></label>
+                </div>
+                <div className="sport-teacher-registration-form-grid talent-admin-drawer-actions">
+                  <button type="button" className="sport-teacher-secondary-button" onClick={closeTalentEditor}>Cancel</button>
+                  {editingTalentId && (
+                    <button type="button" className="talent-admin-delete-button" onClick={() => handleTalentDelete(talents.find((talent) => talent.id === editingTalentId))}>Delete</button>
+                  )}
+                  <button type="submit" className="district-primary-button">{editingTalentId ? 'Update' : 'Create'}</button>
+                </div>
+              </form>
+            </aside>
+          </>
+        )}
+
+        {clubDrawerOpen && (
+          <>
+            <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close club form" onClick={closeClubEditor} />
+            <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer" aria-label="Club editor">
+              <div className="sport-teacher-search-drawer-header">
+                <h2>{editingClubId ? 'Edit club' : 'Add club'}</h2>
+                <button type="button" onClick={closeClubEditor} aria-label="Close club form">&times;</button>
+              </div>
+              <form onSubmit={handleClubSubmit} className="sport-teacher-profile-form">
+                <div className="sport-teacher-registration-form-grid">
+                  <label data-label="Club name"><input value={clubForm.name} onChange={(event) => setClubForm((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Blue Coast FC" /></label>
+                  <label data-label="Focus"><input value={clubForm.focus} onChange={(event) => setClubForm((current) => ({ ...current, focus: event.target.value }))} placeholder="e.g. Youth development" /></label>
+                </div>
+                <div className="sport-teacher-registration-form-grid">
+                  <label data-label="Description"><textarea value={clubForm.description} onChange={(event) => setClubForm((current) => ({ ...current, description: event.target.value }))} rows="4" placeholder="Optional description" /></label>
+                </div>
+                <div className="sport-teacher-registration-form-grid talent-admin-drawer-actions">
+                  <button type="button" className="sport-teacher-secondary-button" onClick={closeClubEditor}>Cancel</button>
+                  {editingClubId && (
+                    <button type="button" className="talent-admin-delete-button" onClick={() => handleClubDelete(countryClubs.find((club) => club.id === editingClubId))}>Delete</button>
+                  )}
+                  <button type="submit" className="district-primary-button">{editingClubId ? 'Update' : 'Create'}</button>
+                </div>
+              </form>
+            </aside>
+          </>
+        )}
       </section>
     ) : <section className="talent-admin-placeholder"><h1>Talent Administration</h1><p>Welcome to the management dashboard.</p></section>}{schoolDrawerOpen && <><button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close school form" onClick={closeSchoolEditor} /><aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer" aria-label="School editor"><div className="sport-teacher-search-drawer-header"><h2>{selectedSchool ? 'Edit school' : 'Add school'}</h2><button type="button" onClick={closeSchoolEditor} aria-label="Close school form">&times;</button></div><form onSubmit={saveSchool} className="sport-teacher-profile-form"><div className="sport-teacher-registration-form-grid"><label data-label="Registry number"><input placeholder="e.g. S2047" value={schoolForm.registry_number} onChange={(event) => updateField('registry_number', event.target.value)} /></label><label data-label="School name"><input required placeholder="e.g. Sengerema Secondary School" value={schoolForm.name} onChange={(event) => updateField('name', event.target.value)} /></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Ownership type"><select value={schoolForm.ownership_type} onChange={(event) => updateField('ownership_type', event.target.value)}>{['Government', 'Private', 'Religious'].map((option) => <option key={option} value={option}>{option}</option>)}</select></label><label data-label="Phone"><input type="tel" placeholder="e.g. +255 712 345 678" value={schoolForm.phone || ''} onChange={(event) => updateField('phone', event.target.value)} /></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Country"><select required value={schoolForm.country || ''} onChange={(event) => updateField('country', event.target.value)}><option value="">Select country</option>{countries.map((country) => <option key={country.id} value={country.id}>{country.name}</option>)}</select></label><label data-label="Zone"><select value={schoolForm.zone || ''} disabled={!schoolForm.country} onChange={(event) => updateField('zone', event.target.value)}><option value="">Select zone</option>{filteredZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}</select></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Region"><select value={schoolForm.region || ''} disabled={!schoolForm.zone} onChange={(event) => updateField('region', event.target.value)}><option value="">Select region</option>{filteredRegions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label><label data-label="District"><select value={schoolForm.district || ''} disabled={!schoolForm.region} onChange={(event) => updateField('district', event.target.value)}><option value="">Select district</option>{filteredDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}</select></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Ward"><select value={schoolForm.ward || ''} disabled={!schoolForm.district} onChange={(event) => updateField('ward', event.target.value)}><option value="">Select ward</option>{filteredWards.map((ward) => <option key={ward.id} value={ward.id}>{ward.name}</option>)}</select></label><label data-label="Physical address"><input placeholder="P.O.Box 278 Sengerema" value={schoolForm.physical_address || ''} onChange={(event) => updateField('physical_address', event.target.value)} /></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Email"><input type="email" placeholder="e.g. school@example.com" value={schoolForm.email || ''} onChange={(event) => updateField('email', event.target.value)} /></label></div><div className="sport-teacher-registration-form-grid"><button type="button" className="sport-teacher-secondary-button" onClick={closeSchoolEditor}>Cancel</button><button type="submit" className="district-primary-button" disabled={schoolSubmitting}>{schoolSubmitting ? 'Saving...' : selectedSchool ? 'Update school' : 'Create school'}</button>{selectedSchool && <button type="button" className="sport-teacher-danger-button" onClick={deleteSchool}>Delete</button>}</div></form></aside></>}</main>
   </div>;

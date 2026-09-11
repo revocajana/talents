@@ -48,28 +48,28 @@ class CountryViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
 class ZoneViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Zone.objects.select_related('country').all()
     serializer_class = ZoneSerializer
-    permission_classes = [PublicSchoolRegistrationPermission]
+    permission_classes = [ConfigurationPermission]
     scope_paths = {'country': 'country_id', 'zone': 'id'}
 
 
 class RegionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Region.objects.select_related('zone').all()
     serializer_class = RegionSerializer
-    permission_classes = [PublicSchoolRegistrationPermission]
+    permission_classes = [ConfigurationPermission]
     scope_paths = {'country': 'zone__country_id', 'zone': 'zone_id', 'region': 'id'}
 
 
 class DistrictViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = District.objects.select_related('region').all()
     serializer_class = DistrictSerializer
-    permission_classes = [PublicSchoolRegistrationPermission]
+    permission_classes = [ConfigurationPermission]
     scope_paths = {'country': 'region__zone__country_id', 'zone': 'region__zone_id', 'region': 'region_id', 'district': 'id'}
 
 
 class WardViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Ward.objects.select_related('district').all()
     serializer_class = WardSerializer
-    permission_classes = [PublicSchoolRegistrationPermission]
+    permission_classes = [ConfigurationPermission]
     scope_paths = {'country': 'district__region__zone__country_id', 'zone': 'district__region__zone_id', 'region': 'district__region_id', 'district': 'district_id', 'ward': 'id'}
 
 
