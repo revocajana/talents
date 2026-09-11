@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Competition, CompetitionParticipation, CompetitionJudge
-from core.models import District, School
+from core.models import District, School, Zone
 from .serializers import CompetitionSerializer, CompetitionParticipationSerializer, CompetitionJudgeSerializer
 from core.permissions import AuthenticatedReadOnly, ScopedQuerysetMixin, StudentDataPermission
 
@@ -60,6 +60,15 @@ class CompetitionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
             competition.schools.set(School.objects.filter(district=district, is_approved=True))
             competition.participants.clear()
             return
+        if user.role == 'zone_manager':
+            zone = user.zone
+            if level != 'zone' or zone is None:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError('Zone managers can create only zone-level competitions for their zone.')
+            competition = serializer.save(organizer=user, content_type=ContentType.objects.get_for_model(Zone), object_id=zone.pk)
+            competition.schools.set(School.objects.filter(zone=zone, is_approved=True))
+            competition.participants.clear()
+            return
         serializer.save(organizer=user)
 
     def perform_update(self, serializer):
@@ -71,6 +80,20 @@ class CompetitionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
                 raise PermissionDenied('You can update only school competitions for your school.')
             competition = serializer.save(level='school', content_type=ContentType.objects.get_for_model(School), object_id=user.school_id)
             competition.schools.set([user.school])
+            return
+        if user.role == 'district_manager':
+            competition = self.get_object()
+            if competition.level != 'district' or competition.object_id != user.district_id:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('You can update only district competitions for your district.')
+            serializer.save(level='district', content_type=ContentType.objects.get_for_model(District), object_id=user.district_id)
+            return
+        if user.role == 'zone_manager':
+            competition = self.get_object()
+            if competition.level != 'zone' or competition.object_id != user.zone_id:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('You can update only zone competitions for your zone.')
+            serializer.save(level='zone', content_type=ContentType.objects.get_for_model(Zone), object_id=user.zone_id)
             return
         serializer.save()
 
