@@ -64,6 +64,7 @@ export default function TalentAdminPage() {
   const [schoolDrawerOpen, setSchoolDrawerOpen] = useState(false);
   const [demographyLevel, setDemographyLevel] = useState('zone');
   const [demographyForm, setDemographyForm] = useState({ name: '', zone: '', region: '', district: '', country: '' });
+  const [demographyDrawerOpen, setDemographyDrawerOpen] = useState(false);
   const [editingDemographyId, setEditingDemographyId] = useState(null);
   const [talentForm, setTalentForm] = useState({ name: '', category: '', description: '' });
   const [editingTalentId, setEditingTalentId] = useState(null);
@@ -247,6 +248,11 @@ export default function TalentAdminPage() {
         return [];
     }
   };
+  const getZoneRegionsSummary = (zoneId) => {
+    const zoneRegions = regions.filter((region) => Number(region.zone) === Number(zoneId));
+    const regionNames = zoneRegions.map((region) => region.name).filter(Boolean);
+    return regionNames.length ? regionNames.join(', ') : 'No regions';
+  };
   const handleDemographyFieldChange = (field, value) => {
     setDemographyForm((current) => {
       const next = { ...current, [field]: value };
@@ -303,10 +309,27 @@ export default function TalentAdminPage() {
       if (demographyLevel === 'region') await apiService.deleteRegion(item.id);
       if (demographyLevel === 'district') await apiService.deleteDistrict(item.id);
       if (demographyLevel === 'ward') await apiService.deleteWard(item.id);
+      setDemographyDrawerOpen(false);
       await loadData();
     } catch (requestError) {
       setError(requestError.response?.data?.detail || 'Unable to delete demography item.');
     }
+  };
+  const openDemographyEditor = (item = null) => {
+    setEditingDemographyId(item?.id ?? null);
+    setDemographyForm({
+      name: item?.name || '',
+      zone: item?.zone ? String(item.zone) : '',
+      region: item?.region ? String(item.region) : '',
+      district: item?.district ? String(item.district) : '',
+      country: String(defaultCountryId || ''),
+    });
+    setDemographyDrawerOpen(true);
+  };
+  const closeDemographyEditor = () => {
+    setDemographyDrawerOpen(false);
+    setEditingDemographyId(null);
+    setDemographyForm({ name: '', zone: '', region: '', district: '', country: String(defaultCountryId || '') });
   };
   const handleTalentSubmit = async (event) => {
     event.preventDefault();
@@ -621,6 +644,261 @@ export default function TalentAdminPage() {
           if (!rowFields.length) return null;
           return <div key={`location-row-${firstField}-${secondField}`} className="sport-teacher-registration-form-grid">{rowFields}</div>;
         })}<div className="sport-teacher-registration-form-grid"><label data-label={userEditorMode === 'edit' ? 'Password' : 'Password *'}><input type="password" placeholder="Min 8 characters" required={userEditorMode !== 'edit'} value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} /></label><label data-label="Confirm password"><input type="password" placeholder="Re-enter password" value={userForm.confirmPassword || ''} onChange={(event) => setUserForm((current) => ({ ...current, confirmPassword: event.target.value }))} /></label></div><div className="sport-teacher-registration-form-grid"><button type="button" className="sport-teacher-secondary-button" onClick={closeUserEditor}>Cancel</button><button type="submit" className="district-primary-button" disabled={userSubmitting}>{userSubmitting ? 'Saving...' : userEditorMode === 'edit' ? 'Update user' : 'Create user'}</button></div></form></aside></>}</>
+    ) : activeTab === 'demography' ? (
+      <>
+        <div className="talent-admin-user-tools">
+          <div className="talent-admin-role-tabs-scroll">
+            <div className="talent-admin-role-tabs" role="tablist" aria-label="Demography levels">
+              {DEMOGRAPHY_LEVELS.map(([value, label]) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={demographyLevel === value ? 'talent-admin-role-tab is-active' : 'talent-admin-role-tab'}
+                  onClick={() => setDemographyLevel(value)}
+                  role="tab"
+                  aria-selected={demographyLevel === value}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button type="button" className="district-primary-button talent-admin-add-user-button" onClick={() => openDemographyEditor()}>
+            Add {DEMOGRAPHY_LEVELS.find(([value]) => value === demographyLevel)?.[1]}
+          </button>
+        </div>
+        <section className="talent-admin-table-card">
+          <div className="talent-admin-table-header">
+            <div>
+              <h1>{DEMOGRAPHY_LEVELS.find(([value]) => value === demographyLevel)?.[1]}s</h1>
+              <p>Manage the geographic hierarchy for {getCountryName(defaultCountryId) || 'the current country'}.</p>
+            </div>
+          </div>
+          <div className="talent-admin-table-wrap">
+            <table className="talent-admin-table">
+              <thead>
+                <tr>
+                  {demographyLevel === 'zone' && <><th>Zone</th><th>Country</th><th>Regions</th></>}
+                  {demographyLevel === 'region' && <><th>Region</th><th>Zone</th><th>Country</th></>}
+                  {demographyLevel === 'district' && <><th>District</th><th>Region</th><th>Zone</th></>}
+                  {demographyLevel === 'ward' && <><th>Ward</th><th>District</th><th>Region</th></>}
+                </tr>
+              </thead>
+              <tbody>
+                {getDemographyItems().length ? getDemographyItems().map((item) => (
+                  <tr key={item.id} onClick={() => openDemographyEditor(item)} style={{ cursor: 'pointer' }}>
+                    {demographyLevel === 'zone' && (
+                      <>
+                        <td>{item.name}</td>
+                        <td>{getCountryName(item.country)}</td>
+                        <td>{getZoneRegionsSummary(item.id)}</td>
+                      </>
+                    )}
+                    {demographyLevel === 'region' && (
+                      <>
+                        <td>{item.name}</td>
+                        <td>{getZoneName(item.zone)}</td>
+                        <td>{getCountryName(zones.find((zone) => Number(zone.id) === Number(item.zone))?.country)}</td>
+                      </>
+                    )}
+                    {demographyLevel === 'district' && (
+                      <>
+                        <td>{item.name}</td>
+                        <td>{getRegionName(item.region)}</td>
+                        <td>{getZoneName(regions.find((region) => Number(region.id) === Number(item.region))?.zone)}</td>
+                      </>
+                    )}
+                    {demographyLevel === 'ward' && (
+                      <>
+                        <td>{item.name}</td>
+                        <td>{getDistrictName(item.district)}</td>
+                        <td>{getRegionName(districts.find((district) => Number(district.id) === Number(item.district))?.region)}</td>
+                      </>
+                    )}
+                  </tr>
+                )) : <tr><td colSpan="3" className="talent-admin-empty">No {demographyLevel} entries found.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        {demographyDrawerOpen && (
+          <>
+            <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close demography form" onClick={closeDemographyEditor} />
+            <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer" aria-label="Demography editor">
+              <div className="sport-teacher-search-drawer-header">
+                <h2>{editingDemographyId ? 'Edit' : 'Add'} {DEMOGRAPHY_LEVELS.find(([value]) => value === demographyLevel)?.[1]}</h2>
+                <button type="button" onClick={closeDemographyEditor} aria-label="Close demography form">&times;</button>
+              </div>
+              <form onSubmit={handleDemographySubmit} className="sport-teacher-profile-form">
+                {demographyLevel === 'zone' && (
+                  <div className="talent-admin-demography-inline-form">
+                    <label className="talent-admin-demography-inline-field" data-label="Zone name">
+                      <input value={demographyForm.name} onChange={(event) => setDemographyForm((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Blue Coast" />
+                    </label>
+                    <button type="submit" className="district-primary-button talent-admin-compact-submit talent-admin-demography-inline-button">
+                      {editingDemographyId ? 'Update' : 'Add zone'}
+                    </button>
+                  </div>
+                )}
+                {demographyLevel === 'region' && (
+                  <>
+                    <div className="sport-teacher-registration-form-grid">
+                      <label data-label="Zone"><select value={demographyForm.zone} onChange={(event) => handleDemographyFieldChange('zone', event.target.value)}><option value="">Select zone</option>{demographyScopedZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}</select></label>
+                    </div>
+                    <div className="sport-teacher-registration-form-grid">
+                      <label data-label="Region name"><input value={demographyForm.name} onChange={(event) => setDemographyForm((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Moshi Rural" /></label>
+                    </div>
+                  </>
+                )}
+                {demographyLevel === 'district' && (
+                  <>
+                    <div className="sport-teacher-registration-form-grid">
+                      <label data-label="Region"><select value={demographyForm.region} onChange={(event) => handleDemographyFieldChange('region', event.target.value)}><option value="">Select region</option>{demographyScopedRegions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label>
+                    </div>
+                    <div className="sport-teacher-registration-form-grid">
+                      <label data-label="District name"><input value={demographyForm.name} onChange={(event) => setDemographyForm((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Moshi Urban" /></label>
+                    </div>
+                  </>
+                )}
+                {demographyLevel === 'ward' && (
+                  <>
+                    <div className="sport-teacher-registration-form-grid">
+                      <label data-label="District"><select value={demographyForm.district} onChange={(event) => handleDemographyFieldChange('district', event.target.value)}><option value="">Select district</option>{demographyScopedDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}</select></label>
+                    </div>
+                    <div className="sport-teacher-registration-form-grid">
+                      <label data-label="Ward name"><input value={demographyForm.name} onChange={(event) => setDemographyForm((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Kimochi" /></label>
+                    </div>
+                  </>
+                )}
+                {demographyLevel !== 'zone' && (
+                  <div className="sport-teacher-registration-form-grid talent-admin-drawer-actions talent-admin-demography-actions">
+                    {editingDemographyId && (
+                      <button type="button" className="talent-admin-delete-button" onClick={() => handleDemographyDelete(getDemographyItems().find((item) => item.id === editingDemographyId))}>Delete</button>
+                    )}
+                    <button type="submit" className="district-primary-button talent-admin-compact-submit">
+                      {editingDemographyId ? `Update ${DEMOGRAPHY_LEVELS.find(([value]) => value === demographyLevel)?.[1]}` : `Add ${DEMOGRAPHY_LEVELS.find(([value]) => value === demographyLevel)?.[1]}`}
+                    </button>
+                  </div>
+                )}
+                {demographyLevel === 'zone' && editingDemographyId && (
+                  <div className="sport-teacher-registration-form-grid talent-admin-drawer-actions talent-admin-demography-actions">
+                    <button type="button" className="talent-admin-delete-button" onClick={() => handleDemographyDelete(getDemographyItems().find((item) => item.id === editingDemographyId))}>Delete</button>
+                  </div>
+                )}
+              </form>
+            </aside>
+          </>
+        )}
+      </>
+    ) : activeTab === 'talents' ? (
+      <section className="talent-admin-table-card">
+        <div className="talent-admin-table-header">
+          <div>
+            <h1>Talents</h1>
+            <p>Manage talent categories and country talent options.</p>
+          </div>
+        </div>
+        <div className="talent-admin-demography-layout">
+          <div className="talent-admin-card talent-admin-form-card">
+            <h3>{editingTalentId ? 'Edit talent' : 'Add talent'}</h3>
+            <form onSubmit={handleTalentSubmit} className="talent-admin-form-stack">
+              <label className="talent-admin-floating-field">
+                <input value={talentForm.name} onChange={(event) => setTalentForm((current) => ({ ...current, name: event.target.value }))} placeholder=" " />
+                <span>Talent name</span>
+              </label>
+              <label className="talent-admin-floating-field">
+                <select value={talentForm.category} onChange={(event) => setTalentForm((current) => ({ ...current, category: event.target.value }))}>
+                  <option value="">Select category</option>
+                  {talentCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                </select>
+                <span>Category</span>
+              </label>
+              <label className="talent-admin-floating-field">
+                <textarea value={talentForm.description} onChange={(event) => setTalentForm((current) => ({ ...current, description: event.target.value }))} placeholder=" " rows="3" />
+                <span>Description</span>
+              </label>
+              <div className="talent-admin-card-actions">
+                <button type="button" className="sport-teacher-secondary-button" onClick={() => { setEditingTalentId(null); setTalentForm({ name: '', category: talentCategories[0]?.id ? String(talentCategories[0].id) : '', description: '' }); }}>
+                  Cancel
+                </button>
+                <button type="submit" className="district-primary-button">{editingTalentId ? 'Update' : 'Add'} talent</button>
+              </div>
+            </form>
+          </div>
+          <div className="talent-admin-card talent-admin-list-card">
+            <h3>Available talents</h3>
+            <div className="talent-admin-card-grid">
+              {talents.map((talent) => (
+                <article key={talent.id} className="talent-admin-card-item">
+                  <div className="talent-admin-card-item-header">
+                    <strong>{talent.name}</strong>
+                    <span>{talent.category_name || 'General'}</span>
+                  </div>
+                  <p>{talent.description || 'No description added yet.'}</p>
+                  <div className="talent-admin-inline-actions">
+                    <button type="button" className="talent-admin-link-button" onClick={() => { setEditingTalentId(talent.id); setTalentForm({ name: talent.name || '', category: String(talent.category || ''), description: talent.description || '' }); }}>Edit</button>
+                    <button type="button" className="talent-admin-delete-button" onClick={() => handleTalentDelete(talent)}>Delete</button>
+                  </div>
+                </article>
+              ))}
+              {!talents.length && <p className="talent-admin-empty">No talents added yet.</p>}
+            </div>
+          </div>
+        </div>
+      </section>
+    ) : activeTab === 'clubs' ? (
+      <section className="talent-admin-table-card">
+        <div className="talent-admin-table-header">
+          <div>
+            <h1>Clubs</h1>
+            <p>Manage clubs available for the country.</p>
+          </div>
+        </div>
+        <div className="talent-admin-demography-layout">
+          <div className="talent-admin-card talent-admin-form-card">
+            <h3>{editingClubId ? 'Edit club' : 'Add club'}</h3>
+            <form onSubmit={handleClubSubmit} className="talent-admin-form-stack">
+              <label className="talent-admin-floating-field">
+                <input value={clubForm.name} onChange={(event) => setClubForm((current) => ({ ...current, name: event.target.value }))} placeholder=" " />
+                <span>Club name</span>
+              </label>
+              <label className="talent-admin-floating-field">
+                <input value={clubForm.focus} onChange={(event) => setClubForm((current) => ({ ...current, focus: event.target.value }))} placeholder=" " />
+                <span>Focus</span>
+              </label>
+              <label className="talent-admin-floating-field">
+                <textarea value={clubForm.description} onChange={(event) => setClubForm((current) => ({ ...current, description: event.target.value }))} placeholder=" " rows="3" />
+                <span>Description</span>
+              </label>
+              <div className="talent-admin-card-actions">
+                <button type="button" className="sport-teacher-secondary-button" onClick={() => { setEditingClubId(null); setClubForm({ name: '', focus: '', description: '', country: String(defaultCountryId || '') }); }}>
+                  Cancel
+                </button>
+                <button type="submit" className="district-primary-button">{editingClubId ? 'Update' : 'Add'} club</button>
+              </div>
+            </form>
+          </div>
+          <div className="talent-admin-card talent-admin-list-card">
+            <h3>Club directory</h3>
+            <div className="talent-admin-card-grid">
+              {countryClubs.map((club) => (
+                <article key={club.id} className="talent-admin-card-item talent-admin-club-card">
+                  <div className="talent-admin-card-item-header">
+                    <strong>{club.name}</strong>
+                    <span>{club.focus || 'General'}</span>
+                  </div>
+                  <p>{club.description || 'No description added yet.'}</p>
+                  <div className="talent-admin-inline-actions">
+                    <button type="button" className="talent-admin-link-button" onClick={() => { setEditingClubId(club.id); setClubForm({ name: club.name || '', focus: club.focus || '', description: club.description || '', country: String(club.country || defaultCountryId || '') }); }}>Edit</button>
+                    <button type="button" className="talent-admin-delete-button" onClick={() => handleClubDelete(club)}>Delete</button>
+                  </div>
+                </article>
+              ))}
+              {!countryClubs.length && <p className="talent-admin-empty">No clubs added yet.</p>}
+            </div>
+          </div>
+        </div>
+      </section>
     ) : <section className="talent-admin-placeholder"><h1>Talent Administration</h1><p>Welcome to the management dashboard.</p></section>}{schoolDrawerOpen && <><button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close school form" onClick={closeSchoolEditor} /><aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer" aria-label="School editor"><div className="sport-teacher-search-drawer-header"><h2>{selectedSchool ? 'Edit school' : 'Add school'}</h2><button type="button" onClick={closeSchoolEditor} aria-label="Close school form">&times;</button></div><form onSubmit={saveSchool} className="sport-teacher-profile-form"><div className="sport-teacher-registration-form-grid"><label data-label="Registry number"><input placeholder="e.g. S2047" value={schoolForm.registry_number} onChange={(event) => updateField('registry_number', event.target.value)} /></label><label data-label="School name"><input required placeholder="e.g. Sengerema Secondary School" value={schoolForm.name} onChange={(event) => updateField('name', event.target.value)} /></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Ownership type"><select value={schoolForm.ownership_type} onChange={(event) => updateField('ownership_type', event.target.value)}>{['Government', 'Private', 'Religious'].map((option) => <option key={option} value={option}>{option}</option>)}</select></label><label data-label="Phone"><input type="tel" placeholder="e.g. +255 712 345 678" value={schoolForm.phone || ''} onChange={(event) => updateField('phone', event.target.value)} /></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Country"><select required value={schoolForm.country || ''} onChange={(event) => updateField('country', event.target.value)}><option value="">Select country</option>{countries.map((country) => <option key={country.id} value={country.id}>{country.name}</option>)}</select></label><label data-label="Zone"><select value={schoolForm.zone || ''} disabled={!schoolForm.country} onChange={(event) => updateField('zone', event.target.value)}><option value="">Select zone</option>{filteredZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}</select></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Region"><select value={schoolForm.region || ''} disabled={!schoolForm.zone} onChange={(event) => updateField('region', event.target.value)}><option value="">Select region</option>{filteredRegions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label><label data-label="District"><select value={schoolForm.district || ''} disabled={!schoolForm.region} onChange={(event) => updateField('district', event.target.value)}><option value="">Select district</option>{filteredDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}</select></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Ward"><select value={schoolForm.ward || ''} disabled={!schoolForm.district} onChange={(event) => updateField('ward', event.target.value)}><option value="">Select ward</option>{filteredWards.map((ward) => <option key={ward.id} value={ward.id}>{ward.name}</option>)}</select></label><label data-label="Physical address"><input placeholder="P.O.Box 278 Sengerema" value={schoolForm.physical_address || ''} onChange={(event) => updateField('physical_address', event.target.value)} /></label></div><div className="sport-teacher-registration-form-grid"><label data-label="Email"><input type="email" placeholder="e.g. school@example.com" value={schoolForm.email || ''} onChange={(event) => updateField('email', event.target.value)} /></label></div><div className="sport-teacher-registration-form-grid"><button type="button" className="sport-teacher-secondary-button" onClick={closeSchoolEditor}>Cancel</button><button type="submit" className="district-primary-button" disabled={schoolSubmitting}>{schoolSubmitting ? 'Saving...' : selectedSchool ? 'Update school' : 'Create school'}</button>{selectedSchool && <button type="button" className="sport-teacher-danger-button" onClick={deleteSchool}>Delete</button>}</div></form></aside></>}</main>
   </div>;
 }

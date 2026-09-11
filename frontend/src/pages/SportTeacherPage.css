@@ -1158,11 +1158,11 @@
   right: 0;
   z-index: 201;
   display: grid;
-  width: min(var(--drawer-width, 380px), 92vw);
+  width: min(var(--drawer-width, 440px), 94vw);
   height: 100vh;
   align-content: start;
-  gap: 10px;
-  padding: 24px;
+  gap: 12px;
+  padding: 28px 24px 20px;
   box-sizing: border-box;
   background: white;
   box-shadow: -12px 0 30px rgba(15, 23, 42, 0.2);
@@ -1173,7 +1173,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+  padding-top: 2px;
 }
 
 .sport-teacher-search-drawer-header h2 {
@@ -1264,12 +1265,12 @@
 
 .sport-teacher-profile-form {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .sport-teacher-profile-form label {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
 .sport-teacher-profile-submit {
@@ -1440,16 +1441,16 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  gap: 10px;
+  gap: 14px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 4px 4px 6px 0;
   color: #374151;
 }
 
 .sport-teacher-registration-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
   margin-top: 0;
 }
 
@@ -1517,8 +1518,8 @@
 .sport-teacher-registration-form-grid select,
 .sport-teacher-registration-form-grid textarea {
   width: 100%;
-  min-height: 26px;
-  padding: 14px 28px 6px 8px;
+  min-height: 32px;
+  padding: 16px 28px 8px 10px;
   border: 1px solid #cbd5e1;
   border-radius: 7px;
   background: white;
@@ -1534,13 +1535,13 @@
 }
 
 .sport-teacher-profile-form .sport-teacher-registration-form-grid:last-child {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid #e2e8f0;
-  background: rgba(255, 255, 255, 0.96);
+  position: static;
+  bottom: auto;
+  z-index: auto;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+  background: transparent;
 }
 
 .sport-teacher-registration-form-grid input:focus,
