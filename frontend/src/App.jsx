@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import CommonDashboardPage from './pages/CommonDashboardPage';
 import SportTeacherPage from './pages/SportTeacherPage';
 import DistrictManagerPage from './pages/DistrictManagerPage';
+import ZoneManagerPage from './pages/ZoneManagerPage';
 import TalentAdminPage from './pages/TalentAdminPage';
 import SchoolRegistrationPage from './pages/SchoolRegistrationPage';
 import './App.css';
@@ -60,7 +61,7 @@ const AppRoutes = () => {
         path="/dashboard/zone-manager"
         element={
           <ProtectedRoute requiredRole="zone_manager">
-            <CommonDashboardPage />
+            <ZoneManagerPage />
           </ProtectedRoute>
         }
       />
