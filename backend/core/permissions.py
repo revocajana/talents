@@ -66,6 +66,8 @@ class AuthenticatedReadOnly(BasePermission):
             return True
         return has_full_access(request.user) or request.user.role in {
             'talent_admin',
+            'region_manager',
+            'zone_manager',
             'head_teacher',
             'sport_teacher',
             'district_manager',
@@ -101,6 +103,8 @@ class StudentDataPermission(BasePermission):
             return True
         return request.user.is_superuser or request.user.role in {
             'talent_admin',
+            'region_manager',
+            'zone_manager',
             'head_teacher',
             'sport_teacher',
             'district_manager',
@@ -120,7 +124,7 @@ class SubmissionPermission(BasePermission):
         if request.method in SAFE_METHODS:
             return True
         return has_full_access(request.user) or request.user.role in {
-            'talent_admin', 'head_teacher', 'sport_teacher', 'student',
+            'talent_admin', 'region_manager', 'zone_manager', 'head_teacher', 'sport_teacher', 'student',
         }
 
     def has_object_permission(self, request, view, obj):

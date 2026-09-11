@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from competitions.models import Competition, CompetitionParticipation
 from django.contrib.contenttypes.models import ContentType
-from core.models import District
+from core.models import Country, District, Zone
 from students.models import Student
 
 from .models import Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
@@ -214,7 +214,81 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                     promoted.append({'student_id': int(source_participation.student_id), 'result_id': target_result.id, 'result_detail_id': target_detail.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
 
             return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted})
-        
+
+        if request.user.role == 'zone_manager':
+            if to_level != 'country' or not request.user.zone_id:
+                return Response({'error': 'Zone managers can promote only to the country level for their assigned zone.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            target_competition_id = request.data.get('country_competition_id')
+            if not target_competition_id:
+                return Response({'error': 'country_competition_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            country_type = ContentType.objects.get_for_model(Country)
+            target_competition = Competition.objects.filter(
+                id=target_competition_id,
+                level='country',
+            ).filter(
+                Q(content_type=country_type, object_id=request.user.country_id)
+                | Q(schools__country_id=request.user.country_id)
+            ).first()
+            if not target_competition:
+                return Response({'error': 'The selected country competition does not belong to your country.'}, status=status.HTTP_404_NOT_FOUND)
+
+            source_competition = Competition.objects.filter(
+                id=competition_id,
+                level='zone',
+            ).filter(
+                Q(content_type=ContentType.objects.get_for_model(Zone), object_id=request.user.zone_id)
+                | Q(schools__zone_id=request.user.zone_id)
+            ).first()
+            if not source_competition:
+                return Response({'error': 'The selected zone competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if not detail_ids:
+                return Response({'error': 'Select talent results to promote.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            promoted = []
+            errors = []
+            with transaction.atomic():
+                source_details = ResultDetail.objects.select_related('result__participation__student').filter(
+                    id__in=detail_ids,
+                    result__participation__competition=source_competition,
+                    result__participation__student__school__zone_id=request.user.zone_id,
+                )
+                for source_detail in source_details:
+                    source_result = source_detail.result
+                    source_participation = source_result.participation
+                    source_score = source_detail.percentage_score if source_detail.percentage_score is not None else source_detail.raw_score
+                    if source_score is None or source_score < 50:
+                        errors.append(f'{source_detail.talent.talent.name} for student {source_participation.student_id} must have a score of at least 50%.')
+                        continue
+
+                    target_participation, _ = CompetitionParticipation.objects.get_or_create(
+                        competition=target_competition,
+                        student_id=source_participation.student_id,
+                        defaults={'status': 'finished', 'score': None},
+                    )
+                    target_participation.status = 'finished'
+                    target_participation.save(update_fields=['status', 'score'])
+                    target_result, _ = Result.objects.get_or_create(
+                        participation=target_participation,
+                        defaults={'score': None, 'approval_status': 'pending'},
+                    )
+                    target_detail, _ = ResultDetail.objects.get_or_create(
+                        result=target_result,
+                        talent=source_detail.talent,
+                        defaults={'raw_score': 0, 'percentage_score': None},
+                    )
+                    promotion, _ = ResultPromotion.objects.get_or_create(
+                        result=source_result,
+                        result_detail=source_detail,
+                        to_level='country',
+                        defaults={'from_level': 'zone', 'promoted_by': request.user, 'notes': f'Promoted talent to country competition {target_competition.name}'},
+                    )
+                    promoted.append({'student_id': int(source_participation.student_id), 'result_id': target_result.id, 'result_detail_id': target_detail.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
+
+            return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted})
+
         # Verify competition exists and belongs to school
         competition = Competition.objects.filter(
             id=competition_id,

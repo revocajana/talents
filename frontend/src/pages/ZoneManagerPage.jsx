@@ -230,6 +230,17 @@ export default function ZoneManagerPage() {
   const schoolCompetitions = useMemo(() => zoneCompetitions.filter((competition) => competition.level === 'school'), [zoneCompetitions]);
   const districtLevelCompetitions = useMemo(() => zoneCompetitions.filter((competition) => competition.level === 'district'), [zoneCompetitions]);
   const zoneLevelCompetitions = useMemo(() => zoneCompetitions.filter((competition) => competition.level === 'zone'), [zoneCompetitions]);
+  const countryLevelCompetitions = useMemo(() => {
+    const countryId = currentUser?.country ?? allZones.find((zone) => Number(zone.id) === Number(visibleZoneId))?.country;
+    if (!countryId) return competitions.filter((competition) => competition.level === 'country');
+    return competitions.filter((competition) => {
+      const locationId = competition.object_id ?? competition.country ?? competition.zone ?? competition.region ?? competition.district;
+      const isCountryLocation = competition.level === 'country' && Number(locationId) === Number(countryId);
+      const belongsToCountrySchool = Array.isArray(competition.schools)
+        && competition.schools.some((schoolId) => zoneSchools.some((school) => Number(school.id) === Number(schoolId) && Number(school.country) === Number(countryId)));
+      return isCountryLocation || belongsToCountrySchool;
+    });
+  }, [allZones, competitions, currentUser, visibleZoneId, zoneSchools]);
 
   const relevantAnnouncements = useMemo(() => announcements.filter((announcement) => {
     if (!announcement.is_active || (announcement.expires_at && new Date(announcement.expires_at) < new Date())) return false;
@@ -491,6 +502,33 @@ export default function ZoneManagerPage() {
       setPromotions(promotionsRes.data.results || []);
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to promote students');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePromoteZoneStudentsToCountry = async (sourceCompetitionId, detailIds = selectedPromotionStudents) => {
+    const targetCompetition = countryLevelCompetitions[0];
+    if (!detailIds.length || !sourceCompetitionId || !targetCompetition) {
+      setError(targetCompetition ? 'Select at least one student to promote.' : 'Create a country competition before submitting results.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiService.promoteStudents({
+        result_detail_ids: detailIds,
+        competition_id: sourceCompetitionId,
+        country_competition_id: targetCompetition.id,
+        from_level: 'zone',
+        to_level: 'country',
+      });
+      setSelectedPromotionStudents([]);
+      const [resultsRes, participationsRes, promotionsRes] = await Promise.all([apiService.getResults(), apiService.getParticipations(), apiService.getResultPromotions()]);
+      setResults(resultsRes.data.results || []);
+      setParticipations(participationsRes.data.results || []);
+      setPromotions(promotionsRes.data.results || []);
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to submit zone results to the country level');
     } finally {
       setSubmitting(false);
     }
@@ -933,7 +971,21 @@ export default function ZoneManagerPage() {
                 <h3>{competition.name}</h3>
                 <p>Zone-level results for promoted students.</p>
               </div>
-              <span className="district-result-level">Zone level</span>
+              <div className="district-result-header-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() =>
+                    handlePromoteZoneStudentsToCountry(
+                      competition.id,
+                      selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))),
+                    )
+                  }
+                  disabled={submitting || !selectedPromotionStudents.length || !countryLevelCompetitions.length}
+                >
+                  {submitting ? 'Processing...' : `Submit to country (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}
+                </button>
+              </div>
             </div>
             <div className="district-result-table-wrap">
               <table className="data-table">
