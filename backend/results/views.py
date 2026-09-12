@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from competitions.models import Competition, CompetitionParticipation
 from django.contrib.contenttypes.models import ContentType
-from core.models import Country, District, Zone
+from core.models import Country, District, School, Zone
 from students.models import Student
 
 from .models import Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
@@ -26,6 +26,14 @@ def ensure_school_result_editable(result):
     ).exists():
         from rest_framework.exceptions import ValidationError
         raise ValidationError('Submitted or approved school results are locked.')
+
+
+def ensure_result_detail_editable(result_detail):
+    """Prevent promoted talents from being edited after they advance to a higher competition level."""
+    if getattr(result_detail, 'promoted_to', '') or ResultPromotion.objects.filter(result_detail_id=result_detail.id).exists():
+        from rest_framework.exceptions import ValidationError
+        raise ValidationError('Promoted competition results are locked.')
+    ensure_school_result_editable(result_detail.result)
 
 class ResultViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Result.objects.select_related('participation__student', 'participation__competition').prefetch_related('details').all()
@@ -81,7 +89,7 @@ class ResultDetailViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         serializer.save()
 
     def perform_update(self, serializer):
-        ensure_school_result_editable(self.get_object().result)
+        ensure_result_detail_editable(self.get_object())
         serializer.save()
 
 
@@ -132,11 +140,18 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
         from_level = request.data.get('from_level', 'school')
         to_level = request.data.get('to_level')  # district, zone, country
         
-        if not (detail_ids or student_ids) or not competition_id or not to_level:
+        if not competition_id or not to_level:
             return Response({
-                'error': 'student_ids, competition_id, and to_level are required'
+                'error': 'competition_id and to_level are required'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        if not (detail_ids or student_ids):
+            allowed_auto_submit_roles = {'district_manager', 'zone_manager'}
+            if request.user.role not in allowed_auto_submit_roles:
+                return Response({
+                    'error': 'student_ids or result_detail_ids are required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         valid_levels = ['district', 'zone', 'country']
         if to_level not in valid_levels:
             return Response({
@@ -144,80 +159,266 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         if request.user.role == 'district_manager':
-            if to_level != 'district' or not request.user.district_id:
-                return Response({'error': 'District managers can promote only to their assigned district.'}, status=status.HTTP_400_BAD_REQUEST)
+            if to_level == 'district':
+                if not request.user.district_id:
+                    return Response({'error': 'District managers must be assigned to a district.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            target_competition_id = request.data.get('district_competition_id')
-            if not target_competition_id:
-                return Response({'error': 'district_competition_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+                target_competition_id = request.data.get('district_competition_id')
+                if not target_competition_id:
+                    return Response({'error': 'district_competition_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            district_type = ContentType.objects.get_for_model(District)
-            target_competition = Competition.objects.filter(
-                id=target_competition_id,
-                level='district',
-            ).filter(
-                Q(content_type=district_type, object_id=request.user.district_id)
-                | Q(schools__district_id=request.user.district_id)
-            ).first()
-            if not target_competition:
-                return Response({'error': 'The selected district competition does not belong to your district.'}, status=status.HTTP_404_NOT_FOUND)
+                district_type = ContentType.objects.get_for_model(District)
+                target_competition = Competition.objects.filter(
+                    id=target_competition_id,
+                    level='district',
+                ).filter(
+                    Q(content_type=district_type, object_id=request.user.district_id)
+                    | Q(schools__district_id=request.user.district_id)
+                ).first()
+                if not target_competition:
+                    return Response({'error': 'The selected district competition does not belong to your district.'}, status=status.HTTP_404_NOT_FOUND)
 
-            source_competition = Competition.objects.filter(
-                id=competition_id,
-                level='school',
-                schools__district_id=request.user.district_id,
-            ).first()
-            if not source_competition:
-                return Response({'error': 'The selected school competition does not belong to your district.'}, status=status.HTTP_404_NOT_FOUND)
+                source_competition = Competition.objects.filter(
+                    id=competition_id,
+                    level='school',
+                    schools__district_id=request.user.district_id,
+                ).first()
+                if not source_competition:
+                    return Response({'error': 'The selected school competition does not belong to your district.'}, status=status.HTTP_404_NOT_FOUND)
 
-            if not detail_ids:
-                return Response({'error': 'Select talent results to promote.'}, status=status.HTTP_400_BAD_REQUEST)
+                if not detail_ids:
+                    return Response({'error': 'Select talent results to promote.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            promoted = []
-            errors = []
-            with transaction.atomic():
-                source_details = ResultDetail.objects.select_related('result__participation__student').filter(
-                    id__in=detail_ids,
-                    result__participation__competition=source_competition,
-                    result__participation__student__school__district_id=request.user.district_id,
-                )
-                for source_detail in source_details:
-                    source_result = source_detail.result
-                    source_participation = source_result.participation
-                    source_score = source_detail.percentage_score if source_detail.percentage_score is not None else source_detail.raw_score
-                    if source_score is None or source_score < 50:
-                        errors.append(f'{source_detail.talent.talent.name} for student {source_participation.student_id} must have a score of at least 50%.')
-                        continue
-
-                    target_participation, _ = CompetitionParticipation.objects.get_or_create(
-                        competition=target_competition,
-                        student_id=source_participation.student_id,
-                        defaults={'status': 'finished', 'score': None},
+                promoted = []
+                errors = []
+                with transaction.atomic():
+                    source_details = ResultDetail.objects.select_related('result__participation__student').filter(
+                        id__in=detail_ids,
+                        result__participation__competition=source_competition,
+                        result__participation__student__school__district_id=request.user.district_id,
                     )
-                    target_participation.status = 'finished'
-                    target_participation.save(update_fields=['status', 'score'])
-                    target_result, _ = Result.objects.get_or_create(
-                        participation=target_participation,
-                        defaults={'score': None, 'approval_status': 'pending'},
-                    )
-                    target_detail, _ = ResultDetail.objects.get_or_create(
-                        result=target_result,
-                        talent=source_detail.talent,
-                        defaults={'raw_score': 0, 'percentage_score': None},
-                    )
-                    promotion, _ = ResultPromotion.objects.get_or_create(
-                        result=source_result,
-                        result_detail=source_detail,
-                        to_level='district',
-                        defaults={'from_level': 'school', 'promoted_by': request.user, 'notes': f'Promoted talent to district competition {target_competition.name}'},
-                    )
-                    promoted.append({'student_id': int(source_participation.student_id), 'result_id': target_result.id, 'result_detail_id': target_detail.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
+                    for source_detail in source_details:
+                        source_result = source_detail.result
+                        source_participation = source_result.participation
+                        source_score = source_detail.percentage_score if source_detail.percentage_score is not None else source_detail.raw_score
+                        if source_score is None or source_score < 50:
+                            errors.append(f'{source_detail.talent.talent.name} for student {source_participation.student_id} must have a score of at least 50%.')
+                            continue
 
-            return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted})
+                        target_participation, _ = CompetitionParticipation.objects.get_or_create(
+                            competition=target_competition,
+                            student_id=source_participation.student_id,
+                            defaults={'status': 'finished', 'score': None},
+                        )
+                        target_participation.status = 'finished'
+                        target_participation.save(update_fields=['status', 'score'])
+                        target_result, _ = Result.objects.get_or_create(
+                            participation=target_participation,
+                            defaults={'score': None, 'approval_status': 'pending'},
+                        )
+                        target_detail, _ = ResultDetail.objects.get_or_create(
+                            result=target_result,
+                            talent=source_detail.talent,
+                            defaults={'raw_score': 0, 'percentage_score': None},
+                        )
+                        promotion, _ = ResultPromotion.objects.get_or_create(
+                            result=source_result,
+                            result_detail=source_detail,
+                            to_level='district',
+                            defaults={'from_level': 'school', 'promoted_by': request.user, 'notes': f'Promoted talent to district competition {target_competition.name}'},
+                        )
+                        ResultDetail.objects.filter(pk=source_detail.pk).update(promoted_to='district')
+                        source_detail.promoted_to = 'district'
+                        promoted.append({'student_id': int(source_participation.student_id), 'result_id': target_result.id, 'result_detail_id': target_detail.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
+
+                return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted})
+
+            if to_level == 'zone':
+                if not request.user.zone_id:
+                    return Response({'error': 'District managers must be assigned to a zone.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                target_competition_id = request.data.get('zone_competition_id')
+                zone_type = ContentType.objects.get_for_model(Zone)
+
+                if target_competition_id:
+                    target_competition = Competition.objects.filter(
+                        id=target_competition_id,
+                        level='zone',
+                    ).filter(
+                        Q(content_type=zone_type, object_id=request.user.zone_id)
+                        | Q(schools__zone_id=request.user.zone_id)
+                    ).first()
+                    if not target_competition:
+                        return Response({'error': 'The selected zone competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    target_competition, _ = Competition.objects.get_or_create(
+                        level='zone',
+                        content_type=zone_type,
+                        object_id=request.user.zone_id,
+                        defaults={
+                            'name': f'{request.user.zone.name} Zone Competition',
+                            'description': 'Auto-created for district result submission.',
+                            'status': 'approved',
+                            'organizer': request.user,
+                        },
+                    )
+                    target_competition.schools.set(School.objects.filter(zone_id=request.user.zone_id, is_approved=True))
+
+                source_competition = Competition.objects.filter(
+                    id=competition_id,
+                    level='district',
+                    schools__district_id=request.user.district_id,
+                ).first()
+                if not source_competition:
+                    return Response({'error': 'The selected district competition does not belong to your district.'}, status=status.HTTP_404_NOT_FOUND)
+
+                if not detail_ids:
+                    source_details = ResultDetail.objects.select_related('result__participation__student').filter(
+                        result__participation__competition=source_competition,
+                        result__participation__student__school__district_id=request.user.district_id,
+                    )
+                    detail_ids = [
+                        detail.id for detail in source_details
+                        if (detail.percentage_score if detail.percentage_score is not None else detail.raw_score) is not None
+                        and (detail.percentage_score if detail.percentage_score is not None else detail.raw_score) >= 50
+                    ]
+
+                if not detail_ids:
+                    return Response({'error': 'No qualifying district results were found to submit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                promoted = []
+                errors = []
+                with transaction.atomic():
+                    source_details = ResultDetail.objects.select_related('result__participation__student').filter(
+                        id__in=detail_ids,
+                        result__participation__competition=source_competition,
+                        result__participation__student__school__district_id=request.user.district_id,
+                    )
+                    for source_detail in source_details:
+                        source_result = source_detail.result
+                        source_participation = source_result.participation
+                        source_score = source_detail.percentage_score if source_detail.percentage_score is not None else source_detail.raw_score
+                        if source_score is None or source_score < 50:
+                            errors.append(f'{source_detail.talent.talent.name} for student {source_participation.student_id} must have a score of at least 50%.')
+                            continue
+
+                        target_participation, _ = CompetitionParticipation.objects.get_or_create(
+                            competition=target_competition,
+                            student_id=source_participation.student_id,
+                            defaults={'status': 'finished', 'score': None},
+                        )
+                        target_participation.status = 'finished'
+                        target_participation.save(update_fields=['status', 'score'])
+                        target_result, _ = Result.objects.get_or_create(
+                            participation=target_participation,
+                            defaults={'score': None, 'approval_status': 'pending'},
+                        )
+                        target_detail, _ = ResultDetail.objects.get_or_create(
+                            result=target_result,
+                            talent=source_detail.talent,
+                            defaults={'raw_score': 0, 'percentage_score': None},
+                        )
+                        promotion, _ = ResultPromotion.objects.get_or_create(
+                            result=source_result,
+                            result_detail=source_detail,
+                            to_level='zone',
+                            defaults={'from_level': 'district', 'promoted_by': request.user, 'notes': f'Promoted talent to zone competition {target_competition.name}'},
+                        )
+                        ResultDetail.objects.filter(pk=source_detail.pk).update(promoted_to='zone')
+                        source_detail.promoted_to = 'zone'
+                        promoted.append({'student_id': int(source_participation.student_id), 'result_id': target_result.id, 'result_detail_id': target_detail.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
+
+                return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted})
+
+            return Response({'error': 'District managers can promote only to district or zone level.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if request.user.role == 'zone_manager':
+            if to_level == 'zone':
+                target_competition_id = request.data.get('zone_competition_id') or request.data.get('district_competition_id')
+                if not request.user.zone_id:
+                    return Response({'error': 'Zone managers must be assigned to a zone.'}, status=status.HTTP_400_BAD_REQUEST)
+                if not target_competition_id:
+                    return Response({'error': 'zone_competition_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                zone_type = ContentType.objects.get_for_model(Zone)
+                target_competition = Competition.objects.filter(
+                    id=target_competition_id,
+                    level='zone',
+                ).filter(
+                    Q(content_type=zone_type, object_id=request.user.zone_id)
+                    | Q(schools__zone_id=request.user.zone_id)
+                ).first()
+                if not target_competition:
+                    return Response({'error': 'The selected zone competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)
+
+                source_competition = Competition.objects.filter(
+                    id=competition_id,
+                    level='district',
+                    schools__zone_id=request.user.zone_id,
+                ).first()
+                if not source_competition:
+                    return Response({'error': 'The selected district competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)
+
+                if not detail_ids:
+                    source_details = ResultDetail.objects.select_related('result__participation__student').filter(
+                        result__participation__competition=source_competition,
+                        result__participation__student__school__zone_id=request.user.zone_id,
+                    )
+                    detail_ids = [
+                        detail.id for detail in source_details
+                        if (detail.percentage_score if detail.percentage_score is not None else detail.raw_score) is not None
+                        and (detail.percentage_score if detail.percentage_score is not None else detail.raw_score) >= 50
+                    ]
+
+                if not detail_ids:
+                    return Response({'error': 'No qualifying district results were found to submit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                promoted = []
+                errors = []
+                with transaction.atomic():
+                    source_details = ResultDetail.objects.select_related('result__participation__student').filter(
+                        id__in=detail_ids,
+                        result__participation__competition=source_competition,
+                        result__participation__student__school__zone_id=request.user.zone_id,
+                    )
+                    for source_detail in source_details:
+                        source_result = source_detail.result
+                        source_participation = source_result.participation
+                        source_score = source_detail.percentage_score if source_detail.percentage_score is not None else source_detail.raw_score
+                        if source_score is None or source_score < 50:
+                            errors.append(f'{source_detail.talent.talent.name} for student {source_participation.student_id} must have a score of at least 50%.')
+                            continue
+
+                        target_participation, _ = CompetitionParticipation.objects.get_or_create(
+                            competition=target_competition,
+                            student_id=source_participation.student_id,
+                            defaults={'status': 'finished', 'score': None},
+                        )
+                        target_participation.status = 'finished'
+                        target_participation.save(update_fields=['status', 'score'])
+                        target_result, _ = Result.objects.get_or_create(
+                            participation=target_participation,
+                            defaults={'score': None, 'approval_status': 'pending'},
+                        )
+                        target_detail, _ = ResultDetail.objects.get_or_create(
+                            result=target_result,
+                            talent=source_detail.talent,
+                            defaults={'raw_score': 0, 'percentage_score': None},
+                        )
+                        promotion, _ = ResultPromotion.objects.get_or_create(
+                            result=source_result,
+                            result_detail=source_detail,
+                            to_level='zone',
+                            defaults={'from_level': 'district', 'promoted_by': request.user, 'notes': f'Promoted talent to zone competition {target_competition.name}'},
+                        )
+                        ResultDetail.objects.filter(pk=source_detail.pk).update(promoted_to='zone')
+                        source_detail.promoted_to = 'zone'
+                        promoted.append({'student_id': int(source_participation.student_id), 'result_id': target_result.id, 'result_detail_id': target_detail.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
+
+                return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted})
+
             if to_level != 'country' or not request.user.zone_id:
-                return Response({'error': 'Zone managers can promote only to the country level for their assigned zone.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Zone managers can promote only to the zone or country level for their assigned zone.'}, status=status.HTTP_400_BAD_REQUEST)
 
             target_competition_id = request.data.get('country_competition_id')
             if not target_competition_id:
@@ -245,7 +446,18 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'The selected zone competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)
 
             if not detail_ids:
-                return Response({'error': 'Select talent results to promote.'}, status=status.HTTP_400_BAD_REQUEST)
+                source_details = ResultDetail.objects.select_related('result__participation__student').filter(
+                    result__participation__competition=source_competition,
+                    result__participation__student__school__zone_id=request.user.zone_id,
+                )
+                detail_ids = [
+                    detail.id for detail in source_details
+                    if (detail.percentage_score if detail.percentage_score is not None else detail.raw_score) is not None
+                    and (detail.percentage_score if detail.percentage_score is not None else detail.raw_score) >= 50
+                ]
+
+            if not detail_ids:
+                return Response({'error': 'No qualifying zone results were found to submit.'}, status=status.HTTP_400_BAD_REQUEST)
 
             promoted = []
             errors = []
@@ -285,6 +497,8 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                         to_level='country',
                         defaults={'from_level': 'zone', 'promoted_by': request.user, 'notes': f'Promoted talent to country competition {target_competition.name}'},
                     )
+                    ResultDetail.objects.filter(pk=source_detail.pk).update(promoted_to='country')
+                    source_detail.promoted_to = 'country'
                     promoted.append({'student_id': int(source_participation.student_id), 'result_id': target_result.id, 'result_detail_id': target_detail.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
 
             return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted})
@@ -389,20 +603,43 @@ class SchoolCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelView
     scope_paths = {'school': 'school_id', 'country': 'school__country_id', 'zone': 'school__zone_id', 'region': 'school__region_id', 'district': 'school__district_id', 'ward': 'school__ward_id'}
 
     def perform_create(self, serializer):
-        if self.request.user.role not in {'head_teacher', 'sport_teacher'} or not self.request.user.school_id:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('Only a school teacher can create this submission.')
+        user = self.request.user
+        school = serializer.validated_data.get('school')
         competition = serializer.validated_data['competition']
-        if competition.level != 'school' or not competition.schools.filter(pk=self.request.user.school_id).exists():
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError({'competition': 'This competition is not available to your school.'})
-        serializer.save(school=self.request.user.school)
+
+        if user.role in {'head_teacher', 'sport_teacher'}:
+            if not user.school_id:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('Only a school teacher can create this submission.')
+            if competition.level != 'school' or not competition.schools.filter(pk=user.school_id).exists():
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'competition': 'This competition is not available to your school.'})
+            serializer.save(school=user.school)
+            return
+
+        if user.role == 'district_manager':
+            if not user.district_id:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('District managers must be assigned to a district.')
+            if school is None or school.district_id != user.district_id:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'school': 'This school is not in your district.'})
+            if competition.level != 'school' or not competition.schools.filter(pk=school.pk).exists():
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'competition': 'This competition is not available to the selected school.'})
+            serializer.save(school=school)
+            return
+
+        from rest_framework.exceptions import PermissionDenied
+        raise PermissionDenied('Only school teachers or district managers can create this submission.')
 
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         submission = self.get_object()
-        if request.user.role not in {'head_teacher', 'sport_teacher'} or submission.school_id != request.user.school_id:
-            return Response({'detail': 'Only the school teacher can submit these results.'}, status=status.HTTP_403_FORBIDDEN)
+        is_school_teacher = request.user.role in {'head_teacher', 'sport_teacher'} and submission.school_id == request.user.school_id
+        is_district_manager = request.user.role == 'district_manager' and submission.school.district_id == request.user.district_id
+        if not (is_school_teacher or is_district_manager):
+            return Response({'detail': 'Only the school teacher or assigned district manager can submit these results.'}, status=status.HTTP_403_FORBIDDEN)
         submission.status = 'submitted'
         submission.submitted_by = request.user
         submission.submitted_at = timezone.now()

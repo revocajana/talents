@@ -177,6 +177,9 @@ class ResultDetail(models.Model):
         return f"{self.result} – {self.talent.talent.name}"
 
     def save(self, *args, **kwargs):
+        if self.pk and (self.promoted_to or ResultPromotion.objects.filter(result_detail_id=self.pk).exists()):
+            raise ValidationError('Promoted competition results are locked.')
+
         submission = SchoolCompetitionSubmission.objects.filter(
             school_id=self.result.participation.student.school_id,
             competition_id=self.result.participation.competition_id,

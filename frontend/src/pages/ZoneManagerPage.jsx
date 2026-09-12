@@ -488,13 +488,14 @@ export default function ZoneManagerPage() {
     }
     setSubmitting(true);
     try {
-      await apiService.promoteStudents({
+      const promotionPayload = {
         result_detail_ids: detailIds,
         competition_id: sourceCompetitionId,
-        district_competition_id: targetCompetition.id,
-        from_level: 'school',
+        ...(currentUser?.role === 'zone_manager' ? { zone_competition_id: targetCompetition.id } : { district_competition_id: targetCompetition.id }),
+        from_level: currentUser?.role === 'zone_manager' ? 'district' : 'school',
         to_level: 'zone',
-      });
+      };
+      await apiService.promoteStudents(promotionPayload);
       setSelectedPromotionStudents([]);
       const [resultsRes, participationsRes, promotionsRes] = await Promise.all([apiService.getResults(), apiService.getParticipations(), apiService.getResultPromotions()]);
       setResults(resultsRes.data.results || []);
@@ -837,7 +838,9 @@ export default function ZoneManagerPage() {
           <div className="district-results-heading">
             <div>
               <h2>District-level results</h2>
-              <p>District manager submissions waiting for zone review. Select entries to promote them to the zone competition.</p>
+              <p>
+                District manager submissions waiting for zone review. Select entries to promote them to the zone competition.
+              </p>
             </div>
           </div>
           {submittedDistrictCompetitions.map((competition) => (

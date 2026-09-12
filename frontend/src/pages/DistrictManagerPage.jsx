@@ -24,6 +24,7 @@ export default function DistrictManagerPage() {
   const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [allDistricts, setAllDistricts] = useState([]);
@@ -66,6 +67,11 @@ export default function DistrictManagerPage() {
   const [showProfilePasswordConfirmation, setShowProfilePasswordConfirmation] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
   const [calendarDate, setCalendarDate] = useState(() => new Date());
+  const showSuccess = (message) => {
+    setSuccess(message);
+    window.setTimeout(() => setSuccess(null), 4000);
+  };
+
   const districtName = currentUser?.district_name
     || allDistricts.find((district) => Number(district.id) === Number(selectedDistrict))?.name
     || 'Assigned District';
@@ -429,6 +435,37 @@ export default function DistrictManagerPage() {
     }
   };
 
+  const handleSubmitDistrictResults = async (sourceCompetitionId, detailIds = []) => {
+    const targetCompetition = competitions.find((competition) => competition.level === 'zone' && Number(competition.zone) === Number(currentUser?.zone));
+    if (!sourceCompetitionId) {
+      setError('Select a district competition to submit.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const payload = {
+        result_detail_ids: detailIds,
+        competition_id: sourceCompetitionId,
+        from_level: 'district',
+        to_level: 'zone',
+      };
+      if (targetCompetition) {
+        payload.zone_competition_id = targetCompetition.id;
+      }
+      await apiService.promoteStudents(payload);
+      setSelectedPromotionStudents([]);
+      const [resultsRes, participationsRes, promotionsRes] = await Promise.all([apiService.getResults(), apiService.getParticipations(), apiService.getResultPromotions()]);
+      setResults(resultsRes.data.results || []);
+      setParticipations(participationsRes.data.results || []);
+      setPromotions(promotionsRes.data.results || []);
+      showSuccess('District results submitted to zone successfully.');
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to submit district results');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSaveDistrictScore = async (resultId, detailId, score) => {
     try {
       if (detailId) {
@@ -642,7 +679,16 @@ export default function DistrictManagerPage() {
           <section className="district-result-card" key={`district-${competition.id}`}>
             <div className="district-result-card-header">
               <div><h3>{competition.name}</h3><p>District-level results for promoted students.</p></div>
-              <span className="district-result-level">District level</span>
+              <div className="district-result-header-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => handleSubmitDistrictResults(competition.id)}
+                  disabled={submitting || !competition.entries.length}
+                >
+                  {submitting ? 'Submitting...' : 'Submit to zone'}
+                </button>
+              </div>
             </div>
             <div className="district-result-table-wrap">
                 <table className="data-table"><thead><tr><th>Student</th><th>Talent</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th><th>Action</th></tr></thead><tbody>
@@ -770,6 +816,7 @@ export default function DistrictManagerPage() {
 
       <main className="sport-teacher-prototype-content district-manager-content">
         {error && <div className="district-manager-alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Dismiss error">&times;</button></div>}
+        {success && <div className="district-manager-alert" style={{ background: '#ecfdf5', color: '#166534', borderColor: '#a7f3d0' }}>{success}<button type="button" onClick={() => setSuccess(null)} aria-label="Dismiss success">&times;</button></div>}
         {loading ? <DashboardSkeleton label="Loading district manager dashboard" /> : (
           <>
             {activeMenu === 'home' && renderHomeView()}
