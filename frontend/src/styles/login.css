@@ -173,6 +173,10 @@
 
 .password-input-wrapper input {
   padding-right: 3.2rem;
+  /* Hide browser's default password visibility toggle */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
 .password-toggle {
