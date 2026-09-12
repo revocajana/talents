@@ -1,301 +1,356 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Header } from '../components/shared';
-import DashboardSkeleton from '../components/DashboardSkeleton';
 import * as apiService from '../services/apiService';
+import logo from '../assets/Logo1.png';
 import '../styles/dashboard.css';
+import './SportTeacherPage.css';
 
 const list = (response) => response?.data?.results || (Array.isArray(response?.data) ? response.data : []);
 
-const resolveStudentByUser = async (user) => {
-  if (!user || !user.first_name || !user.last_name) {
-    return null;
-  }
-
-  const studentsResponse = await apiService.getStudents({
-    first_name: user.first_name,
-    last_name: user.last_name,
-    school: user.school,
-  });
-
-  const students = Array.isArray(studentsResponse?.data?.results)
-    ? studentsResponse.data.results
-    : Array.isArray(studentsResponse?.data)
-      ? studentsResponse.data
-      : [];
-
-  return students.find((student) => {
-    const sameFirstName = String(student.first_name || '').toLowerCase() === String(user.first_name || '').toLowerCase();
-    const sameLastName = String(student.last_name || '').toLowerCase() === String(user.last_name || '').toLowerCase();
-    const sameSchool = !user.school || Number(student.school) === Number(user.school);
-    return sameFirstName && sameLastName && sameSchool;
-  }) || null;
-};
+const NAV_ITEMS = [
+  ['home', 'Home'],
+  ['results', 'Results'],
+  ['announcements', 'Announcements'],
+];
 
 export default function StudentPage() {
-  const [student, setStudent] = useState(null);
-  const [school, setSchool] = useState(null);
-  const [district, setDistrict] = useState(null);
-  const [zone, setZone] = useState(null);
-  const [region, setRegion] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [activeTab, setActiveTab] = useState('home');
+  const [announcements, setAnnouncements] = useState([]);
   const [results, setResults] = useState([]);
-  const [talents, setTalents] = useState([]);
-  const [membership, setMembership] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [navigationOpen, setNavigationOpen] = useState(false);
 
   useEffect(() => {
-    const loadStudentDashboard = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
         setError('');
+        console.log('StudentPage: Starting data load...');
 
-        const userResponse = await apiService.getCurrentUser();
-        const user = userResponse.data || {};
-        let studentId = user.student;
-
-        if (!studentId) {
-          const fallbackStudent = await resolveStudentByUser(user);
-          if (!fallbackStudent) {
-            throw new Error('This account is not linked to a student record yet.');
-          }
-          studentId = fallbackStudent.id;
-        }
-
-        const [studentResponse, resultsResponse, announcementsResponse, talentsResponse, membershipsResponse] = await Promise.all([
-          apiService.getStudentById(studentId),
-          apiService.getResults({ 'participation__student': studentId }),
-          apiService.getAnnouncements({ is_active: true }),
-          apiService.getStudentTalents({ student: studentId }),
-          apiService.getClubMemberships({ student: studentId, is_active: true }),
+        const [announcementsResponse, resultsResponse] = await Promise.all([
+          apiService.getAnnouncements({ is_active: true }).catch(err => {
+            console.error('Announcements fetch error:', err);
+            return { data: { results: [] } };
+          }),
+          apiService.getResults({}).catch(err => {
+            console.error('Results fetch error:', err);
+            return { data: { results: [] } };
+          }),
         ]);
 
-        const studentRecord = studentResponse.data;
-        const studentSchool = studentRecord.school;
-        setStudent(studentRecord);
-        setSchool(studentSchool || null);
-        setResults(list(resultsResponse));
-        setTalents(list(talentsResponse));
-        setMembership(list(membershipsResponse)[0] || null);
+        const announcementsList = list(announcementsResponse);
+        const resultsList = list(resultsResponse);
 
-        const [districtResponse, zoneResponse, regionResponse] = await Promise.all([
-          studentSchool?.district ? apiService.getDistricts() : Promise.resolve({ data: { results: [] } }),
-          studentSchool?.zone ? apiService.getZones() : Promise.resolve({ data: { results: [] } }),
-          studentSchool?.region ? apiService.getRegions() : Promise.resolve({ data: { results: [] } }),
-        ]);
+        console.log('StudentPage: Processed announcements:', announcementsList.length);
+        console.log('StudentPage: Processed results:', resultsList.length);
 
-        setDistrict(list(districtResponse).find((item) => Number(item.id) === Number(studentSchool?.district)) || null);
-        setZone(list(zoneResponse).find((item) => Number(item.id) === Number(studentSchool?.zone)) || null);
-        setRegion(list(regionResponse).find((item) => Number(item.id) === Number(studentSchool?.region)) || null);
-
-        const announcementList = list(announcementsResponse);
-        const visibleMessages = announcementList.filter((message) => {
-          if (message.scope === 'national') return true;
-          if (message.scope === 'zone' && studentSchool?.zone) return Number(message.zone) === Number(studentSchool.zone);
-          if (message.scope === 'region' && studentSchool?.region) return Number(message.region) === Number(studentSchool.region);
-          if (message.scope === 'district' && studentSchool?.district) return Number(message.district) === Number(studentSchool.district);
-          if (message.scope === 'school' && studentSchool?.id) return Number(message.school) === Number(studentSchool.id);
-          return false;
-        });
-        setMessages(visibleMessages);
+        setAnnouncements(announcementsList);
+        setResults(resultsList);
       } catch (err) {
-        setError(err.response?.data?.detail || err.message || 'Failed to load student dashboard.');
+        console.error('StudentPage: Unexpected error:', err);
+        setError('Failed to load dashboard. Please refresh the page.');
       } finally {
         setLoading(false);
       }
     };
 
-    loadStudentDashboard();
+    loadData();
   }, []);
 
-  const summaryStats = useMemo(() => [
-    { label: 'Talents', value: String(talents.length) },
-    { label: 'Results', value: String(results.length) },
-    { label: 'Announcements', value: String(messages.length) },
-    { label: 'Club', value: membership ? 'Active' : 'Not assigned' },
-  ], [talents.length, results.length, messages.length, membership]);
-
-  const totalPoints = results.reduce((sum, result) => sum + (Number(result.grade_points) || 0), 0);
-
-  const passedCount = results.filter((result) => {
-    const score = Number(result.score ?? 0);
-    return score >= 50;
-  }).length;
-
-  const failedCount = results.length - passedCount;
+  const totalResults = results.length;
+  const passedResults = results.filter((r) => Number(r.score ?? 0) >= 50).length;
+  const failedResults = totalResults - passedResults;
+  const totalAnnouncements = announcements.length;
+  const successRate = totalResults > 0 ? Math.round((passedResults / totalResults) * 100) : 0;
 
   return (
-    <div className="page-container">
-      <Header title="Student Dashboard" />
-      <main className="admin-content">
-        {loading && <DashboardSkeleton label="Loading student dashboard" />}
-        {error && <div className="error-message" style={{ padding: '1rem', background: '#fee', color: '#c00', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+    <div className="sport-teacher-page">
+      <header className="sport-teacher-app-bar">
+        <div className="sport-teacher-brand">
+          <img src={logo} alt="Talanta logo" />
+          <span>Student Dashboard</span>
+        </div>
+        <button
+          type="button"
+          className="sport-teacher-navigation-toggle"
+          onClick={() => setNavigationOpen((open) => !open)}
+          aria-label="Open navigation menu"
+          aria-expanded={navigationOpen}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      </header>
 
-        {!loading && !error && (
-          <div className="cards-container">
-            <section className="admin-section">
-              <div className="section-header">
-                <h2>Student overview</h2>
-                <p>{student?.first_name} {student?.last_name}</p>
-              </div>
-              <div className="stats-overview">
-                {summaryStats.map((stat, index) => (
-                  <div key={index} className="stat-card">
-                    <p className="stat-label">{stat.label}</p>
-                    <h3 className="stat-value">{stat.value}</h3>
-                  </div>
-                ))}
-              </div>
-            </section>
+      <aside className={`sport-teacher-navigation ${navigationOpen ? 'is-open' : ''}`}>
+        <div className="sport-teacher-navigation-heading">Student Dashboard</div>
+        {NAV_ITEMS.map(([key, label]) => (
+          <button
+            type="button"
+            key={key}
+            className={activeTab === key ? 'active' : ''}
+            onClick={() => {
+              setActiveTab(key);
+              setNavigationOpen(false);
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </aside>
 
-            <section className="admin-section">
-              <div className="section-header">
-                <h2>My profile</h2>
-                <p>School, zone and competition path</p>
-              </div>
-              <div className="reports-grid">
-                <div className="report-card">
-                  <h4>School</h4>
-                  <p>{school?.name || 'Not available'}</p>
-                  <p>Registry: {school?.registry_number || 'Not available'}</p>
-                </div>
-                <div className="report-card">
-                  <h4>Ward</h4>
-                  <p>{school?.ward_name || school?.ward || 'Not available'}</p>
-                  <p>District: {district?.name || 'Not available'}</p>
-                </div>
-                <div className="report-card">
-                  <h4>Zone / Region</h4>
-                  <p>{zone?.name || 'Not available'}</p>
-                  <p>Region: {region?.name || 'Not available'}</p>
-                </div>
-                <div className="report-card">
-                  <h4>Performance</h4>
-                  <p>Passed: {passedCount}</p>
-                  <p>Failed: {failedCount}</p>
-                  <p>Total points: {totalPoints}</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="admin-section">
-              <div className="section-header">
-                <h2>My talents</h2>
-                <p>Talents registered on your record</p>
-              </div>
-              <div className="reports-grid">
-                {talents.length > 0 ? talents.map((talent) => (
-                  <div className="report-card" key={talent.id}>
-                    <h4>{talent.talent_name || 'Talent'}</h4>
-                    <p>{talent.talent_category || 'Category not available'}</p>
-                    <p>Proficiency: {talent.proficiency_level || 'N/A'}</p>
-                    {talent.notes ? <p>Notes: {talent.notes}</p> : null}
-                  </div>
-                )) : (
-                  <div className="report-card"><p>No talents registered yet.</p></div>
-                )}
-              </div>
-            </section>
-
-            <section className="admin-section">
-              <div className="section-header">
-                <h2>My results</h2>
-                <p>Pass/fail status and all levels reached</p>
-              </div>
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Level</th>
-                      <th>Competition</th>
-                      <th>Score</th>
-                      <th>Grade</th>
-                      <th>Status</th>
-                      <th>Award</th>
-                      <th>Rank</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.length > 0 ? results.map((result) => {
-                      const score = Number(result.score ?? 0);
-                      const overallStatus = score >= 50 ? 'Pass' : 'Fail';
-
-                      return (
-                        <tr key={result.id}>
-                          <td>{result.competition_level || 'N/A'}</td>
-                          <td>{result.competition_name || result.participation_details || 'Competition'}</td>
-                          <td>{result.score ?? 'N/A'}</td>
-                          <td>{result.grade || 'N/A'}</td>
-                          <td>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '0.25rem 0.6rem',
-                              borderRadius: '999px',
-                              fontWeight: 600,
-                              background: overallStatus === 'Pass' ? '#dcfce7' : '#fee2e2',
-                              color: overallStatus === 'Pass' ? '#166534' : '#991b1b',
-                            }}>
-                              {overallStatus}
-                            </span>
-                          </td>
-                          <td>{result.award || 'none'}</td>
-                          <td>{result.rank || 'N/A'}</td>
-                        </tr>
-                      );
-                    }) : (
-                      <tr><td colSpan="7">No results found yet.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {results.length > 0 && (
-                <div className="reports-grid" style={{ marginTop: '1.25rem' }}>
-                  {results.map((result) => {
-                    const score = Number(result.score ?? 0);
-                    const details = Array.isArray(result.details) ? result.details : [];
-
-                    return (
-                      <div className="report-card" key={`detail-${result.id}`}>
-                        <h4>{result.competition_name || 'Competition'}</h4>
-                        <p><strong>Level:</strong> {result.competition_level || 'N/A'}</p>
-                        <p><strong>Overall result:</strong> {score >= 50 ? 'Pass' : 'Fail'} ({score ?? 'N/A'}%)</p>
-                        {details.length ? (
-                          <ul style={{ marginTop: '0.75rem', paddingLeft: '1.1rem' }}>
-                            {details.map((detail) => (
-                              <li key={detail.id}>
-                                {detail.talent_name || 'Talent'}: {detail.percentage_score ?? detail.raw_score ?? 'N/A'}% — {detail.passed ? 'Pass' : 'Fail'}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p>No talent detail breakdown available.</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-
-            <section className="admin-section">
-              <div className="section-header">
-                <h2>Announcements</h2>
-                <p>Messages relevant to your school, district, zone and national level</p>
-              </div>
-              <div className="reports-grid">
-                {messages.length > 0 ? messages.map((message) => (
-                  <div className="report-card" key={message.id}>
-                    <h4>{message.title}</h4>
-                    <p>{message.content}</p>
-                    <small>{message.scope_display || message.scope}</small>
-                  </div>
-                )) : (
-                  <div className="report-card"><p>No announcements are available for your current school scope.</p></div>
-                )}
-              </div>
-            </section>
+      <main className="sport-teacher-prototype-content talent-admin-content">
+        {error && (
+          <div className="talent-admin-alert" style={{ marginBottom: '16px' }}>
+            {error}
+            <button type="button" onClick={() => setError(null)} aria-label="Dismiss error">
+              &times;
+            </button>
           </div>
+        )}
+
+        {loading && (
+          <section className="talent-admin-table-card" style={{ width: 'min(100%, 1100px)', margin: '0 auto' }}>
+            <div className="talent-admin-table-header">
+              <div>
+                <h2 style={{ margin: 0 }}>Student Dashboard</h2>
+              </div>
+            </div>
+            <div style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>
+              Loading your dashboard...
+            </div>
+          </section>
+        )}
+
+        {!loading && (
+          <>
+            {/* HOME TAB */}
+            {activeTab === 'home' && (
+              <div style={{ width: 'min(100%, 1100px)', margin: '0 auto' }}>
+                {/* Summary Stats */}
+                <section className="talent-admin-table-card">
+                  <div className="talent-admin-table-header">
+                    <div>
+                      <h2 style={{ margin: 0 }}>Welcome to Student Dashboard</h2>
+                      <p style={{ margin: '8px 0 0 0', color: '#64748b', fontSize: '14px' }}>
+                        Overview of your academic performance
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ padding: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+                    <div style={{ padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b' }}>Total Results</h4>
+                      <p style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#0f172a' }}>{totalResults}</p>
+                    </div>
+                    <div style={{ padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b' }}>Passed Results</h4>
+                      <p style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#15803d' }}>{passedResults}</p>
+                    </div>
+                    <div style={{ padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b' }}>Failed Results</h4>
+                      <p style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#991b1b' }}>{failedResults}</p>
+                    </div>
+                    <div style={{ padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b' }}>Success Rate</h4>
+                      <p style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#0f172a' }}>{successRate}%</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Recent Results */}
+                {results.length > 0 && (
+                  <section className="talent-admin-table-card" style={{ marginTop: '16px' }}>
+                    <div className="talent-admin-table-header">
+                      <div>
+                        <h3 style={{ margin: 0 }}>Recent Results</h3>
+                      </div>
+                    </div>
+                    <div className="talent-admin-table-wrap">
+                      <table className="talent-admin-table">
+                        <thead>
+                          <tr>
+                            <th>Competition</th>
+                            <th>Score</th>
+                            <th>Grade</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {results.slice(0, 5).map((result) => {
+                            const score = Number(result.score ?? 0);
+                            const status = score >= 50 ? 'Pass' : 'Fail';
+                            return (
+                              <tr key={result.id}>
+                                <td>{result.competition_name || 'Competition'}</td>
+                                <td>{result.score ?? 'N/A'}%</td>
+                                <td>{result.grade || 'N/A'}</td>
+                                <td>
+                                  <span
+                                    style={{
+                                      display: 'inline-block',
+                                      padding: '0.25rem 0.6rem',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      background: status === 'Pass' ? '#dcfce7' : '#fee2e2',
+                                      color: status === 'Pass' ? '#166534' : '#991b1b',
+                                    }}
+                                  >
+                                    {status}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+
+                {/* Recent Announcements */}
+                {announcements.length > 0 && (
+                  <section className="talent-admin-table-card" style={{ marginTop: '16px' }}>
+                    <div className="talent-admin-table-header">
+                      <div>
+                        <h3 style={{ margin: 0 }}>Recent Announcements</h3>
+                      </div>
+                    </div>
+                    <div style={{ padding: '16px' }}>
+                      {announcements.slice(0, 3).map((announcement) => (
+                        <div
+                          key={announcement.id}
+                          style={{
+                            marginBottom: '12px',
+                            paddingBottom: '12px',
+                            borderBottom: '1px solid #e5e7eb',
+                          }}
+                        >
+                          <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 600 }}>
+                            {announcement.title}
+                          </h4>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#475569' }}>
+                            {announcement.content}
+                          </p>
+                          <small style={{ color: '#94a3b8', fontSize: '11px' }}>
+                            {announcement.scope_display || announcement.scope}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
+            )}
+
+            {/* RESULTS TAB */}
+            {activeTab === 'results' && (
+              <section className="talent-admin-table-card" style={{ width: 'min(100%, 1100px)', margin: '0 auto' }}>
+                <div className="talent-admin-table-header">
+                  <div>
+                    <h2 style={{ margin: 0 }}>My Results</h2>
+                    <p style={{ margin: '8px 0 0 0', color: '#64748b', fontSize: '14px' }}>
+                      Your competition results and performance
+                    </p>
+                  </div>
+                </div>
+                <div className="talent-admin-table-wrap">
+                  <table className="talent-admin-table">
+                    <thead>
+                      <tr>
+                        <th>Competition</th>
+                        <th>Score</th>
+                        <th>Grade</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.length > 0 ? (
+                        results.map((result) => {
+                          const score = Number(result.score ?? 0);
+                          const status = score >= 50 ? 'Pass' : 'Fail';
+                          return (
+                            <tr key={result.id}>
+                              <td>{result.competition_name || 'Competition'}</td>
+                              <td>{result.score ?? 'N/A'}%</td>
+                              <td>{result.grade || 'N/A'}</td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '0.25rem 0.6rem',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    background: status === 'Pass' ? '#dcfce7' : '#fee2e2',
+                                    color: status === 'Pass' ? '#166534' : '#991b1b',
+                                  }}
+                                >
+                                  {status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
+                            No results found yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {/* ANNOUNCEMENTS TAB */}
+            {activeTab === 'announcements' && (
+              <section className="talent-admin-table-card" style={{ width: 'min(100%, 1100px)', margin: '0 auto' }}>
+                <div className="talent-admin-table-header">
+                  <div>
+                    <h2 style={{ margin: 0 }}>Announcements</h2>
+                    <p style={{ margin: '8px 0 0 0', color: '#64748b', fontSize: '14px' }}>
+                      Important messages and updates
+                    </p>
+                  </div>
+                </div>
+                <div className="talent-admin-table-wrap">
+                  {announcements.length > 0 ? (
+                    <div style={{ padding: '16px' }}>
+                      {announcements.map((announcement) => (
+                        <div
+                          key={announcement.id}
+                          style={{
+                            marginBottom: '16px',
+                            paddingBottom: '16px',
+                            borderBottom: '1px solid #e5e7eb',
+                          }}
+                        >
+                          <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: 600 }}>
+                            {announcement.title}
+                          </h4>
+                          <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#475569' }}>
+                            {announcement.content}
+                          </p>
+                          <small style={{ color: '#94a3b8', fontSize: '12px' }}>
+                            {announcement.scope_display || announcement.scope}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                      No announcements available.
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
     </div>
