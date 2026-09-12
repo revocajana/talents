@@ -646,7 +646,8 @@ export default function TalentAdminPage() {
             <table className="talent-admin-table">
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>Username</th>
+                  <th>Full Name</th>
                   {selectedUserRole === 'all' ? <th>Role</th> : selectedUserRole === 'parent' ? <th>Area</th> : <th>Location</th>}
                   {selectedUserRole === 'parent' ? <th>Children</th> : <th>Email</th>}
                   <th>{selectedUserRole === 'parent' ? 'Phone' : 'Phone'}</th>
@@ -656,12 +657,13 @@ export default function TalentAdminPage() {
                 const isParentTab = selectedUserRole === 'parent';
                 const isAllTab = selectedUserRole === 'all';
                 return <tr key={user.id}>
-                  <td><button type="button" className="talent-admin-link-button" onClick={() => openUserEditor(user)}>{user.username || getUserDisplayName(user)}</button></td>
+                  <td><button type="button" className="talent-admin-link-button" onClick={() => openUserEditor(user)}>{user.username || '—'}</button></td>
+                  <td>{getUserDisplayName(user)}</td>
                   {isAllTab ? <td>{getRoleColumnDisplay(user)}</td> : isParentTab ? <td>{getParentAreaDisplay(user)}</td> : <td>{getUserLocationDisplay(user, user.role)}</td>}
                   {isParentTab ? <td>{getParentChildrenDisplay(user)}</td> : <td>{user.email || '?'}</td>}
                   <td>{user.phone || '?'}</td>
                 </tr>;
-              })}{!filteredUsers.length && <tr><td colSpan={selectedUserRole === 'parent' ? 4 : 4} className="talent-admin-empty">No users found.</td></tr>}</tbody>
+              })}{!filteredUsers.length && <tr><td colSpan={selectedUserRole === 'parent' ? 5 : 5} className="talent-admin-empty">No users found.</td></tr>}</tbody>
             </table>
           </div>
         </section>

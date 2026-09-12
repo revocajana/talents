@@ -178,6 +178,22 @@ class FoundationRulesTests(TestCase):
 		serialized = UserSerializer(user).data
 		self.assertEqual(serialized['phone'], '+255712345678')
 
+	def test_user_serializer_creates_linked_student_for_student_role(self):
+		user = UserSerializer().create({
+			'username': 'student-user',
+			'first_name': 'Linked',
+			'last_name': 'Student',
+			'role': 'student',
+			'school': self.school.id,
+			'password': 'secret123',
+		})
+
+		self.assertIsNotNone(user.student)
+		self.assertEqual(user.student.first_name, 'Linked')
+		self.assertEqual(user.student.last_name, 'Student')
+		self.assertEqual(user.student.school_id, self.school.id)
+		self.assertEqual(user.student_id, user.student.id)
+
 
 class UserScopeAdminTests(TestCase):
 	def setUp(self):

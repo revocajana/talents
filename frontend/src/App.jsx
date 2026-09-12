@@ -7,6 +7,7 @@ import DistrictManagerPage from './pages/DistrictManagerPage';
 import ZoneManagerPage from './pages/ZoneManagerPage';
 import TalentAdminPage from './pages/TalentAdminPage';
 import SchoolRegistrationPage from './pages/SchoolRegistrationPage';
+import StudentPage from './pages/StudentPage';
 import './App.css';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
@@ -106,7 +107,7 @@ const AppRoutes = () => {
         path="/dashboard/student"
         element={
           <ProtectedRoute requiredRole="student">
-            <CommonDashboardPage />
+            <StudentPage />
           </ProtectedRoute>
         }
       />

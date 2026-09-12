@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from students.models import Student
+
 from .models import (
     Country, Zone, Region, District, Ward, School, SchoolOwnershipType, User,
     Talent, TalentCategory, StudentTalent, Announcement, CountryClub, SchoolClub, ClubTeacher,
@@ -109,21 +111,92 @@ class UserSerializer(serializers.ModelSerializer):
             'role', 'school', 'school_name', 'student', 'country', 'zone', 'region', 'district', 'district_name', 'ward',
         ]
 
+    def validate(self, attrs):
+        role = attrs.get('role', getattr(self.instance, 'role', None))
+        if role == 'student' and not attrs.get('school', getattr(self.instance, 'school', None)):
+            raise serializers.ValidationError({'school': 'A student account must be assigned to a school.'})
+        if role in {'sport_teacher', 'head_teacher'} and not attrs.get('school', getattr(self.instance, 'school', None)):
+            raise serializers.ValidationError({'school': 'A sport teacher or head teacher account must be assigned to a school.'})
+        return attrs
+
+    def _ensure_student_link(self, user, validated_data):
+        if user.role != 'student':
+            return user
+
+        if user.student_id:
+            return user
+
+        school = validated_data.get('school') or user.school
+        if isinstance(school, int):
+            school = School.objects.filter(pk=school).first()
+        if school is None:
+            raise serializers.ValidationError({'school': 'A student account must be assigned to a school.'})
+
+        student = Student.objects.filter(
+            first_name=user.first_name,
+            last_name=user.last_name,
+            school=school,
+        ).order_by('-id').first()
+
+        if student is None:
+            student = Student.objects.create(
+                first_name=user.first_name or '',
+                last_name=user.last_name or '',
+                gender='O',
+                school=school,
+                date_of_birth=None,
+            )
+
+        user.student = student
+        user.school = school
+        user.save(update_fields=['student', 'school'])
+        return user
+
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+
+        for field_name in ['school', 'country', 'zone', 'region', 'district', 'ward']:
+            value = validated_data.get(field_name)
+            if isinstance(value, int):
+                model_map = {
+                    'school': School,
+                    'country': Country,
+                    'zone': Zone,
+                    'region': Region,
+                    'district': District,
+                    'ward': Ward,
+                }
+                model_class = model_map[field_name]
+                validated_data[field_name] = model_class.objects.filter(pk=value).first()
+
         user = User(**validated_data)
         if password:
             user.set_password(password)
         user.save()
+        self._ensure_student_link(user, validated_data)
         return user
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
+        for field_name in ['school', 'country', 'zone', 'region', 'district', 'ward']:
+            value = validated_data.get(field_name)
+            if isinstance(value, int):
+                model_map = {
+                    'school': School,
+                    'country': Country,
+                    'zone': Zone,
+                    'region': Region,
+                    'district': District,
+                    'ward': Ward,
+                }
+                model_class = model_map[field_name]
+                validated_data[field_name] = model_class.objects.filter(pk=value).first()
         for field, value in validated_data.items():
             setattr(instance, field, value)
         if password:
             instance.set_password(password)
         instance.save()
+        self._ensure_student_link(instance, validated_data)
         return instance
 
 
