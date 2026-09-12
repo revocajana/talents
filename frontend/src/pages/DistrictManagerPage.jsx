@@ -685,8 +685,9 @@ export default function DistrictManagerPage() {
                   className="btn-primary"
                   onClick={() => handleSubmitDistrictResults(competition.id)}
                   disabled={submitting || !competition.entries.length}
+                  title="Submit all qualifying district results to the zone level"
                 >
-                  {submitting ? 'Submitting...' : 'Submit to zone'}
+                  {submitting ? 'Submitting...' : 'Submit district results'}
                 </button>
               </div>
             </div>
