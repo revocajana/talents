@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
-import { Header } from '../components/shared';
+import { Header, ProfileMenu } from '../components/shared';
 import * as apiService from '../services/apiService';
+import { useAuth } from '../context/AuthContext';
 import logo from '../assets/Logo1.png';
 import '../styles/dashboard.css';
 import './SportTeacherPage.css';
@@ -14,12 +15,21 @@ const NAV_ITEMS = [
 ];
 
 export default function StudentPage() {
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('home');
   const [announcements, setAnnouncements] = useState([]);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [navigationOpen, setNavigationOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [passwordDrawerOpen, setPasswordDrawerOpen] = useState(false);
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [showProfilePassword, setShowProfilePassword] = useState(false);
+  const [showProfilePasswordConfirmation, setShowProfilePasswordConfirmation] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordForm, setPasswordForm] = useState({ new_password: '', confirm_pass: '' });
 
   useEffect(() => {
     const loadData = async () => {
@@ -58,6 +68,43 @@ export default function StudentPage() {
     loadData();
   }, []);
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (passwordForm.new_password !== passwordForm.confirm_pass) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    setPasswordSubmitting(true);
+    setPasswordError('');
+    try {
+      await apiService.updateUserPassword(user.id, passwordForm.new_password);
+      setPasswordForm({ current_password: '', new_password: '', confirm_pass: '' });
+      setPasswordDrawerOpen(false);
+      setPasswordError('Password changed successfully!');
+      setTimeout(() => setPasswordError(''), 3000);
+    } catch (err) {
+      const errorMessage = err?.response?.data?.detail || err?.response?.data?.password?.[0] || 'Failed to change password';
+      setPasswordError(errorMessage);
+    } finally {
+      setPasswordSubmitting(false);
+    }
+  };
+
+  const openProfileDrawer = () => {
+    setProfileMenuOpen(false);
+    setProfileDrawerOpen(true);
+  };
+
+  const openChangePasswordDrawer = () => {
+    setProfileMenuOpen(false);
+    setPasswordDrawerOpen(true);
+  };
+
+  const handleLogout = () => {
+    setProfileMenuOpen(false);
+    logout();
+  };
+
   const totalResults = results.length;
   const passedResults = results.filter((r) => Number(r.score ?? 0) >= 50).length;
   const failedResults = totalResults - passedResults;
@@ -71,17 +118,27 @@ export default function StudentPage() {
           <img src={logo} alt="Talanta logo" />
           <span>Student Dashboard</span>
         </div>
-        <button
-          type="button"
-          className="sport-teacher-navigation-toggle"
-          onClick={() => setNavigationOpen((open) => !open)}
-          aria-label="Open navigation menu"
-          aria-expanded={navigationOpen}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+          <ProfileMenu
+            isOpen={profileMenuOpen}
+            onToggle={() => setProfileMenuOpen((open) => !open)}
+            onProfile={openProfileDrawer}
+            onChangePassword={openChangePasswordDrawer}
+            onLogout={handleLogout}
+            username={user?.username}
+          />
+          <button
+            type="button"
+            className="sport-teacher-navigation-toggle"
+            onClick={() => setNavigationOpen((open) => !open)}
+            aria-label="Open navigation menu"
+            aria-expanded={navigationOpen}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
       </header>
 
       <aside className={`sport-teacher-navigation ${navigationOpen ? 'is-open' : ''}`}>
@@ -353,6 +410,61 @@ export default function StudentPage() {
           </>
         )}
       </main>
+
+      {/* PROFILE DRAWER */}
+      {profileDrawerOpen && (
+        <>
+          <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close profile" onClick={() => setProfileDrawerOpen(false)} />
+          <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': '480px' }} aria-label="Profile details">
+            <div className="sport-teacher-search-drawer-header">
+              <h2>Profile</h2>
+              <button type="button" onClick={() => setProfileDrawerOpen(false)} aria-label="Close profile">&times;</button>
+            </div>
+            <div className="sport-teacher-profile-details">
+              <div><span>Username:</span><strong>{user?.username || '-'}</strong></div>
+              <div><span>First name:</span><strong>{user?.first_name || '-'}</strong></div>
+              <div><span>Last name:</span><strong>{user?.last_name || '-'}</strong></div>
+              <div><span>Email:</span><strong>{user?.email || '-'}</strong></div>
+              <div><span>Role:</span><strong>{user?.role || '-'}</strong></div>
+            </div>
+          </aside>
+        </>
+      )}
+
+      {/* CHANGE PASSWORD DRAWER */}
+      {passwordDrawerOpen && (
+        <>
+          <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close change password" onClick={() => setPasswordDrawerOpen(false)} />
+          <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': '480px' }} aria-label="Change password">
+            <div className="sport-teacher-search-drawer-header">
+              <h2>Change password</h2>
+              <button type="button" onClick={() => setPasswordDrawerOpen(false)} aria-label="Close change password">&times;</button>
+            </div>
+            {passwordError && <div style={{ padding: '16px', color: '#991b1b', background: passwordError.includes('successfully') ? '#dcfce7' : '#fee2e2' }}>{passwordError}</div>}
+            <form onSubmit={handleChangePassword} className="sport-teacher-profile-form">
+              <label>
+                New password
+                <span className="sport-teacher-password-control">
+                  <input type={showProfilePassword ? 'text' : 'password'} value={passwordForm.new_password} onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })} minLength="8" required />
+                  <button type="button" onClick={() => setShowProfilePassword((visible) => !visible)} aria-label={showProfilePassword ? 'Hide new password' : 'Show new password'}>
+                    {showProfilePassword ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </span>
+              </label>
+              <label>
+                Confirm password
+                <span className="sport-teacher-password-control">
+                  <input type={showProfilePasswordConfirmation ? 'text' : 'password'} value={passwordForm.confirm_pass} onChange={(e) => setPasswordForm({ ...passwordForm, confirm_pass: e.target.value })} minLength="8" required />
+                  <button type="button" onClick={() => setShowProfilePasswordConfirmation((visible) => !visible)} aria-label={showProfilePasswordConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}>
+                    {showProfilePasswordConfirmation ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </span>
+              </label>
+              <button type="submit" className="sport-teacher-profile-submit" disabled={passwordSubmitting}>{passwordSubmitting ? 'Saving...' : 'Save password'}</button>
+            </form>
+          </aside>
+        </>
+      )}
     </div>
   );
 }

@@ -154,3 +154,45 @@ export const ActionButton = ({ children, onClick, variant = 'primary', disabled 
     </button>
   );
 };
+
+export const ProfileMenu = ({ 
+  isOpen, 
+  onToggle, 
+  onProfile, 
+  onChangePassword, 
+  onLogout, 
+  username 
+}) => {
+  const { user } = useAuth();
+  
+  return (
+    <div className="sport-teacher-profile">
+      <button
+        type="button"
+        className="sport-teacher-profile-button"
+        onClick={onToggle}
+        aria-label="Open profile menu"
+        aria-expanded={isOpen}
+        title={username || user?.username || 'Profile'}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M4.5 20c.8-3.5 3.5-5.5 7.5-5.5s6.7 2 7.5 5.5" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="sport-teacher-profile-menu">
+          <button type="button" onClick={onProfile}>
+            Profile
+          </button>
+          <button type="button" onClick={onChangePassword}>
+            Change password
+          </button>
+          <button type="button" onClick={onLogout}>
+            Logout
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
