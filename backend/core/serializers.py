@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import serializers
 
 from students.models import Student
@@ -111,6 +113,11 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'password', 'first_name', 'last_name', 'email', 'phone',
             'role', 'school', 'school_name', 'student', 'student_id', 'country', 'zone', 'region', 'district', 'district_name', 'ward',
         ]
+
+    def validate_phone(self, value):
+        if value and not re.fullmatch(r'(?:0\d{9}|\+255\d{9})', value):
+            raise serializers.ValidationError('Use 10 digits starting with 0 or 13 characters starting with +255.')
+        return value
 
     def validate(self, attrs):
         role = attrs.get('role', getattr(self.instance, 'role', None))

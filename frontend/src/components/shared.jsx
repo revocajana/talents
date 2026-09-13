@@ -188,7 +188,7 @@ export const ProfileMenu = ({
           <button type="button" onClick={onChangePassword}>
             Change password
           </button>
-          <button type="button" onClick={onLogout}>
+          <button type="button" className="sport-teacher-profile-logout" onClick={onLogout}>
             Logout
           </button>
         </div>

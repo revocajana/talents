@@ -22,7 +22,7 @@ const EyeIcon = ({ visible = false }) => (
 );
 
 const SportTeacherPage = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -97,6 +97,7 @@ const SportTeacherPage = () => {
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [showEditConfirmation, setShowEditConfirmation] = useState(false);
   const [profilePasswordForm, setProfilePasswordForm] = useState({ new_password: '', confirm_password: '' });
+  const [profileForm, setProfileForm] = useState({ email: '', phone: '' });
   const [showProfilePassword, setShowProfilePassword] = useState(false);
   const [showProfilePasswordConfirmation, setShowProfilePasswordConfirmation] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
@@ -267,13 +268,15 @@ const SportTeacherPage = () => {
     }
 
     loadData();
-  }, [user, schoolId, loadData]);
+  }, [schoolId, loadData]);
 
   // Modal handlers
   const openModal = (name) => setModals(prev => ({ ...prev, [name]: true }));
   const closeModal = (name) => setModals(prev => ({ ...prev, [name]: false }));
   const openProfileDrawer = () => {
     setProfileMenuOpen(false);
+    setProfileForm({ email: user?.email || '', phone: user?.phone || '' });
+    setError(null);
     openModal('profile');
   };
   const openChangePasswordDrawer = () => {
@@ -300,6 +303,30 @@ const SportTeacherPage = () => {
     } catch (err) {
       const responseErrors = err.response?.data;
       setError(responseErrors?.detail || responseErrors?.password?.[0] || 'Failed to change password');
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
+  const handleSaveProfile = async (event) => {
+    event.preventDefault();
+    const phone = profileForm.phone.trim();
+    if (phone && !/^(?:0\d{9}|\+255\d{9})$/.test(phone)) {
+      setError('Phone must be 10 digits starting with 0 or 13 characters starting with +255.');
+      return;
+    }
+    setProfileSubmitting(true);
+    setError(null);
+    try {
+      const response = await apiService.updateUserProfile(user.id, {
+        email: profileForm.email.trim(),
+        phone,
+      });
+      updateUserProfile(response.data);
+      closeModal('profile');
+      showSuccess('Profile updated successfully');
+    } catch (err) {
+      const responseErrors = err.response?.data;
+      setError(responseErrors?.email?.[0] || responseErrors?.phone?.[0] || responseErrors?.detail || 'Failed to update profile');
     } finally {
       setProfileSubmitting(false);
     }
@@ -1825,14 +1852,16 @@ const SportTeacherPage = () => {
           <h2>Profile</h2>
           <button type="button" onClick={() => closeModal('profile')} aria-label="Close profile">&times;</button>
         </div>
-        <div className="sport-teacher-profile-details">
+        <form className="sport-teacher-profile-form" onSubmit={handleSaveProfile}>
           <div><span>Username:</span><strong>{user?.username || '-'}</strong></div>
           <div><span>Firstname:</span><strong>{user?.first_name || '-'}</strong></div>
           <div><span>Lastname:</span><strong>{user?.last_name || '-'}</strong></div>
-          <div><span>Email:</span><strong>{user?.email || '-'}</strong></div>
+          <label>Email<input type="email" value={profileForm.email} onChange={(event) => setProfileForm({ ...profileForm, email: event.target.value })} /></label>
+          <label>Phone number<input type="tel" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} pattern="(?:0\d{9}|\+255\d{9})" placeholder="0712345678 or +255712345678" title="Use 10 digits starting with 0 or 13 characters starting with +255" /></label>
           <div><span>Role:</span><strong>{user?.role || '-'}</strong></div>
           <div><span>School:</span><strong>{schoolName}</strong></div>
-        </div>
+          <button type="submit" className="sport-teacher-profile-submit" disabled={profileSubmitting}>{profileSubmitting ? 'Saving...' : 'Save profile'}</button>
+        </form>
       </aside>
     </>
   ) : null;
@@ -1847,8 +1876,8 @@ const SportTeacherPage = () => {
           <button type="button" onClick={() => closeModal('changePassword')} aria-label="Close change password">&times;</button>
         </div>
         <form onSubmit={handleChangePassword} className="sport-teacher-profile-form">
-          <label>New password<span className="sport-teacher-password-control"><input type={showProfilePassword ? 'text' : 'password'} value={profilePasswordForm.new_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, new_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePassword((visible) => !visible)} aria-label={showProfilePassword ? 'Hide new password' : 'Show new password'}><EyeIcon visible={showProfilePassword} /></button></span></label>
-          <label>Confirm password<span className="sport-teacher-password-control"><input type={showProfilePasswordConfirmation ? 'text' : 'password'} value={profilePasswordForm.confirm_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, confirm_password: event.target.value })} minLength="8" required /><button type="button" onClick={() => setShowProfilePasswordConfirmation((visible) => !visible)} aria-label={showProfilePasswordConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}><EyeIcon visible={showProfilePasswordConfirmation} /></button></span></label>
+          <label>New password<input type="password" value={profilePasswordForm.new_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, new_password: event.target.value })} minLength="8" required /></label>
+          <label>Confirm password<input type="password" value={profilePasswordForm.confirm_password} onChange={(event) => setProfilePasswordForm({ ...profilePasswordForm, confirm_password: event.target.value })} minLength="8" required /></label>
           <button type="submit" className="sport-teacher-profile-submit" disabled={profileSubmitting}>{profileSubmitting ? 'Saving...' : 'Save password'}</button>
         </form>
       </aside>

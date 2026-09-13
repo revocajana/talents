@@ -138,6 +138,7 @@ export const getUserStats = () => api.get('/users/stats/');
 export const getUsers = (params = {}) => api.get('/users/', { params });
 export const createUser = (data) => api.post('/users/', data);
 export const updateUser = (id, data) => api.put(`/users/${id}/`, data);
+export const updateUserProfile = (id, data) => api.patch(`/users/${id}/`, data);
 export const updateUserPassword = (id, password) => api.patch(`/users/${id}/`, { password });
 export const deleteUser = (id) => api.delete(`/users/${id}/`);
 

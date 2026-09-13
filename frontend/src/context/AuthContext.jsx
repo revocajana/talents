@@ -121,6 +121,14 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('refresh_token');
   };
 
+  const updateUserProfile = (updates) => {
+    setUser((currentUser) => {
+      const updatedUser = { ...currentUser, ...updates };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  };
+
   const checkAuth = () => {
     const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('access_token') || localStorage.getItem('token');
@@ -139,7 +147,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, authReady, token, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, authReady, token, login, logout, updateUserProfile, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

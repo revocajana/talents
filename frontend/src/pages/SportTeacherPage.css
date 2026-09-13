@@ -109,6 +109,16 @@
   color: #0E1DB6;
 }
 
+.sport-teacher-profile-menu .sport-teacher-profile-logout {
+  color: #dc2626;
+}
+
+.sport-teacher-profile-menu .sport-teacher-profile-logout:hover,
+.sport-teacher-profile-menu .sport-teacher-profile-logout:focus-visible {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 .sport-teacher-navigation-toggle {
   display: none;
   width: 44px;
