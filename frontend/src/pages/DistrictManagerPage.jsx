@@ -18,7 +18,6 @@ const MENU_ITEMS = [
   { key: 'school-results', label: 'School-level results' },
   { key: 'district-results', label: 'District-level results' },
   { key: 'announcements', label: 'Announcements' },
-  { key: 'reports', label: 'Reports' },
 ];
 
 export default function DistrictManagerPage() {
@@ -816,51 +815,6 @@ export default function DistrictManagerPage() {
     </div>
   );
 
-  const renderReportsView = () => (
-    <div className="cards-container">
-      <section className="admin-section">
-        <div className="section-header">
-          <h2>District Reports</h2>
-          <p>Key district performance and operational summary</p>
-        </div>
-
-        <div className="reports-grid">
-          <div className="report-card">
-            <h4>Schools</h4>
-            <p>Number of schools linked to this district.</p>
-            <ul className="stats-list">
-              <li><span>Total:</span> {districtSchools.length}</li>
-            </ul>
-          </div>
-
-          <div className="report-card">
-            <h4>Students</h4>
-            <p>Students recorded under district schools.</p>
-            <ul className="stats-list">
-              <li><span>Total:</span> {districtStudents.length}</li>
-            </ul>
-          </div>
-
-          <div className="report-card">
-            <h4>Wards</h4>
-            <p>Ward coverage within the selected district.</p>
-            <ul className="stats-list">
-              <li><span>Total:</span> {districtWards.length}</li>
-            </ul>
-          </div>
-
-          <div className="report-card">
-            <h4>Competitions</h4>
-            <p>Active competition records associated with this district.</p>
-            <ul className="stats-list">
-              <li><span>Total:</span> {districtCompetitions.length}</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-
   return (
     <div className="sport-teacher-page district-manager-page">
       <header className="sport-teacher-app-bar">
@@ -900,7 +854,6 @@ export default function DistrictManagerPage() {
             {activeMenu === 'home' && renderHomeView()}
             {(activeMenu === 'school-results' || activeMenu === 'district-results') && renderResultsView()}
             {activeMenu === 'announcements' && renderAnnouncementsView()}
-            {activeMenu === 'reports' && renderReportsView()}
           </>
         )}
       </main>

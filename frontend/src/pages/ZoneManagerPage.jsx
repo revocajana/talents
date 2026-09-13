@@ -28,7 +28,6 @@ const MENU_ITEMS = [
   { key: 'district-results', label: 'District-level results' },
   { key: 'zone-results', label: 'Zone-level results' },
   { key: 'announcements', label: 'Announcements' },
-  { key: 'reports', label: 'Reports' },
 ];
 
 export default function ZoneManagerPage() {
@@ -1118,54 +1117,6 @@ export default function ZoneManagerPage() {
     </div>
   );
 
-  const renderReportsView = () => (
-    <div className="cards-container">
-      <section className="admin-section">
-        <div className="section-header">
-          <h2>Zone Reports</h2>
-          <p>Key zone performance and operational summary</p>
-        </div>
-        <div className="reports-grid">
-          <div className="report-card">
-            <h4>Districts</h4>
-            <p>Districts connected to the selected zone.</p>
-            <ul className="stats-list">
-              <li><span>Total:</span> {zoneDistricts.length}</li>
-            </ul>
-          </div>
-          <div className="report-card">
-            <h4>Regions</h4>
-            <p>Regions under the selected zone.</p>
-            <ul className="stats-list">
-              <li><span>Total:</span> {zoneRegions.length}</li>
-            </ul>
-          </div>
-          <div className="report-card">
-            <h4>Schools</h4>
-            <p>Schools connected to the selected zone.</p>
-            <ul className="stats-list">
-              <li><span>Total:</span> {zoneSchools.length}</li>
-            </ul>
-          </div>
-          <div className="report-card">
-            <h4>Students</h4>
-            <p>Students recorded under zone schools.</p>
-            <ul className="stats-list">
-              <li><span>Total:</span> {zoneStudents.length}</li>
-            </ul>
-          </div>
-          <div className="report-card">
-            <h4>Competitions</h4>
-            <p>Competition records associated with this zone.</p>
-            <ul className="stats-list">
-              <li><span>Total:</span> {zoneCompetitions.length}</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-
   return (
     <div className="sport-teacher-page district-manager-page">
       <header className="sport-teacher-app-bar">
@@ -1206,7 +1157,6 @@ export default function ZoneManagerPage() {
             {activeMenu === 'home' && renderHomeView()}
             {(activeMenu === 'district-results' || activeMenu === 'zone-results') && renderResultsView()}
             {activeMenu === 'announcements' && renderAnnouncementsView()}
-            {activeMenu === 'reports' && renderReportsView()}
           </>
         )}
       </main>
