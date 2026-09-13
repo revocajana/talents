@@ -224,6 +224,11 @@ const SportTeacherPage = () => {
     setCompetitions(competitionsRes.data.results || []);
   }, [schoolId]);
 
+  const refreshSchoolSubmissionData = useCallback(async () => {
+    const submissionsRes = await apiService.getSchoolResultSubmissions({ school: schoolId });
+    setSchoolSubmissions(submissionsRes.data.results || []);
+  }, [schoolId]);
+
   useEffect(() => () => {
     resultAutosaveTimers.current.forEach((timer) => window.clearTimeout(timer));
     resultAutosaveTimers.current.clear();
@@ -1440,7 +1445,7 @@ const SportTeacherPage = () => {
       ]);
       setSchoolSubmission((current) => Number(current?.competition) === competitionId ? submittedSubmission : current);
       showSuccess(`${competition.name} results submitted for district review`);
-      await loadData();
+      await refreshSchoolSubmissionData();
     } catch (err) {
       const responseErrors = err.response?.data;
       setError(responseErrors?.detail || responseErrors?.competition?.[0] || responseErrors?.non_field_errors?.[0] || 'Failed to submit school results');
