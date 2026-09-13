@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import DashboardSkeleton from '../components/DashboardSkeleton';
+import { ProfileMenu } from '../components/shared.jsx';
 import * as apiService from '../services/apiService';
 import logo from '../assets/Logo1.png';
 import './SportTeacherPage.css';
@@ -60,6 +61,7 @@ export default function DistrictManagerPage() {
   const [competitionSubmitting, setCompetitionSubmitting] = useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [profileEmail, setProfileEmail] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
   const [profileMessage, setProfileMessage] = useState(null);
   const [passwordDrawerOpen, setPasswordDrawerOpen] = useState(false);
   const [profilePasswordForm, setProfilePasswordForm] = useState({ new_password: '', confirm_password: '' });
@@ -299,17 +301,24 @@ export default function DistrictManagerPage() {
   const openProfileDrawer = () => {
     setProfileMenuOpen(false);
     setProfileEmail(currentUser?.email || '');
+    setProfilePhone(currentUser?.phone || '');
     setProfileMessage(null);
     setProfileDrawerOpen(true);
   };
 
   const handleSaveProfile = async (event) => {
     event.preventDefault();
+    const phone = profilePhone.trim();
+    if (phone && !/^(?:0\d{9}|\+255\d{9})$/.test(phone)) {
+      setProfileMessage({ type: 'error', text: 'Phone must be 10 digits starting with 0 or 13 characters starting with +255.' });
+      return;
+    }
     setProfileSubmitting(true);
     setProfileMessage(null);
     try {
-      const response = await apiService.updateUser(currentUser.id, { email: profileEmail.trim() });
+      const response = await apiService.updateUserProfile(currentUser.id, { email: profileEmail.trim(), phone });
       setCurrentUser(response.data);
+      setProfileDrawerOpen(false);
       setProfileMessage({ type: 'success', text: 'Profile updated successfully.' });
     } catch (err) {
       const responseErrors = err.response?.data;
@@ -794,12 +803,14 @@ export default function DistrictManagerPage() {
           <span>Talanta Management System</span>
         </div>
         <div className="sport-teacher-app-actions">
-          <div className="sport-teacher-profile">
-            <button type="button" className="sport-teacher-profile-button" onClick={() => setProfileMenuOpen((open) => !open)} aria-label="Open profile menu" aria-expanded={profileMenuOpen} title={currentUser?.username || 'Profile'}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M4.5 20c.8-3.5 3.5-5.5 7.5-5.5s6.7 2 7.5 5.5" /></svg>
-            </button>
-            {profileMenuOpen && <div className="sport-teacher-profile-menu"><button type="button" onClick={openProfileDrawer}>Profile</button><button type="button" onClick={openChangePasswordDrawer}>Change password</button><button type="button" onClick={logout}>Logout</button></div>}
-          </div>
+          <ProfileMenu
+            isOpen={profileMenuOpen}
+            onToggle={() => setProfileMenuOpen((open) => !open)}
+            onProfile={openProfileDrawer}
+            onChangePassword={openChangePasswordDrawer}
+            onLogout={() => { setProfileMenuOpen(false); logout(); }}
+            username={currentUser?.username}
+          />
           <button type="button" className="sport-teacher-navigation-toggle" onClick={() => setSidebarOpen((open) => !open)} aria-label="Open navigation menu" aria-expanded={sidebarOpen} title="Open navigation menu">
             <span /><span /><span />
           </button>
@@ -869,7 +880,7 @@ export default function DistrictManagerPage() {
           <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer district-competition-drawer" style={{ '--drawer-width': `${competitionDrawerWidth}px` }} aria-label="Profile details">
             <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingCompetitionDrawer(true); }} role="separator" aria-label="Resize profile panel" />
             <div className="sport-teacher-search-drawer-header"><h2>Profile</h2><button type="button" onClick={() => setProfileDrawerOpen(false)} aria-label="Close profile">&times;</button></div>
-            <form onSubmit={handleSaveProfile} className="sport-teacher-profile-form"><div className="sport-teacher-profile-details"><div><span>Username:</span><strong>{currentUser?.username || '-'}</strong></div><div><span>Firstname:</span><strong>{currentUser?.first_name || '-'}</strong></div><div><span>Lastname:</span><strong>{currentUser?.last_name || '-'}</strong></div><div><span>Role:</span><strong>{currentUser?.role || '-'}</strong></div><div><span>District:</span><strong>{districtName}</strong></div></div><label>Email<input type="email" value={profileEmail} onChange={(event) => setProfileEmail(event.target.value)} /></label>{profileMessage && <div className={`district-profile-message is-${profileMessage.type}`} role="status">{profileMessage.text}</div>}<button type="submit" className="sport-teacher-profile-submit" disabled={profileSubmitting}>{profileSubmitting ? 'Saving...' : 'Save profile'}</button></form>
+            <form onSubmit={handleSaveProfile} className="sport-teacher-profile-form"><div className="sport-teacher-profile-details"><div><span>Username:</span><strong>{currentUser?.username || '-'}</strong></div><div><span>Firstname:</span><strong>{currentUser?.first_name || '-'}</strong></div><div><span>Lastname:</span><strong>{currentUser?.last_name || '-'}</strong></div><div><span>Role:</span><strong>{currentUser?.role || '-'}</strong></div><div><span>District:</span><strong>{districtName}</strong></div></div><label>Email<input type="email" value={profileEmail} onChange={(event) => setProfileEmail(event.target.value)} /></label><label>Phone number<input type="tel" value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} pattern="(?:0\d{9}|\+255\d{9})" placeholder="0712345678 or +255712345678" title="Use 10 digits starting with 0 or 13 characters starting with +255" /></label>{profileMessage && <div className={`district-profile-message is-${profileMessage.type}`} role="status">{profileMessage.text}</div>}<button type="submit" className="sport-teacher-profile-submit" disabled={profileSubmitting}>{profileSubmitting ? 'Saving...' : 'Save profile'}</button></form>
           </aside>
         </>
       )}

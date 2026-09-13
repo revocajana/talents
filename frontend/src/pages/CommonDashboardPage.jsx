@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { ProfileMenu } from '../components/shared';
 import './SportTeacherPage.css';
 import logo from '../assets/Logo1.png';
 
@@ -48,27 +49,14 @@ export default function CommonDashboardPage() {
           <span>Talanta Management System</span>
         </div>
         <div className="sport-teacher-app-actions">
-          <div className="sport-teacher-profile">
-            <button
-              type="button"
-              className="sport-teacher-profile-button"
-              onClick={() => setProfileMenuOpen((open) => !open)}
-              aria-label="Open profile menu"
-              aria-expanded={profileMenuOpen}
-              title={user?.username || 'Profile'}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="8" r="3.5" />
-                <path d="M4.5 20c.8-3.5 3.5-5.5 7.5-5.5s6.7 2 7.5 5.5" />
-              </svg>
-            </button>
-            {profileMenuOpen && (
-              <div className="sport-teacher-profile-menu">
-                <button type="button" onClick={() => setProfileMenuOpen(false)}>Profile</button>
-                <button type="button" onClick={() => setProfileMenuOpen(false)}>Change password</button>
-              </div>
-            )}
-          </div>
+          <ProfileMenu
+            isOpen={profileMenuOpen}
+            onToggle={() => setProfileMenuOpen((open) => !open)}
+            onProfile={() => setProfileMenuOpen(false)}
+            onChangePassword={() => setProfileMenuOpen(false)}
+            onLogout={() => { setProfileMenuOpen(false); logout(); }}
+            username={user?.username}
+          />
           <button
             type="button"
             className="sport-teacher-navigation-toggle"

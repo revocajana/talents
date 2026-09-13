@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import DashboardSkeleton from '../components/DashboardSkeleton';
+import { ProfileMenu } from '../components/shared.jsx';
 import * as apiService from '../services/apiService';
 import logo from '../assets/Logo1.png';
 import './SportTeacherPage.css';
@@ -382,6 +383,7 @@ export default function ZoneManagerPage() {
     try {
       const response = await apiService.updateUser(currentUser.id, { email: profileEmail.trim() });
       setCurrentUser(response.data);
+      setProfileDrawerOpen(false);
       setProfileMessage({ type: 'success', text: 'Profile updated successfully.' });
     } catch (err) {
       const responseErrors = err.response?.data;
@@ -1172,18 +1174,14 @@ export default function ZoneManagerPage() {
           <span>Talanta Management System</span>
         </div>
         <div className="sport-teacher-app-actions">
-          <div className="sport-teacher-profile">
-            <button type="button" className="sport-teacher-profile-button" onClick={() => setProfileMenuOpen((open) => !open)} aria-label="Open profile menu" aria-expanded={profileMenuOpen} title={currentUser?.username || 'Profile'}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M4.5 20c.8-3.5 3.5-5.5 7.5-5.5s6.7 2 7.5 5.5" /></svg>
-            </button>
-            {profileMenuOpen && (
-              <div className="sport-teacher-profile-menu">
-                <button type="button" onClick={openProfileDrawer}>Profile</button>
-                <button type="button" onClick={openChangePasswordDrawer}>Change password</button>
-                <button type="button" onClick={logout}>Logout</button>
-              </div>
-            )}
-          </div>
+          <ProfileMenu
+            isOpen={profileMenuOpen}
+            onToggle={() => setProfileMenuOpen((open) => !open)}
+            onProfile={openProfileDrawer}
+            onChangePassword={openChangePasswordDrawer}
+            onLogout={() => { setProfileMenuOpen(false); logout(); }}
+            username={currentUser?.username}
+          />
           <button type="button" className="sport-teacher-navigation-toggle" onClick={() => setSidebarOpen((open) => !open)} aria-label="Open navigation menu" aria-expanded={sidebarOpen} title="Open navigation menu">
             <span /><span /><span />
           </button>
