@@ -972,30 +972,42 @@ const SportTeacherPage = () => {
 
   const renderLoadingSkeleton = () => (
     <div className="sport-teacher-loading-skeleton" aria-label="Loading dashboard" aria-busy="true">
-      <div className="sport-teacher-skeleton-heading">
-        <div className="sport-teacher-skeleton-block sport-teacher-skeleton-title" />
-        <div className="sport-teacher-skeleton-block sport-teacher-skeleton-subtitle" />
-      </div>
-      <div className="sport-teacher-skeleton-stats">
-        {[1, 2, 3, 4].map((item) => (
-          <div className="sport-teacher-skeleton-card" key={item}>
-            <div className="sport-teacher-skeleton-block sport-teacher-skeleton-label" />
-            <div className="sport-teacher-skeleton-block sport-teacher-skeleton-number" />
-          </div>
+      <section className="sport-teacher-skeleton-attention">
+        <div className="sport-teacher-skeleton-block sport-teacher-skeleton-section-title" />
+        <div className="sport-teacher-skeleton-attention-grid">
+          {[1, 2, 3, 4, 5].map((item) => (
+            <div className="sport-teacher-skeleton-attention-card" key={item}>
+              <div className="sport-teacher-skeleton-block sport-teacher-skeleton-number" />
+              <div className="sport-teacher-skeleton-block sport-teacher-skeleton-label" />
+            </div>
+          ))}
+        </div>
+      </section>
+      <div className="sport-teacher-skeleton-overview">
+        {[1, 2].map((card) => (
+          <section className="sport-teacher-skeleton-card sport-teacher-skeleton-overview-card" key={card}>
+            <div className="sport-teacher-skeleton-panel-heading">
+              <div>
+                <div className="sport-teacher-skeleton-block sport-teacher-skeleton-section-title" />
+                <div className="sport-teacher-skeleton-block sport-teacher-skeleton-subtitle" />
+              </div>
+              <div className="sport-teacher-skeleton-block sport-teacher-skeleton-action" />
+            </div>
+            <div className="sport-teacher-skeleton-overview-content">
+              <div className="sport-teacher-skeleton-block sport-teacher-skeleton-donut" />
+              <div className="sport-teacher-skeleton-legend">
+                {[1, 2, 3, 4].map((item) => <div className="sport-teacher-skeleton-block sport-teacher-skeleton-legend-row" key={item} />)}
+              </div>
+            </div>
+          </section>
         ))}
       </div>
-      <div className="sport-teacher-skeleton-card sport-teacher-skeleton-actions">
-        <div className="sport-teacher-skeleton-block sport-teacher-skeleton-section-title" />
-        <div className="sport-teacher-skeleton-action-row">
-          {[1, 2, 3].map((item) => <div className="sport-teacher-skeleton-block sport-teacher-skeleton-action" key={item} />)}
-        </div>
-      </div>
-      <div className="sport-teacher-skeleton-panels">
+      <div className="sport-teacher-skeleton-home-panels">
         {[1, 2].map((panel) => (
-          <div className="sport-teacher-skeleton-card sport-teacher-skeleton-panel" key={panel}>
+          <section className="sport-teacher-skeleton-card sport-teacher-skeleton-panel" key={panel}>
             <div className="sport-teacher-skeleton-panel-heading">
               <div className="sport-teacher-skeleton-block sport-teacher-skeleton-section-title" />
-              <div className="sport-teacher-skeleton-block sport-teacher-skeleton-count" />
+              <div className="sport-teacher-skeleton-block sport-teacher-skeleton-action" />
             </div>
             {[1, 2, 3, 4, 5].map((row) => (
               <div className="sport-teacher-skeleton-table-row" key={row}>
@@ -1003,7 +1015,7 @@ const SportTeacherPage = () => {
                 <div className="sport-teacher-skeleton-block sport-teacher-skeleton-row-secondary" />
               </div>
             ))}
-          </div>
+          </section>
         ))}
       </div>
     </div>
