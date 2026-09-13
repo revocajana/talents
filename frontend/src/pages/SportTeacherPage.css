@@ -258,15 +258,15 @@
   position: relative;
   display: grid;
   justify-self: center;
-  width: 150px;
-  height: 150px;
+  width: 165px;
+  height: 165px;
   border-radius: 50%;
   place-items: center;
 }
 
 .sport-teacher-talent-donut::before {
-  width: 88px;
-  height: 88px;
+  width: 75px;
+  height: 75px;
   border-radius: 50%;
   background: white;
   content: '';
