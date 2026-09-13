@@ -179,19 +179,29 @@ export default function DistrictManagerPage() {
   }, [districtStudents, studentTalents, visibleDistrictId]);
 
   const districtCompetitions = useMemo(() => {
-    if (!visibleDistrictId) return competitions;
+    if (!visibleDistrictId) return competitions.filter((competition) => competition.level === 'district');
     return competitions.filter((competition) => {
+      if (competition.level !== 'district') return false;
       const locationId = competition.object_id ?? competition.district ?? competition.region ?? competition.zone ?? competition.country;
-      const isDistrictLocation = competition.level === 'district' && Number(locationId) === visibleDistrictId;
+      const isDistrictLocation = Number(locationId) === visibleDistrictId;
       const belongsToDistrictSchool = Array.isArray(competition.schools)
         && competition.schools.some((schoolId) => districtSchools.some((school) => Number(school.id) === Number(schoolId)));
-      return Number(locationId) === visibleDistrictId || isDistrictLocation || belongsToDistrictSchool;
+      return isDistrictLocation || belongsToDistrictSchool;
     });
   }, [competitions, districtSchools, visibleDistrictId]);
 
-  const schoolCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.level === 'school'), [districtCompetitions]);
-  const districtLevelCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.level === 'district'), [districtCompetitions]);
-  const calendarCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.status !== 'cancelled' && /^\d{4}-\d{2}-\d{2}$/.test(competition.start_date || '')), [districtCompetitions]);
+  const schoolCompetitions = useMemo(() => {
+    if (!visibleDistrictId) return competitions.filter((competition) => competition.level === 'school');
+    return competitions.filter((competition) => {
+      if (competition.level !== 'school') return false;
+      const locationId = competition.object_id ?? competition.district ?? competition.region ?? competition.zone ?? competition.country;
+      const belongsToDistrictSchool = Array.isArray(competition.schools)
+        && competition.schools.some((schoolId) => districtSchools.some((school) => Number(school.id) === Number(schoolId)));
+      return Number(locationId) === visibleDistrictId || belongsToDistrictSchool;
+    });
+  }, [competitions, districtSchools, visibleDistrictId]);
+  const districtLevelCompetitions = useMemo(() => districtCompetitions, [districtCompetitions]);
+  const calendarCompetitions = useMemo(() => districtLevelCompetitions.filter((competition) => competition.status !== 'cancelled' && /^\d{4}-\d{2}-\d{2}$/.test(competition.start_date || '')), [districtLevelCompetitions]);
   const relevantAnnouncements = useMemo(() => announcements.filter((announcement) => {
     if (!announcement.is_active || (announcement.expires_at && new Date(announcement.expires_at) < new Date())) return false;
     if (announcement.scope === 'national') return true;
@@ -303,6 +313,19 @@ export default function DistrictManagerPage() {
   };
 
   const goToCurrentMonth = () => setCalendarDate(new Date());
+
+  const getCompetitionTooltip = (dateKey) => {
+    const matches = calendarCompetitions.filter((competition) => {
+      const start = competition.start_date;
+      const end = competition.end_date || competition.start_date;
+      return start === dateKey || end === dateKey;
+    });
+
+    if (!matches.length) return undefined;
+
+    const [primaryMatch] = matches;
+    return `${primaryMatch.name}\n${primaryMatch.level ? primaryMatch.level.charAt(0).toUpperCase() + primaryMatch.level.slice(1) : 'Competition'} level`;
+  };
 
   const handleDeleteAnnouncement = async (announcementId) => {
     const announcement = announcements.find((item) => Number(item.id) === Number(announcementId));
@@ -637,7 +660,7 @@ export default function DistrictManagerPage() {
         <section className="district-home-card district-calendar-card">
           <div className="district-card-heading"><div><h2>Competition calendar</h2><p>Blue circles mark competition days</p></div><div className="calendar-controls"><button type="button" onClick={() => moveCalendarMonth(-1)} aria-label="Previous month" title="Previous month">‹</button><span>{calendarDays.monthLabel}</span><button type="button" onClick={() => moveCalendarMonth(1)} aria-label="Next month" title="Next month">›</button><button type="button" className="calendar-today-button" onClick={goToCurrentMonth}>Today</button></div></div>
           <div className="calendar-weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <span key={day}>{day}</span>)}</div>
-          <div className="calendar-grid">{Array.from({ length: calendarDays.firstDay }).map((_, index) => <span className="calendar-day is-empty" key={`empty-${index}`} />)}{Array.from({ length: calendarDays.daysInMonth }, (_, index) => { const day = index + 1; const dateKey = `${calendarDays.year}-${String(calendarDays.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const isToday = new Date().toISOString().slice(0, 10) === dateKey; return <span className={`calendar-day ${competitionDates.has(dateKey) ? 'has-competition' : ''} ${isToday ? 'is-today' : ''}`} key={dateKey} title={competitionDates.has(dateKey) ? 'Competition day' : undefined}>{day}</span>; })}</div>
+          <div className="calendar-grid">{Array.from({ length: calendarDays.firstDay }).map((_, index) => <span className="calendar-day is-empty" key={`empty-${index}`} />)}{Array.from({ length: calendarDays.daysInMonth }, (_, index) => { const day = index + 1; const dateKey = `${calendarDays.year}-${String(calendarDays.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const isToday = new Date().toISOString().slice(0, 10) === dateKey; const tooltip = getCompetitionTooltip(dateKey); return <span className={`calendar-day ${competitionDates.has(dateKey) ? 'has-competition' : ''} ${isToday ? 'is-today' : ''}`} key={dateKey} title={tooltip || undefined}>{day}</span>; })}</div>
           <div className="calendar-events">{calendarEvents.length ? calendarEvents.map((competition) => <div key={competition.id}><span className="calendar-event-dot" /> <strong>{competition.name}</strong><small>{competition.start_date}{competition.end_date ? ` - ${competition.end_date}` : ''}</small></div>) : <p className="district-empty-state">No competitions this month.</p>}</div>
         </section>
       </div>
