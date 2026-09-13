@@ -159,7 +159,6 @@ const SportTeacherPage = () => {
         announcementsRes,
         eligibleRes,
         schoolRes,
-        countryClubsRes,
         submissionsRes,
       ] = await Promise.all([
         apiService.getStudents({ school: schoolId }),
@@ -178,7 +177,6 @@ const SportTeacherPage = () => {
         apiService.getAnnouncements({ is_active: true }),
         apiService.getEligibleForPromotion().catch(() => ({ data: [] })),
         apiService.getSchoolById(schoolId),
-        apiService.getCountryClubs({ country: user?.country_id || user?.country?.id || user?.country }),
         apiService.getSchoolResultSubmissions({ school: schoolId }),
       ]);
       
@@ -188,6 +186,7 @@ const SportTeacherPage = () => {
       });
       setStudents(schoolStudents);
       const schoolCountryId = schoolRes.data.country?.id ?? schoolRes.data.country_id ?? schoolRes.data.country;
+      const countryClubsRes = await apiService.getCountryClubs({ country: schoolCountryId });
       setEducationLevels((educationLevelsRes.data.results || []).filter((level) => Number(level.country) === Number(schoolCountryId)));
       setTalents(talentsRes.data.results || []);
       setStudentTalents(studentTalentsRes.data.results || []);
@@ -209,6 +208,15 @@ const SportTeacherPage = () => {
     } finally {
       setLoading(false);
     }
+  }, [schoolId]);
+
+  const refreshClubData = useCallback(async () => {
+    const [clubsRes, membershipsRes] = await Promise.all([
+      apiService.getClubs({ school: schoolId }),
+      apiService.getClubMemberships({ school: schoolId }),
+    ]);
+    setClubs(clubsRes.data.results || []);
+    setClubMemberships(membershipsRes.data.results || []);
   }, [schoolId]);
 
   useEffect(() => () => {
@@ -642,7 +650,7 @@ const SportTeacherPage = () => {
     try {
       await apiService.registerClubs({ country_club_ids: selectedClubIds.map(Number) });
       closeModal('registerClubs');
-      await loadData();
+      await refreshClubData();
       showSuccess('School clubs updated successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to register clubs');

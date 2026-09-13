@@ -417,5 +417,3 @@ class AuditLogSerializer(serializers.ModelSerializer):
         model = AuditLog
         fields = '__all__'
         read_only_fields = ['actor', 'created_at']
-
-
