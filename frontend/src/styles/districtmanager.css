@@ -328,6 +328,15 @@
   font-size: 11px;
 }
 
+.district-competition-row > span {
+  justify-self: end;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .district-competition-footer {
   display: flex;
   align-items: center;

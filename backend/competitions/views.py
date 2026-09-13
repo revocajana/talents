@@ -56,7 +56,14 @@ class CompetitionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
             if level != 'district' or district is None:
                 from rest_framework.exceptions import ValidationError
                 raise ValidationError('District managers can create only district-level competitions for their district.')
-            competition = serializer.save(organizer=user, content_type=ContentType.objects.get_for_model(District), object_id=district.pk)
+            competition = serializer.save(
+                organizer=user,
+                content_type=ContentType.objects.get_for_model(District),
+                object_id=district.pk,
+                status='approved',
+                approved_by=user,
+                approved_at=timezone.now(),
+            )
             competition.schools.set(School.objects.filter(district=district, is_approved=True))
             competition.participants.clear()
             return

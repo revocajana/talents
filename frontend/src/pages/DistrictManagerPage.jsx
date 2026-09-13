@@ -57,7 +57,7 @@ export default function DistrictManagerPage() {
   const [competitionDrawerOpen, setCompetitionDrawerOpen] = useState(false);
   const [competitionDrawerWidth, setCompetitionDrawerWidth] = useState(420);
   const [isResizingCompetitionDrawer, setIsResizingCompetitionDrawer] = useState(false);
-  const [competitionForm, setCompetitionForm] = useState({ name: '', description: '', start_date: '', end_date: '', status: 'draft' });
+  const [competitionForm, setCompetitionForm] = useState({ name: '', description: '', start_date: '', end_date: '' });
   const [competitionSubmitting, setCompetitionSubmitting] = useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [profileEmail, setProfileEmail] = useState('');
@@ -380,7 +380,6 @@ export default function DistrictManagerPage() {
       description: competition?.description || '',
       start_date: competition?.start_date || '',
       end_date: competition?.end_date || '',
-      status: competition?.status || 'draft',
     });
     setCompetitionDrawerOpen(true);
   };
@@ -388,7 +387,7 @@ export default function DistrictManagerPage() {
   const closeCompetitionEditor = () => {
     setCompetitionDrawerOpen(false);
     setSelectedCompetition(null);
-    setCompetitionForm({ name: '', description: '', start_date: '', end_date: '', status: 'draft' });
+    setCompetitionForm({ name: '', description: '', start_date: '', end_date: '' });
   };
 
   const handleSaveCompetition = async (event) => {
@@ -402,7 +401,6 @@ export default function DistrictManagerPage() {
         start_date: competitionForm.start_date,
         end_date: competitionForm.end_date || null,
         level: 'district',
-        status: competitionForm.status,
       };
       if (selectedCompetition) {
         await apiService.patchCompetition(selectedCompetition.id, payload);
@@ -624,13 +622,11 @@ export default function DistrictManagerPage() {
             {districtLevelCompetitions.map((competition) => (
               <button type="button" className="district-competition-row is-editable" key={competition.id} onClick={() => openCompetitionEditor(competition)} aria-label={`Edit ${competition.name}`}>
                 <strong className="district-competition-title">{competition.name}</strong>
-                <span className={`district-competition-status is-${competition.status || 'draft'}`}>{competition.status || 'draft'}</span>
-                <small>{competition.start_date || 'Date not set'}{competition.end_date ? ` - ${competition.end_date}` : ''}</small>
+                <span>{competition.start_date || 'Date not set'}{competition.end_date ? ` - ${competition.end_date}` : ''}</span>
               </button>
             ))}
             {!districtLevelCompetitions.length && <p className="district-empty-state">No district competitions created yet.</p>}
           </div>
-          <div className="district-competition-footer"><span>{districtLevelCompetitions.length} district events · {schoolSubmissions.filter((item) => item.status === 'submitted').length} submissions</span><button type="button" className="district-text-button" onClick={() => setActiveMenu('district-results')}>Open results</button></div>
         </section>
 
         <section className="district-home-card">
@@ -877,7 +873,7 @@ export default function DistrictManagerPage() {
               <label>Competition name *<input type="text" value={competitionForm.name} placeholder="e.g. District Athletics Cup" onChange={(event) => setCompetitionForm({ ...competitionForm, name: event.target.value })} maxLength="150" required /></label>
               <label>Description<textarea value={competitionForm.description} placeholder="Optional competition summary..." onChange={(event) => setCompetitionForm({ ...competitionForm, description: event.target.value })} rows="5" /></label>
               <div className="district-competition-date-grid"><label>Start date *<input type="date" value={competitionForm.start_date} onChange={(event) => setCompetitionForm({ ...competitionForm, start_date: event.target.value })} required /></label><label>End date<input type="date" value={competitionForm.end_date} onChange={(event) => setCompetitionForm({ ...competitionForm, end_date: event.target.value })} min={competitionForm.start_date || undefined} /></label></div>
-              <div className="district-competition-form-actions"><label>Status<select value={competitionForm.status} onChange={(event) => setCompetitionForm({ ...competitionForm, status: event.target.value })}><option value="draft">Draft</option><option value="pending_approval">Pending approval</option><option value="approved">Approved</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>{selectedCompetition && <button type="button" className="district-competition-delete" onClick={handleDeleteCompetition} disabled={competitionSubmitting}>Delete</button>}<button type="submit" className="district-primary-button" disabled={competitionSubmitting}>{competitionSubmitting ? 'Saving...' : selectedCompetition ? 'Save changes' : 'Create competition'}</button></div>
+              <div className="district-competition-form-actions">{selectedCompetition && <button type="button" className="district-competition-delete" onClick={handleDeleteCompetition} disabled={competitionSubmitting}>Delete</button>}<button type="submit" className="district-primary-button" disabled={competitionSubmitting}>{competitionSubmitting ? 'Saving...' : selectedCompetition ? 'Save changes' : 'Create competition'}</button></div>
             </form>
           </aside>
         </>
