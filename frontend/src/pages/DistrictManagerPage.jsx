@@ -242,9 +242,26 @@ export default function DistrictManagerPage() {
     const total = promotedDistrictTalents.length;
     return [...counts.entries()]
       .sort(([, firstCount], [, secondCount]) => secondCount - firstCount)
-      .slice(0, 5)
       .map(([name, count]) => ({ name, count, percentage: total ? Math.round((count / total) * 100) : 0 }));
   }, [promotedDistrictTalents]);
+
+  const talentChartColors = [
+    '#0e1db6', '#4682b4', '#38a169', '#d69e2e',
+    '#c05621', '#805ad5', '#319795', '#b83280',
+    '#0891b2', '#65a30d', '#dc2626', '#7c3aed',
+    '#ea580c', '#0369a1', '#be123c', '#4d7c0f',
+  ];
+  const talentChartTotal = talentParticipation.reduce((total, item) => total + item.count, 0);
+  let talentChartOffset = 0;
+  const talentChartSegments = talentParticipation.map((item, index) => {
+    const percentage = talentChartTotal ? (item.count / talentChartTotal) * 100 : 0;
+    const segment = { ...item, percentage, color: talentChartColors[index % talentChartColors.length], start: talentChartOffset };
+    talentChartOffset += percentage;
+    return segment;
+  });
+  const talentChartGradient = talentChartSegments.length
+    ? `conic-gradient(${talentChartSegments.map((segment) => `${segment.color} ${segment.start}% ${segment.start + segment.percentage}%`).join(', ')})`
+    : '#e5e7eb';
 
   const schoolRanking = useMemo(() => districtSchools.map((school) => {
     const schoolStudents = districtStudents.filter((student) => Number(student.school?.id ?? student.school) === Number(school.id));
@@ -578,11 +595,22 @@ export default function DistrictManagerPage() {
     <>
       <div className="district-home-grid">
         <section className="district-home-card talent-card">
-          <div className="district-card-heading"><div><h2>Talent participation</h2><p>Share of talents promoted to district level</p></div><span className="district-card-kicker">{promotedDistrictTalents.length} promoted</span></div>
-          <div className="talent-chart-layout">
-            <div className="talent-donut" style={{ background: `conic-gradient(${talentParticipation.map((item, index) => `${['#0e1db6', '#16a085', '#f59e0b', '#e05252', '#7c3aed'][index]} ${talentParticipation.slice(0, index).reduce((sum, entry) => sum + entry.percentage, 0)}% ${talentParticipation.slice(0, index + 1).reduce((sum, entry) => sum + entry.percentage, 0)}%`).join(', ') || '#e5e7eb 0 100%'}` }}><div /></div>
-            <div className="talent-legend">{talentParticipation.length ? talentParticipation.map((item, index) => <div className="talent-legend-row" key={item.name}><span className="legend-dot" style={{ background: ['#0e1db6', '#16a085', '#f59e0b', '#e05252', '#7c3aed'][index] }} /> <span>{item.name}</span><strong>{item.percentage}%</strong></div>) : <p>No promoted talents yet.</p>}</div>
-          </div>
+          <div className="district-card-heading"><div><h2>Talent participation</h2><p>Talents promoted to district level</p></div><span className="district-card-kicker">{promotedDistrictTalents.length} promoted</span></div>
+          {talentChartSegments.length ? (
+            <div className="sport-teacher-talent-donut-layout">
+              <div className="sport-teacher-talent-donut" style={{ background: talentChartGradient }} aria-label="District talent participation donut chart">
+                <div><strong>{talentChartTotal}</strong><span>promoted</span></div>
+              </div>
+              <div className="sport-teacher-talent-donut-legend">
+                {talentChartSegments.map((segment) => (
+                  <div className="sport-teacher-talent-legend-item" key={segment.name}>
+                    <span className="sport-teacher-talent-legend-name"><i style={{ background: segment.color }} />{segment.name}</span>
+                    <strong>{segment.count}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : <p className="district-empty-state">No promoted talents yet.</p>}
         </section>
 
         <section className="district-home-card">
