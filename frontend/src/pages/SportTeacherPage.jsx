@@ -234,6 +234,21 @@ const SportTeacherPage = () => {
     setAnnouncements(announcementsRes.data.results || []);
   }, []);
 
+  const refreshStudentData = useCallback(async () => {
+    const [studentsRes, studentTalentsRes, membershipsRes] = await Promise.all([
+      apiService.getStudents({ school: schoolId }),
+      apiService.getAllStudentTalents({ school: schoolId }),
+      apiService.getClubMemberships({ school: schoolId }),
+    ]);
+    const schoolStudents = (studentsRes.data.results || []).filter((student) => {
+      const studentSchoolId = student.school?.id ?? student.school_id ?? student.school;
+      return Number(studentSchoolId) === schoolId;
+    });
+    setStudents(schoolStudents);
+    setStudentTalents(studentTalentsRes.data.results || []);
+    setClubMemberships(membershipsRes.data.results || []);
+  }, [schoolId]);
+
   useEffect(() => () => {
     resultAutosaveTimers.current.forEach((timer) => window.clearTimeout(timer));
     resultAutosaveTimers.current.clear();
@@ -429,7 +444,7 @@ const SportTeacherPage = () => {
       }
       closeStudentEditor();
       setActiveTab('students');
-      await loadData();
+      await refreshStudentData();
       showSuccess('Student changes saved successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to save student changes');
@@ -442,7 +457,7 @@ const SportTeacherPage = () => {
     try {
       await apiService.deleteStudent(selectedStudent.id);
       closeStudentEditor();
-      await loadData();
+      await refreshStudentData();
       showSuccess('Student deleted successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete student');
@@ -608,7 +623,7 @@ const SportTeacherPage = () => {
       setStudentForm({ first_name: '', last_name: '', gender: 'M', date_of_birth: '', education_level: '', password: '', confirm_password: '', club: '', talents: [] });
       closeModal('registerStudent');
       setActiveTab('students');
-      await loadData();
+      await refreshStudentData();
       showSuccess('Student registered successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to register student');
