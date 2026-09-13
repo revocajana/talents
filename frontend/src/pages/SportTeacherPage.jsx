@@ -219,6 +219,11 @@ const SportTeacherPage = () => {
     setClubMemberships(membershipsRes.data.results || []);
   }, [schoolId]);
 
+  const refreshCompetitionData = useCallback(async () => {
+    const competitionsRes = await apiService.getCompetitions({ school: schoolId });
+    setCompetitions(competitionsRes.data.results || []);
+  }, [schoolId]);
+
   useEffect(() => () => {
     resultAutosaveTimers.current.forEach((timer) => window.clearTimeout(timer));
     resultAutosaveTimers.current.clear();
@@ -539,7 +544,7 @@ const SportTeacherPage = () => {
       closeModal('competition');
       setSelectedCompetition(null);
       setCompetitionForm({ name: '', description: '', start_date: '', end_date: '' });
-      await loadData();
+      await refreshCompetitionData();
       showSuccess(selectedCompetition ? 'Competition updated successfully' : 'Competition created successfully');
     } catch (err) {
       setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to save competition');
@@ -556,7 +561,7 @@ const SportTeacherPage = () => {
       await apiService.deleteCompetition(selectedCompetition.id);
       closeModal('competition');
       setSelectedCompetition(null);
-      await loadData();
+      await refreshCompetitionData();
       showSuccess('Competition deleted successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete competition');
@@ -1020,7 +1025,12 @@ const SportTeacherPage = () => {
       return counts;
     }, {})).sort(([, countA], [, countB]) => countB - countA);
     const totalTalentAssignments = talentParticipation.reduce((total, [, count]) => total + count, 0);
-    const talentChartColors = ['#0e1db6', '#4682b4', '#38a169', '#d69e2e', '#c05621', '#805ad5', '#319795', '#b83280'];
+    const talentChartColors = [
+      '#0e1db6', '#4682b4', '#38a169', '#d69e2e',
+      '#c05621', '#805ad5', '#319795', '#b83280',
+      '#0891b2', '#65a30d', '#dc2626', '#7c3aed',
+      '#ea580c', '#0369a1', '#be123c', '#4d7c0f',
+    ];
     let talentChartOffset = 0;
     const talentChartSegments = talentParticipation.map(([name, count], index) => {
       const percentage = totalTalentAssignments ? (count / totalTalentAssignments) * 100 : 0;
@@ -1762,15 +1772,15 @@ const SportTeacherPage = () => {
           <button type="button" onClick={() => closeModal('competition')} aria-label="Close competition form">&times;</button>
         </div>
         <form onSubmit={handleSaveCompetition} className="sport-teacher-profile-form">
-          <label>Competition name *<input type="text" value={competitionForm.name} placeholder="e.g. District Athletics Cup" onChange={(event) => setCompetitionForm({ ...competitionForm, name: event.target.value })} maxLength="150" required /></label>
-          <label>Description<textarea value={competitionForm.description} placeholder="Optional competition summary..." onChange={(event) => setCompetitionForm({ ...competitionForm, description: event.target.value })} rows="4" /></label>
+          <label>School competition name *<input type="text" value={competitionForm.name} placeholder="e.g. 2026 Annual School Talent Competition" onChange={(event) => setCompetitionForm({ ...competitionForm, name: event.target.value })} maxLength="150" required /></label>
+          <label>Description<textarea value={competitionForm.description} placeholder="Describe the school-level competition, activities, or eligibility details" onChange={(event) => setCompetitionForm({ ...competitionForm, description: event.target.value })} rows="4" /></label>
           <div className="sport-teacher-competition-date-grid">
             <label>Start date *<input type="date" value={competitionForm.start_date} onChange={(event) => setCompetitionForm({ ...competitionForm, start_date: event.target.value })} required /></label>
             <label>End date<input type="date" value={competitionForm.end_date} onChange={(event) => setCompetitionForm({ ...competitionForm, end_date: event.target.value })} /></label>
           </div>
           <div className="sport-teacher-competition-form-actions">
             {selectedCompetition && <button type="button" className="sport-teacher-competition-delete" onClick={handleDeleteCompetition} disabled={competitionSubmitting}>Delete competition</button>}
-            <button type="submit" className="sport-teacher-competition-save" disabled={competitionSubmitting}>{competitionSubmitting ? 'Saving changes...' : 'Save changes'}</button>
+            <button type="submit" className="sport-teacher-competition-save" disabled={competitionSubmitting}>{competitionSubmitting ? (selectedCompetition ? 'Saving changes...' : 'Adding competition...') : (selectedCompetition ? 'Save changes' : 'Add competition')}</button>
           </div>
         </form>
       </aside>

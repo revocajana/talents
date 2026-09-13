@@ -249,13 +249,15 @@
 
 .sport-teacher-talent-donut-layout {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
-  gap: 22px;
+  gap: 18px;
 }
 
 .sport-teacher-talent-donut {
+  position: relative;
   display: grid;
+  justify-self: center;
   width: 150px;
   height: 150px;
   border-radius: 50%;
@@ -289,16 +291,19 @@
 }
 
 .sport-teacher-talent-donut-legend {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 9px 14px;
+  grid-column: 2;
+  width: 100%;
   min-width: 0;
 }
 
 .sport-teacher-talent-legend-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 6px;
   color: #475569;
   font-size: 12px;
 }
@@ -308,9 +313,6 @@
   align-items: center;
   min-width: 0;
   gap: 7px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .sport-teacher-talent-legend-name i {
