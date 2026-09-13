@@ -289,21 +289,36 @@ class SchoolClubViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         if school is None:
             return Response({'detail': 'This teacher has no assigned school.'}, status=400)
         allowed_total = school.recommended_club_count
-        current_count = SchoolClub.objects.filter(school=school, is_active=True).count()
-        if current_count + len(country_club_ids) > allowed_total:
+        try:
+            country_club_ids = [int(club_id) for club_id in country_club_ids]
+        except (TypeError, ValueError):
+            return Response({'detail': 'Club IDs must be valid numbers.'}, status=400)
+        if len(country_club_ids) > allowed_total:
             return Response({'detail': f'This school can register up to {allowed_total} active clubs.'}, status=400)
         country_clubs = list(CountryClub.objects.filter(id__in=country_club_ids, country_id=school.country_id, is_active=True))
         if len(country_clubs) != len(country_club_ids):
             return Response({'detail': 'Choose active clubs from your school country.'}, status=400)
-        existing_ids = set(SchoolClub.objects.filter(school=school, country_club_id__in=country_club_ids).values_list('country_club_id', flat=True))
-        if existing_ids:
-            return Response({'detail': 'One or more selected clubs are already registered for this school.'}, status=400)
         with transaction.atomic():
+            existing_clubs = {
+                school_club.country_club_id: school_club
+                for school_club in SchoolClub.objects.select_for_update().filter(school=school)
+            }
+            for country_club_id, school_club in existing_clubs.items():
+                should_be_active = country_club_id in country_club_ids
+                if school_club.is_active != should_be_active:
+                    school_club.is_active = should_be_active
+                    school_club.save(update_fields=['is_active'])
+                    if not should_be_active:
+                        school_club.memberships.filter(is_active=True).update(
+                            is_active=False,
+                            left_at=timezone.now(),
+                        )
             SchoolClub.objects.bulk_create([
                 SchoolClub(school=school, country_club=country_club, is_active=True)
                 for country_club in country_clubs
+                if country_club.id not in existing_clubs
             ])
-        return Response({'registered': len(country_clubs)}, status=201)
+        return Response({'selected': len(country_club_ids)})
 
 
 class ClubTeacherViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):

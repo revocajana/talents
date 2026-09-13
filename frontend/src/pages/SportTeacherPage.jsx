@@ -629,7 +629,11 @@ const SportTeacherPage = () => {
 
   const openClubRegistration = () => {
     setError(null);
-    setSelectedClubIds([]);
+    setSelectedClubIds(
+      schoolClubs
+        .filter((club) => club.is_active)
+        .map((club) => String(club.country_club ?? club.country_club_id))
+    );
     openModal('registerClubs');
   };
 
@@ -639,7 +643,7 @@ const SportTeacherPage = () => {
       await apiService.registerClubs({ country_club_ids: selectedClubIds.map(Number) });
       closeModal('registerClubs');
       await loadData();
-      showSuccess('Clubs registered successfully');
+      showSuccess('School clubs updated successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to register clubs');
     }
@@ -969,7 +973,7 @@ const SportTeacherPage = () => {
         <section className="sport-teacher-management-card">
           <div className="sport-teacher-card-heading">
             <h2>Clubs</h2>
-            <button type="button" className="sport-teacher-card-action" onClick={openClubRegistration}>Register club</button>
+            <button type="button" className="sport-teacher-card-action" onClick={openClubRegistration}>Select school clubs</button>
           </div>
           {selectedClubs.length ? (
             <div className="sport-teacher-club-list">
@@ -1652,33 +1656,27 @@ const SportTeacherPage = () => {
       <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer" style={{ '--drawer-width': `${drawerWidth}px` }} aria-label="Register clubs">
         <div className="sport-teacher-drawer-resize-edge" onPointerDown={(event) => { event.preventDefault(); setIsResizingDrawer(true); }} role="separator" aria-label="Resize slide-over panel" />
         <div className="sport-teacher-search-drawer-header">
-          <h2>Register club</h2>
+          <h2>Select school clubs</h2>
           <button type="button" onClick={() => closeModal('registerClubs')} aria-label="Close club registration">&times;</button>
         </div>
-        <p className="sport-teacher-club-limit">Maximum active clubs: <strong>{clubLimit}</strong>. Currently registered: <strong>{schoolClubs.filter((club) => club.is_active).length}</strong>.</p>
+        <p className="sport-teacher-club-limit">Select up to <strong>{clubLimit}</strong> clubs for this school. Checked clubs are available to students.</p>
         <form onSubmit={handleRegisterClubs}>
           <div className="sport-teacher-club-checkbox-list">
-            {schoolClubs.filter((club) => club.is_active).map((club) => (
-              <div className="sport-teacher-registered-club" key={club.id}>
-                <span><strong>{club.name}</strong><small>{club.focus || 'Registered school club'}</small></span>
-                <button type="button" onClick={() => handleRemoveClub(club)}>Remove</button>
-              </div>
-            ))}
-            {availableCountryClubs.map((club) => {
+            {countryClubs.filter((club) => club.is_active !== false).map((club) => {
               const selected = selectedClubIds.includes(String(club.id));
-              const remaining = clubLimit - schoolClubs.filter((item) => item.is_active).length;
+              const limitReached = selectedClubIds.length >= clubLimit;
               return (
-                <label key={club.id} className={!selected && selectedClubIds.length >= remaining ? 'is-disabled' : ''} title={!selected && selectedClubIds.length >= remaining ? 'Maximum club limit reached' : undefined}>
-                  <input type="checkbox" checked={selected} disabled={!selected && selectedClubIds.length >= remaining} onChange={(event) => setSelectedClubIds(event.target.checked ? [...selectedClubIds, String(club.id)] : selectedClubIds.filter((id) => id !== String(club.id)))} />
+                <label key={club.id} className={!selected && limitReached ? 'is-disabled' : ''} title={!selected && limitReached ? 'Maximum club limit reached' : undefined}>
+                  <input type="checkbox" checked={selected} disabled={!selected && limitReached} onChange={(event) => setSelectedClubIds(event.target.checked ? [...selectedClubIds, String(club.id)] : selectedClubIds.filter((id) => id !== String(club.id)))} />
                   <span><strong>{club.name}</strong><small>{club.focus}</small></span>
                 </label>
               );
             })}
-            {!availableCountryClubs.length && <p className="sport-teacher-empty-message">No additional clubs are available for this school.</p>}
+            {!countryClubs.filter((club) => club.is_active !== false).length && <p className="sport-teacher-empty-message">No clubs are available for this school country.</p>}
           </div>
           <div className="sport-teacher-registration-form-actions">
             <button type="button" onClick={() => closeModal('registerClubs')}>Cancel</button>
-            <button type="submit" disabled={!selectedClubIds.length}>Register selected clubs</button>
+            <button type="submit">Save selected clubs</button>
           </div>
         </form>
       </aside>
