@@ -33,6 +33,13 @@ class ResultDetailSerializer(serializers.ModelSerializer):
     def get_student_name(self, obj):
         return f"{obj.result.participation.student.first_name} {obj.result.participation.student.last_name}"
 
+    def validate(self, attrs):
+        for field_name in ('raw_score', 'percentage_score'):
+            score = attrs.get(field_name, getattr(self.instance, field_name, None))
+            if score is not None and not 0 <= score <= 100:
+                raise serializers.ValidationError({field_name: 'Score must be between 0 and 100.'})
+        return attrs
+
 
 class ResultSerializer(serializers.ModelSerializer):
     participation_details = serializers.SerializerMethodField(read_only=True)

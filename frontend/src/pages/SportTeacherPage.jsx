@@ -304,6 +304,10 @@ const SportTeacherPage = () => {
     try {
       const rawScore = scoreOverride !== undefined ? scoreOverride : resultScores[row.id] ?? row.score;
       const score = rawScore === '' || rawScore === null ? null : Number(rawScore);
+      if (score !== null && (!Number.isFinite(score) || score < 0 || score > 100)) {
+        setError('Marks must be between 0 and 100.');
+        return;
+      }
       const isTalentResult = Boolean(row.talentId || row.detail);
       let participationId = row.participation;
       let participationResponse;
@@ -1485,7 +1489,7 @@ const SportTeacherPage = () => {
           })()}
           <div className="sport-teacher-results-table-wrap">
             <table className="sport-teacher-results-table"><thead><tr><th>Student</th><th>Talent</th><th>Score</th><th>Grade</th><th>Status</th></tr></thead><tbody>
-              {competition.rows.map((row) => { const saveState = resultSaveStates[row.id]; const currentScore = resultScores[row.id] ?? row.score ?? ''; return <tr key={row.id}><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={currentScore} disabled={schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'submitted' || schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'approved'} onChange={(event) => { const value = event.target.value; setResultScores((current) => ({ ...current, [row.id]: value })); scheduleResultAutosave(row, value); }} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /></span></td><td className="sport-teacher-inline-grade">{saveState === 'pending' || saveState === 'saving' ? <span className="sport-teacher-save-spinner" aria-label="Saving result" /> : getGradeForScore(currentScore)}</td><td>{getStatusBadge(row.status, currentScore, row.hasScore)}</td></tr>; })}
+              {competition.rows.map((row) => { const saveState = resultSaveStates[row.id]; const currentScore = resultScores[row.id] ?? row.score ?? ''; return <tr key={row.id}><td>{getStudentName(row.student)}</td><td>{row.talent}</td><td><span className="sport-teacher-score-editor"><input className="sport-teacher-inline-score" type="number" min="0" max="100" step="0.01" value={currentScore} disabled={schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'submitted' || schoolSubmissions.find((submission) => Number(submission.competition) === Number(competitionId))?.status === 'approved'} onChange={(event) => { const value = event.target.value === '' ? '' : Math.min(100, Math.max(0, Number(event.target.value))); setResultScores((current) => ({ ...current, [row.id]: value })); scheduleResultAutosave(row, value); }} aria-label={`Score for ${getStudentName(row.student)} ${row.talent}`} /></span></td><td className="sport-teacher-inline-grade">{saveState === 'pending' || saveState === 'saving' ? <span className="sport-teacher-save-spinner" aria-label="Saving result" /> : getGradeForScore(currentScore)}</td><td>{getStatusBadge(row.status, currentScore, row.hasScore)}</td></tr>; })}
             </tbody></table>
           </div>
         </section>
@@ -2316,7 +2320,7 @@ const SportTeacherPage = () => {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Score (0-100)</label>
-                  <input type="number" min="0" max="100" value={resultForm.score} onChange={(e) => setResultForm({ ...resultForm, score: e.target.value })} placeholder="e.g., 85" style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
+                  <input type="number" min="0" max="100" value={resultForm.score} onChange={(e) => { const value = e.target.value === '' ? '' : Math.min(100, Math.max(0, Number(e.target.value))); setResultForm({ ...resultForm, score: value }); }} placeholder="e.g., 85" style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Status</label>
