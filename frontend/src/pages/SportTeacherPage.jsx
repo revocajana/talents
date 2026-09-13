@@ -229,6 +229,11 @@ const SportTeacherPage = () => {
     setSchoolSubmissions(submissionsRes.data.results || []);
   }, [schoolId]);
 
+  const refreshAnnouncementData = useCallback(async () => {
+    const announcementsRes = await apiService.getAnnouncements({ is_active: true });
+    setAnnouncements(announcementsRes.data.results || []);
+  }, []);
+
   useEffect(() => () => {
     resultAutosaveTimers.current.forEach((timer) => window.clearTimeout(timer));
     resultAutosaveTimers.current.clear();
@@ -484,7 +489,7 @@ const SportTeacherPage = () => {
       setAnnouncementForm({ title: '', content: '', expires_at: '' });
       setSelectedAnnouncement(null);
       closeModal('createAnnouncement');
-      await loadData();
+      await refreshAnnouncementData();
       showSuccess(selectedAnnouncement ? 'Announcement updated successfully' : 'School announcement published successfully');
     } catch (err) {
       setError(err.response?.data?.detail || err.response?.data?.school?.[0] || 'Failed to publish announcement');
@@ -502,7 +507,7 @@ const SportTeacherPage = () => {
       setAnnouncementForm({ title: '', content: '', expires_at: '' });
       setSelectedAnnouncement(null);
       closeModal('createAnnouncement');
-      await loadData();
+      await refreshAnnouncementData();
       showSuccess('Announcement deleted successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete announcement');
