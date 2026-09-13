@@ -61,7 +61,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="field-group">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="username">Username or Student ID</label>
             <input
               id="username"
               type="text"

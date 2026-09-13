@@ -125,7 +125,7 @@ export default function StudentPage() {
             onProfile={openProfileDrawer}
             onChangePassword={openChangePasswordDrawer}
             onLogout={handleLogout}
-            username={user?.username}
+            username={user?.student_id || user?.username}
           />
           <button
             type="button"
@@ -421,7 +421,7 @@ export default function StudentPage() {
               <button type="button" onClick={() => setProfileDrawerOpen(false)} aria-label="Close profile">&times;</button>
             </div>
             <div className="sport-teacher-profile-details">
-              <div><span>Username:</span><strong>{user?.username || '-'}</strong></div>
+              <div><span>Student ID:</span><strong>{user?.student_id || user?.username || '-'}</strong></div>
               <div><span>First name:</span><strong>{user?.first_name || '-'}</strong></div>
               <div><span>Last name:</span><strong>{user?.last_name || '-'}</strong></div>
               <div><span>Email:</span><strong>{user?.email || '-'}</strong></div>

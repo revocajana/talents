@@ -103,12 +103,13 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
     school_name = serializers.CharField(source='school.name', read_only=True, allow_null=True)
     district_name = serializers.CharField(source='district.name', read_only=True, allow_null=True)
+    student_id = serializers.CharField(source='student.student_id', read_only=True, allow_null=True)
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'password', 'first_name', 'last_name', 'email', 'phone',
-            'role', 'school', 'school_name', 'student', 'country', 'zone', 'region', 'district', 'district_name', 'ward',
+            'role', 'school', 'school_name', 'student', 'student_id', 'country', 'zone', 'region', 'district', 'district_name', 'ward',
         ]
 
     def validate(self, attrs):
