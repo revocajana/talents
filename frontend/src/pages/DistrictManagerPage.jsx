@@ -178,9 +178,11 @@ export default function DistrictManagerPage() {
     return studentTalents.filter((entry) => studentIds.has(Number(entry.student)));
   }, [districtStudents, studentTalents, visibleDistrictId]);
 
+  const currentZoneId = Number(currentUser?.zone || 0);
+  const currentCountryId = Number(currentUser?.country || 0);
+
   const districtCompetitions = useMemo(() => {
-    if (!visibleDistrictId) return competitions.filter((competition) => competition.level === 'district');
-    return competitions.filter((competition) => {
+    const districtMatches = competitions.filter((competition) => {
       if (competition.level !== 'district') return false;
       const locationId = competition.object_id ?? competition.district ?? competition.region ?? competition.zone ?? competition.country;
       const isDistrictLocation = Number(locationId) === visibleDistrictId;
@@ -188,7 +190,24 @@ export default function DistrictManagerPage() {
         && competition.schools.some((schoolId) => districtSchools.some((school) => Number(school.id) === Number(schoolId)));
       return isDistrictLocation || belongsToDistrictSchool;
     });
-  }, [competitions, districtSchools, visibleDistrictId]);
+
+    const zoneMatches = competitions.filter((competition) => {
+      if (competition.level !== 'zone') return false;
+      const locationId = competition.object_id ?? competition.zone ?? competition.zone_id ?? competition.district ?? competition.region ?? competition.country;
+      return Number(locationId) === currentZoneId;
+    });
+
+    const countryMatches = competitions.filter((competition) => {
+      if (competition.level !== 'country') return false;
+      const locationId = competition.object_id ?? competition.country ?? competition.zone ?? competition.region ?? competition.district;
+      return Number(locationId) === currentCountryId;
+    });
+
+    return [...districtMatches, ...zoneMatches, ...countryMatches].filter((competition, index, items) => {
+      const key = Number(competition.id);
+      return items.findIndex((item) => Number(item.id) === key) === index;
+    });
+  }, [competitions, currentCountryId, currentZoneId, districtSchools, visibleDistrictId]);
 
   const schoolCompetitions = useMemo(() => {
     if (!visibleDistrictId) return competitions.filter((competition) => competition.level === 'school');
@@ -200,8 +219,8 @@ export default function DistrictManagerPage() {
       return Number(locationId) === visibleDistrictId || belongsToDistrictSchool;
     });
   }, [competitions, districtSchools, visibleDistrictId]);
-  const districtLevelCompetitions = useMemo(() => districtCompetitions, [districtCompetitions]);
-  const calendarCompetitions = useMemo(() => districtLevelCompetitions.filter((competition) => competition.status !== 'cancelled' && /^\d{4}-\d{2}-\d{2}$/.test(competition.start_date || '')), [districtLevelCompetitions]);
+  const districtLevelCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.level === 'district'), [districtCompetitions]);
+  const calendarCompetitions = useMemo(() => districtCompetitions.filter((competition) => competition.status !== 'cancelled' && /^\d{4}-\d{2}-\d{2}$/.test(competition.start_date || '')), [districtCompetitions]);
   const relevantAnnouncements = useMemo(() => announcements.filter((announcement) => {
     if (!announcement.is_active || (announcement.expires_at && new Date(announcement.expires_at) < new Date())) return false;
     if (announcement.scope === 'national') return true;
