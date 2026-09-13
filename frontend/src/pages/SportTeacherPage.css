@@ -41,10 +41,10 @@
 }
 
 .sport-teacher-brand img {
-  width: 48px;
-  height: 48px;
+  width: auto;
+  height: 72px;
+  margin: -10px 0;
   object-fit: contain;
-  border-radius: 8px;
 }
 
 .sport-teacher-profile {
@@ -2189,8 +2189,9 @@
   }
 
   .sport-teacher-brand img {
-    width: 32px;
-    height: 32px;
+    width: auto;
+    height: 64px;
+    margin: -8px 0;
   }
 
   .sport-teacher-brand span {
