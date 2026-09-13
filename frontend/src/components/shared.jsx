@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import '../styles/shared.css';
 
@@ -164,9 +164,23 @@ export const ProfileMenu = ({
   username 
 }) => {
   const { user } = useAuth();
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const handleOutsidePointer = (event) => {
+      if (!menuRef.current?.contains(event.target)) {
+        onToggle();
+      }
+    };
+
+    document.addEventListener('pointerdown', handleOutsidePointer);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointer);
+  }, [isOpen, onToggle]);
   
   return (
-    <div className="sport-teacher-profile">
+    <div className="sport-teacher-profile" ref={menuRef}>
       <button
         type="button"
         className="sport-teacher-profile-button"
