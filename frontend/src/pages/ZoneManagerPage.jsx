@@ -58,6 +58,7 @@ export default function ZoneManagerPage() {
   const [competitionForm, setCompetitionForm] = useState({ name: '', description: '', start_date: '', end_date: '', status: 'draft' });
   const [competitionSubmitting, setCompetitionSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingCompetitionId, setSubmittingCompetitionId] = useState(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [announcementDrawerOpen, setAnnouncementDrawerOpen] = useState(false);
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', expires_at: '' });
@@ -487,6 +488,7 @@ export default function ZoneManagerPage() {
       setError(targetCompetition ? 'Select at least one student to promote.' : 'Create a zone competition before promoting students.');
       return;
     }
+    setSubmittingCompetitionId(sourceCompetitionId);
     setSubmitting(true);
     try {
       const promotionPayload = {
@@ -506,6 +508,7 @@ export default function ZoneManagerPage() {
       setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to promote students');
     } finally {
       setSubmitting(false);
+      setSubmittingCompetitionId(null);
     }
   };
 
@@ -515,6 +518,7 @@ export default function ZoneManagerPage() {
       setError(targetCompetition ? 'Select at least one student to promote.' : 'Create a country competition before submitting results.');
       return;
     }
+    setSubmittingCompetitionId(sourceCompetitionId);
     setSubmitting(true);
     try {
       await apiService.promoteStudents({
@@ -533,6 +537,30 @@ export default function ZoneManagerPage() {
       setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to submit zone results to the country level');
     } finally {
       setSubmitting(false);
+      setSubmittingCompetitionId(null);
+    }
+  };
+
+  const handleDemoteZoneStudentsFromCountry = async (sourceCompetitionId, detailIds) => {
+    if (!detailIds.length) return;
+    setSubmittingCompetitionId(sourceCompetitionId);
+    setSubmitting(true);
+    try {
+      await apiService.demoteResultTalent({ result_detail_ids: detailIds });
+      setSelectedPromotionStudents([]);
+      const [resultsRes, participationsRes, promotionsRes] = await Promise.all([
+        apiService.getResults(),
+        apiService.getParticipations(),
+        apiService.getAllResultPromotions(),
+      ]);
+      setResults(resultsRes.data.results || []);
+      setParticipations(participationsRes.data.results || []);
+      setPromotions(promotionsRes.data.results || []);
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to de-promote selected results');
+    } finally {
+      setSubmitting(false);
+      setSubmittingCompetitionId(null);
     }
   };
 
@@ -567,6 +595,7 @@ export default function ZoneManagerPage() {
 
   const handleReturnDistrictResultsToDraft = async (competitionId) => {
     if (!window.confirm('Return these district results to draft? The district manager will be able to edit them again.')) return;
+    setSubmittingCompetitionId(competitionId);
     setSubmitting(true);
     try {
       await apiService.returnDistrictResultsToDraft({
@@ -585,6 +614,7 @@ export default function ZoneManagerPage() {
       setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to return district results to draft');
     } finally {
       setSubmitting(false);
+      setSubmittingCompetitionId(null);
     }
   };
 
@@ -902,7 +932,7 @@ export default function ZoneManagerPage() {
                     }
                     disabled={submitting || !selectedPromotionStudents.length}
                   >
-                    {submitting ? 'Processing...' : `Promote selected (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}
+                    {submitting && submittingCompetitionId === competition.id ? 'Processing...' : `Promote selected (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}
                   </button>
                 </div>
               </div>
@@ -1014,6 +1044,11 @@ export default function ZoneManagerPage() {
     }
 
     const zoneResultsByCompetition = zoneLevelCompetitions.map((competition) => {
+      const countryPromotedDetailIds = new Set(
+        promotions
+          .filter((promotion) => promotion.to_level === 'country' && promotion.result_detail)
+          .map((promotion) => Number(promotion.result_detail)),
+      );
       const entries = results
         .filter((result) => {
           const participation = participations.find((item) => Number(item.id) === Number(result.participation));
@@ -1023,9 +1058,19 @@ export default function ZoneManagerPage() {
           const participation = participations.find((item) => Number(item.id) === Number(result.participation));
           const student = zoneStudents.find((item) => Number(item.id) === Number(participation?.student));
           const details = result.details || [];
-          return details.length ? details.map((detail) => ({ ...result, detail, student })) : [{ ...result, detail: null, student }];
+          return details.length ? details.map((detail) => ({
+            ...result,
+            detail,
+            student,
+            isPromotedToCountry: countryPromotedDetailIds.has(Number(detail.id)),
+            isEligibleForCountry: !countryPromotedDetailIds.has(Number(detail.id)) && Number(detail.percentage_score) >= 50,
+          })) : [{ ...result, detail: null, student, isPromotedToCountry: false, isEligibleForCountry: false }];
         });
-      return { ...competition, entries };
+      return {
+        ...competition,
+        entries,
+        eligibleDetailIds: entries.filter((entry) => entry.isEligibleForCountry).map((entry) => Number(entry.detail.id)),
+      };
     });
 
     return (
@@ -1046,6 +1091,17 @@ export default function ZoneManagerPage() {
               <div className="district-result-header-actions">
                 <button
                   type="button"
+                  className="district-text-button"
+                  onClick={() => handleDemoteZoneStudentsFromCountry(
+                    competition.id,
+                    selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId) && entry.isPromotedToCountry)),
+                  )}
+                  disabled={submitting || !selectedPromotionStudents.some((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId) && entry.isPromotedToCountry))}
+                >
+                  {submitting && submittingCompetitionId === competition.id ? 'Processing...' : `De-promote selected (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId) && entry.isPromotedToCountry)).length})`}
+                </button>
+                <button
+                  type="button"
                   className="btn-primary"
                   onClick={() =>
                     handlePromoteZoneStudentsToCountry(
@@ -1055,7 +1111,7 @@ export default function ZoneManagerPage() {
                   }
                   disabled={submitting || !selectedPromotionStudents.length || !countryLevelCompetitions.length}
                 >
-                  {submitting ? 'Processing...' : `Submit to country (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}
+                  {submitting && submittingCompetitionId === competition.id ? 'Processing...' : `Submit to country (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}
                 </button>
               </div>
             </div>
@@ -1063,6 +1119,19 @@ export default function ZoneManagerPage() {
               <table className="data-table">
                 <thead>
                   <tr>
+                      <th>
+                        <input
+                          type="checkbox"
+                          checked={competition.eligibleDetailIds.length > 0 && competition.eligibleDetailIds.every((detailId) => selectedPromotionStudents.includes(detailId))}
+                          disabled={!competition.eligibleDetailIds.length || submitting}
+                          onChange={(event) => setSelectedPromotionStudents((current) => {
+                            const withoutCompetitionRecords = current.filter((detailId) => !competition.eligibleDetailIds.includes(Number(detailId)));
+                            return event.target.checked ? [...withoutCompetitionRecords, ...competition.eligibleDetailIds] : withoutCompetitionRecords;
+                          })}
+                          aria-label={`Select all eligible records for ${competition.name}`}
+                        />
+                        {' Select'}
+                      </th>
                     <th>Student</th>
                     <th>Talent</th>
                     <th>Class</th>
@@ -1075,7 +1144,36 @@ export default function ZoneManagerPage() {
                 </thead>
                 <tbody>
                   {competition.entries.map((result) => (
-                    <tr key={`${result.id}-${result.detail?.id || 'overall'}`}>
+                    <tr
+                      key={`${result.id}-${result.detail?.id || 'overall'}`}
+                      onClick={(event) => {
+                        if ((!result.isEligibleForCountry && !result.isPromotedToCountry) || event.target.closest('input, button, a, select')) return;
+                        setSelectedPromotionStudents((current) => current.includes(Number(result.detail.id))
+                          ? current.filter((id) => id !== Number(result.detail.id))
+                          : [...current, Number(result.detail.id)]);
+                      }}
+                      onKeyDown={(event) => {
+                        if ((!result.isEligibleForCountry && !result.isPromotedToCountry) || (event.key !== 'Enter' && event.key !== ' ')) return;
+                        event.preventDefault();
+                        setSelectedPromotionStudents((current) => current.includes(Number(result.detail.id))
+                          ? current.filter((id) => id !== Number(result.detail.id))
+                          : [...current, Number(result.detail.id)]);
+                      }}
+                      tabIndex={result.isEligibleForCountry || result.isPromotedToCountry ? 0 : undefined}
+                      aria-selected={result.isEligibleForCountry || result.isPromotedToCountry ? selectedPromotionStudents.includes(Number(result.detail.id)) : undefined}
+                    >
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={(result.isEligibleForCountry || result.isPromotedToCountry) && selectedPromotionStudents.includes(Number(result.detail.id))}
+                          disabled={!result.isEligibleForCountry && !result.isPromotedToCountry}
+                          onChange={(event) => setSelectedPromotionStudents((current) => event.target.checked
+                            ? [...new Set([...current, Number(result.detail.id)])]
+                            : current.filter((id) => id !== Number(result.detail.id)))}
+                          aria-label={`Select ${result.student?.first_name || 'student'} ${result.detail?.talent_name || 'talent'} for country promotion or de-promotion`}
+                        />
+                        {result.isPromotedToCountry && <span className="district-promoted-label"> Submitted</span>}
+                      </td>
                       <td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td>
                       <td>{result.detail?.talent_name || 'Overall result'}</td>
                       <td>{getStudentClassName(result.student)}</td>
@@ -1124,7 +1222,7 @@ export default function ZoneManagerPage() {
                   ))}
                   {!competition.entries.length && (
                     <tr>
-                      <td colSpan="8" className="district-result-empty">No zone results recorded yet.</td>
+                      <td colSpan="9" className="district-result-empty">No zone results recorded yet.</td>
                     </tr>
                   )}
                 </tbody>

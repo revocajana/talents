@@ -170,6 +170,51 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], permission_classes=[AuthenticatedReadOnly])
     def demote(self, request):
+        if request.user.role == 'zone_manager' and request.user.zone_id:
+            detail_ids = request.data.get('result_detail_ids', [])
+            if not detail_ids:
+                return Response({'error': 'result_detail_ids are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            promotions = ResultPromotion.objects.select_related(
+                'result_detail',
+                'result__participation__student',
+            ).filter(
+                result_detail_id__in=detail_ids,
+                to_level='country',
+                result__participation__competition__level='zone',
+                result__participation__student__school__zone_id=request.user.zone_id,
+            )
+            if not promotions.exists():
+                return Response({'error': 'No country promotions were found for the selected records.'}, status=status.HTTP_404_NOT_FOUND)
+
+            demoted_ids = []
+            with transaction.atomic():
+                for promotion in promotions:
+                    source_detail = promotion.result_detail
+                    country_type = ContentType.objects.get_for_model(Country)
+                    target_participation = CompetitionParticipation.objects.filter(
+                        competition__level='country',
+                        student_id=promotion.result.participation.student_id,
+                    ).filter(
+                        Q(competition__content_type=country_type, competition__object_id=request.user.country_id)
+                        | Q(competition__schools__country_id=request.user.country_id),
+                    ).first()
+                    if target_participation:
+                        target_result = Result.objects.filter(participation=target_participation).first()
+                        if target_result and source_detail:
+                            ResultDetail.objects.filter(result=target_result, talent_id=source_detail.talent_id).delete()
+                            if not target_result.details.exists():
+                                target_result.delete()
+                        if not CompetitionParticipation.objects.filter(pk=target_participation.pk, result__isnull=False).exists():
+                            target_participation.delete()
+
+                    if source_detail:
+                        source_detail.promoted_to = ''
+                        source_detail.save(update_fields=['promoted_to'])
+                        demoted_ids.append(int(source_detail.id))
+                    promotion.delete()
+            return Response({'demoted': len(demoted_ids), 'result_detail_ids': demoted_ids})
+
         if request.user.role != 'district_manager' or not request.user.district_id:
             return Response({'error': 'Only a district manager can remove a district promotion.'}, status=status.HTTP_403_FORBIDDEN)
         target_result_id = request.data.get('target_result_id')
