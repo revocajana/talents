@@ -868,6 +868,14 @@ export default function ZoneManagerPage() {
             </div>
           </div>
           {submittedDistrictCompetitions.map((competition) => (
+            (() => {
+              const eligibleDetailIds = competition.entries
+                .filter((entry) => entry.isEligibleForPromotion)
+                .map((entry) => Number(entry.detail.id));
+              const allRecordsSelected = eligibleDetailIds.length > 0
+                && eligibleDetailIds.every((detailId) => selectedPromotionStudents.includes(detailId));
+
+              return (
             <section className="district-result-card" key={competition.id}>
               <div className="district-result-card-header">
                 <div>
@@ -902,14 +910,25 @@ export default function ZoneManagerPage() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Select</th>
+                      <th>
+                        <input
+                          type="checkbox"
+                          checked={allRecordsSelected}
+                          disabled={!eligibleDetailIds.length || submitting}
+                          onChange={(event) => setSelectedPromotionStudents((current) => {
+                            const withoutCompetitionRecords = current.filter((detailId) => !eligibleDetailIds.includes(Number(detailId)));
+                            return event.target.checked ? [...withoutCompetitionRecords, ...eligibleDetailIds] : withoutCompetitionRecords;
+                          })}
+                          aria-label={`Select all eligible records for ${competition.name}`}
+                        />
+                        {' Select'}
+                      </th>
                       <th>Student</th>
                       <th>Talent</th>
-                      <th>Class</th>
-                      <th>School</th>
-                      <th>Club</th>
                       <th>Score</th>
                       <th>Grade</th>
+                      <th>Form</th>
+                      <th>School</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -934,9 +953,6 @@ export default function ZoneManagerPage() {
                         </td>
                         <td>{student ? `${student.first_name} ${student.last_name}` : 'Student'}</td>
                         <td>{detail.talent_name}</td>
-                        <td>{getStudentClassName(student)}</td>
-                        <td>{school?.name || 'School'}</td>
-                        <td>{clubMemberships.find((membership) => Number(membership.student) === Number(student?.id) && membership.is_active)?.club_name || '—'}</td>
                         <td>{detail.percentage_score}</td>
                         <td>
                           {detail.percentage_score >= 90
@@ -955,6 +971,8 @@ export default function ZoneManagerPage() {
                                         ? 'E'
                                         : 'F'}
                         </td>
+                        <td>{getStudentClassName(student)}</td>
+                        <td>{[school?.name || 'School', allDistricts.find((district) => Number(district.id) === Number(school?.district?.id ?? school?.district))?.name, regions.find((region) => Number(region.id) === Number(school?.region?.id ?? school?.region))?.name].filter(Boolean).join(' - ')}</td>
                       </tr>
                     ))}
                     {!competition.entries.length && (
@@ -966,6 +984,8 @@ export default function ZoneManagerPage() {
                 </table>
               </div>
             </section>
+              );
+            })()
           ))}
           {!submittedDistrictCompetitions.length && (
             <section className="district-result-card">
