@@ -237,7 +237,9 @@ export const getResultById = (id) => api.get(`/results/${id}/`);
 export const createResult = (data) => api.post('/results/', data);
 export const promoteStudents = (data) => api.post('/result-promotions/promote/', data);
 export const getResultPromotions = (params = {}) => api.get('/result-promotions/', { params });
+export const getAllResultPromotions = (params = {}) => getAllRecords('/result-promotions/', params);
 export const demoteResultTalent = (data) => api.post('/result-promotions/demote/', data);
+export const returnDistrictResultsToDraft = (data) => api.post('/result-promotions/return_district_to_draft/', data);
 
 export const getResultDetails = (params = {}) => api.get('/result-details/', { params });
 export const getAllResultDetails = (params = {}) => getAllRecords('/result-details/', params);

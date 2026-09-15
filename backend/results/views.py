@@ -30,10 +30,22 @@ def ensure_school_result_editable(result):
 
 def ensure_result_detail_editable(result_detail):
     """Prevent promoted talents from being edited after they advance to a higher competition level."""
-    if getattr(result_detail, 'promoted_to', '') or ResultPromotion.objects.filter(result_detail_id=result_detail.id).exists():
+    if (
+        getattr(result_detail, 'promoted_to', '')
+        or ResultPromotion.objects.filter(result_detail_id=result_detail.id).exists()
+        or ResultPromotion.objects.filter(result_id=result_detail.result_id).exists()
+    ):
         from rest_framework.exceptions import ValidationError
         raise ValidationError('Promoted competition results are locked.')
     ensure_school_result_editable(result_detail.result)
+
+
+def ensure_result_editable(result):
+    """Prevent a result from changing while any talent has advanced."""
+    if ResultPromotion.objects.filter(result=result).exists():
+        from rest_framework.exceptions import ValidationError
+        raise ValidationError('Submitted competition results are locked until they are returned to draft.')
+    ensure_school_result_editable(result)
 
 class ResultViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Result.objects.select_related('participation__student', 'participation__competition').prefetch_related('details').all()
@@ -56,7 +68,7 @@ class ResultViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         serializer.save()
 
     def perform_update(self, serializer):
-        ensure_school_result_editable(self.get_object())
+        ensure_result_editable(self.get_object())
         serializer.save()
 
     @action(detail=True, methods=['post'])
@@ -100,6 +112,61 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(promoted_by=self.request.user)
+
+    @action(detail=False, methods=['post'], permission_classes=[AuthenticatedReadOnly])
+    def return_district_to_draft(self, request):
+        if request.user.role != 'zone_manager' or not request.user.zone_id:
+            return Response({'error': 'Only the assigned zone manager can return district results to draft.'}, status=status.HTTP_403_FORBIDDEN)
+
+        competition_id = request.data.get('competition_id')
+        zone_competition_id = request.data.get('zone_competition_id')
+        if not competition_id:
+            return Response({'error': 'competition_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        source_competition = Competition.objects.filter(
+            id=competition_id,
+            level='district',
+            schools__zone_id=request.user.zone_id,
+        ).first()
+        if not source_competition:
+            return Response({'error': 'The selected district competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)
+
+        promotions = ResultPromotion.objects.select_related(
+            'result_detail',
+            'result__participation__student',
+        ).filter(
+            result__participation__competition=source_competition,
+            to_level='zone',
+        )
+        if not promotions.exists():
+            return Response({'error': 'This district competition is already in draft.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            for promotion in promotions:
+                source_detail = promotion.result_detail
+                student_id = promotion.result.participation.student_id
+                talent_id = source_detail.talent_id if source_detail else None
+
+                if zone_competition_id and talent_id:
+                    target_participation = CompetitionParticipation.objects.filter(
+                        competition_id=zone_competition_id,
+                        student_id=student_id,
+                    ).first()
+                    if target_participation:
+                        target_result = Result.objects.filter(participation=target_participation).first()
+                        if target_result:
+                            ResultDetail.objects.filter(result=target_result, talent_id=talent_id).delete()
+                            if not target_result.details.exists():
+                                target_result.delete()
+                        if not CompetitionParticipation.objects.filter(pk=target_participation.pk, result__isnull=False).exists():
+                            target_participation.delete()
+
+                if source_detail:
+                    source_detail.promoted_to = ''
+                    source_detail.save(update_fields=['promoted_to'])
+                promotion.delete()
+
+        return Response({'draft': True, 'competition_id': int(competition_id)})
 
     @action(detail=False, methods=['post'], permission_classes=[AuthenticatedReadOnly])
     def demote(self, request):

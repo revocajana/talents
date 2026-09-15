@@ -565,6 +565,29 @@ export default function ZoneManagerPage() {
     }
   };
 
+  const handleReturnDistrictResultsToDraft = async (competitionId) => {
+    if (!window.confirm('Return these district results to draft? The district manager will be able to edit them again.')) return;
+    setSubmitting(true);
+    try {
+      await apiService.returnDistrictResultsToDraft({
+        competition_id: competitionId,
+        zone_competition_id: zoneLevelCompetitions[0]?.id,
+      });
+      const [resultsRes, participationsRes, promotionsRes] = await Promise.all([
+        apiService.getResults(),
+        apiService.getParticipations(),
+        apiService.getResultPromotions(),
+      ]);
+      setResults(resultsRes.data.results || []);
+      setParticipations(participationsRes.data.results || []);
+      setPromotions(promotionsRes.data.results || []);
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to return district results to draft');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleReopenSchoolSubmission = async (submissionId) => {
     try {
       const response = await apiService.reopenSchoolResultSubmission(submissionId);
@@ -852,6 +875,14 @@ export default function ZoneManagerPage() {
                   <p>Submitted district-level results. Only scores of 50% or higher are shown.</p>
                 </div>
                 <div className="district-result-header-actions">
+                  <button
+                    type="button"
+                    className="district-text-button"
+                    onClick={() => handleReturnDistrictResultsToDraft(competition.id)}
+                    disabled={submitting || !competition.entries.some((entry) => entry.isPromoted)}
+                  >
+                    Return to draft
+                  </button>
                   <button
                     type="button"
                     className="btn-primary"
