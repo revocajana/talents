@@ -933,7 +933,24 @@ export default function ZoneManagerPage() {
                   </thead>
                   <tbody>
                     {competition.entries.map(({ participation, detail, student, school, isPromoted, isEligibleForPromotion }) => (
-                      <tr key={`${participation.id}-${detail.id}`}>
+                      <tr
+                        key={`${participation.id}-${detail.id}`}
+                        onClick={(event) => {
+                          if (!isEligibleForPromotion || event.target.closest('input, button, a, select')) return;
+                          setSelectedPromotionStudents((current) => current.includes(Number(detail.id))
+                            ? current.filter((id) => id !== Number(detail.id))
+                            : [...current, Number(detail.id)]);
+                        }}
+                        onKeyDown={(event) => {
+                          if (!isEligibleForPromotion || (event.key !== 'Enter' && event.key !== ' ')) return;
+                          event.preventDefault();
+                          setSelectedPromotionStudents((current) => current.includes(Number(detail.id))
+                            ? current.filter((id) => id !== Number(detail.id))
+                            : [...current, Number(detail.id)]);
+                        }}
+                        tabIndex={isEligibleForPromotion ? 0 : undefined}
+                        aria-selected={isEligibleForPromotion ? selectedPromotionStudents.includes(Number(detail.id)) : undefined}
+                      >
                         <td>
                           {isPromoted ? (
                             <span className="district-promoted-label">Promoted</span>
