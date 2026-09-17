@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
 from django.db.models import Q
 from django.utils import timezone
 
@@ -127,6 +128,12 @@ class UserViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
         'ward': 'ward_id',
     }
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action == 'list':
+            queryset = queryset.filter(is_active=True)
+        return queryset
+
     def get_permissions(self):
         if self.action in {'update', 'partial_update'}:
             return [IsAuthenticated()]
@@ -142,6 +149,25 @@ class UserViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('You can update only your own profile.')
         return user
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.pk == request.user.pk:
+            return Response({'detail': 'You cannot delete your own account.'}, status=400)
+
+        try:
+            instance.delete()
+        except ProtectedError as error:
+            protected_objects = [str(obj) for obj in error.protected_objects]
+            return Response({
+                'detail': (
+                    f"Cannot delete user '{instance.username} ({instance.get_role_display()})' "
+                    'because protected records still reference this account.'
+                ),
+                'protected_objects': protected_objects,
+            }, status=status.HTTP_409_CONFLICT)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def current(self, request):

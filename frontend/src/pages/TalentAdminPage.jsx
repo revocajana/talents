@@ -584,6 +584,25 @@ export default function TalentAdminPage() {
     } finally { setUserSubmitting(false); }
   };
 
+  const deleteUser = async () => {
+    if (!selectedUser || !window.confirm(`Delete ${getUserDisplayName(selectedUser)}?`)) return;
+    setUserSubmitting(true);
+    setError(null);
+    try {
+      await apiService.deleteUser(selectedUser.id);
+      setUsers((current) => current.filter((user) => user.id !== selectedUser.id));
+      closeUserEditor();
+    } catch (requestError) {
+      const details = requestError.response?.data;
+      const protectedObjects = details?.protected_objects?.length
+        ? ` Protected records: ${details.protected_objects.join(', ')}`
+        : '';
+      setError(`${details?.detail || 'Failed to delete user'}${protectedObjects}`);
+    } finally {
+      setUserSubmitting(false);
+    }
+  };
+
   const deleteSchool = async () => {
     if (!selectedSchool || !window.confirm(`Delete ${selectedSchool.name}?`)) return;
     setSchoolSubmitting(true);
@@ -831,7 +850,7 @@ export default function TalentAdminPage() {
 
           if (!rowFields.length) return null;
           return <div key={`location-row-${firstField}-${secondField}`} className="sport-teacher-registration-form-grid">{rowFields}</div>;
-        })}<div className="sport-teacher-registration-form-grid"><label data-label={userEditorMode === 'edit' ? 'Password' : 'Password *'}><input type="password" placeholder="Min 8 characters" required={userEditorMode !== 'edit'} value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} /></label><label data-label="Confirm password"><input type="password" placeholder="Re-enter password" value={userForm.confirmPassword || ''} onChange={(event) => setUserForm((current) => ({ ...current, confirmPassword: event.target.value }))} /></label></div><div className="sport-teacher-registration-form-grid"><button type="button" className="sport-teacher-secondary-button" onClick={closeUserEditor}>Cancel</button><button type="submit" className="district-primary-button" disabled={userSubmitting}>{userSubmitting ? 'Saving...' : userEditorMode === 'edit' ? 'Update user' : 'Create user'}</button></div></form></aside></>}</>
+        })}<div className="sport-teacher-registration-form-grid"><label data-label={userEditorMode === 'edit' ? 'Password' : 'Password *'}><input type="password" placeholder="Min 8 characters" required={userEditorMode !== 'edit'} value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} /></label><label data-label="Confirm password"><input type="password" placeholder="Re-enter password" value={userForm.confirmPassword || ''} onChange={(event) => setUserForm((current) => ({ ...current, confirmPassword: event.target.value }))} /></label></div><div className="sport-teacher-registration-form-grid">{userEditorMode === 'edit' ? <button type="button" className="talent-admin-delete-button" onClick={deleteUser} disabled={userSubmitting}>Delete user</button> : <button type="button" className="sport-teacher-secondary-button" onClick={closeUserEditor}>Cancel</button>}<button type="submit" className="district-primary-button" disabled={userSubmitting}>{userSubmitting ? 'Saving...' : userEditorMode === 'edit' ? 'Update user' : 'Create user'}</button></div></form></aside></>}</>
     ) : activeTab === 'demography' ? (
       <>
         <div className="talent-admin-user-tools">

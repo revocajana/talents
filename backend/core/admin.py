@@ -24,6 +24,7 @@ from .models import (
     SchoolClub,
     ClubTeacher,
     StudentClubMembership,
+    Message,
 )
 from results.models import SchoolCompetitionSubmission
 from students.models import EducationLevel, Student
@@ -810,6 +811,20 @@ class UserAdmin(admin.ModelAdmin):
 class ParentAdmin(admin.ModelAdmin):
     list_display = ("full_name", "username", "phone", "email")
     search_fields = ("full_name", "username")
+
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ('subject', 'sender', 'recipient', 'created_at', 'read_status')
+    list_filter = ('read_at', 'created_at')
+    search_fields = ('sender__username', 'sender__first_name', 'sender__last_name', 'recipient__username', 'recipient__first_name', 'recipient__last_name', 'subject', 'body')
+    autocomplete_fields = ('sender', 'recipient')
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+
+    @admin.display(boolean=True, description='Read')
+    def read_status(self, obj):
+        return obj.read_at is not None
 
 
 @admin.register(Student)
