@@ -115,7 +115,7 @@ export default function TalentAdminPage() {
     try {
       setLoading(true);
       const [schoolsRes, usersRes, studentsRes, parentsRes, countriesRes, zonesRes, regionsRes, districtsRes, wardsRes, ownershipRes, talentCategoriesRes, talentsRes, countryClubsRes] = await Promise.all([
-        apiService.getAllSchools(), apiService.getUsers(), apiService.getStudents(), apiService.getParents(), apiService.getAllCountries(), apiService.getAllZones(), apiService.getAllRegions(), apiService.getAllDistricts(), apiService.getAllWards(), apiService.getSchoolOwnershipTypes(), apiService.getTalentCategories(), apiService.getTalents(), apiService.getCountryClubs(),
+        apiService.getAllSchools(), apiService.getAllUsers(), apiService.getAllStudents(), apiService.getAllParents(), apiService.getAllCountries(), apiService.getAllZones(), apiService.getAllRegions(), apiService.getAllDistricts(), apiService.getAllWards(), apiService.getSchoolOwnershipTypes(), apiService.getTalentCategories(), apiService.getTalents(), apiService.getCountryClubs(),
       ]);
       setSchools(schoolsRes.data.results || []); setUsers(usersRes.data.results || []); setStudents(studentsRes.data.results || []); setParents(parentsRes.data.results || []); setCountries(countriesRes.data.results || []); setZones(zonesRes.data.results || []); setRegions(regionsRes.data.results || []); setDistricts(districtsRes.data.results || []); setWards(wardsRes.data.results || []); setOwnershipTypes(ownershipRes.data.results || []); setTalentCategories(talentCategoriesRes.data.results || talentCategoriesRes.data || []); setTalents(talentsRes.data.results || []); setCountryClubs(countryClubsRes.data.results || []);
       const defaultCountry = getDefaultCountryValue();
@@ -546,7 +546,7 @@ export default function TalentAdminPage() {
       first_name: userForm.first_name,
       last_name: userForm.last_name,
       email: userForm.email || '',
-      phone: userForm.phone || '',
+      phone: (userForm.phone || '').replace(/\s+/g, ''),
       role: userForm.role,
       ...selectedGeography,
     };

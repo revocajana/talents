@@ -136,6 +136,7 @@ export const deleteSchool = (id) => api.delete(`/schools/${id}/`);
 export const getCurrentUser = () => api.get('/users/current/');
 export const getUserStats = () => api.get('/users/stats/');
 export const getUsers = (params = {}) => api.get('/users/', { params });
+export const getAllUsers = (params = {}) => getAllRecords('/users/', params);
 export const createUser = (data) => api.post('/users/', data);
 export const updateUser = (id, data) => api.put(`/users/${id}/`, data);
 export const updateUserProfile = (id, data) => api.patch(`/users/${id}/`, data);
@@ -202,6 +203,7 @@ export const deleteStudent = (id) => api.delete(`/students/${id}/`);
 // ==================== PARENTS ====================
 
 export const getParents = (params = {}) => api.get('/parents/', { params });
+export const getAllParents = (params = {}) => getAllRecords('/parents/', params);
 export const getParentById = (id) => api.get(`/parents/${id}/`);
 export const createParent = (data) => api.post('/parents/', data);
 export const updateParent = (id, data) => api.put(`/parents/${id}/`, data);
