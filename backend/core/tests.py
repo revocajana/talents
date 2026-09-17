@@ -1,12 +1,12 @@
-from django.test import TestCase
+from django.test import Client, TestCase
 
-from students.models import Student
+from students.models import Student, EducationLevel
 from competitions.models import Competition, CompetitionParticipation
 from results.models import Result
 from .admin import UserChangeFormWithPassword
 from .models import (
 	Country, Zone, Region, District, Ward, School, SchoolOwnershipType, User,
-	Talent, CountryClub, SchoolClub, StudentClubMembership, StudentTalent, EvaluationCriterion,
+	Talent, TalentCategory, CountryClub, SchoolClub, StudentClubMembership, StudentTalent, EvaluationCriterion,
 	TalentEvaluation, EvaluationScore,
 )
 from .serializers import (
@@ -39,7 +39,8 @@ class FoundationRulesTests(TestCase):
 			gender='O',
 			school=self.school,
 		)
-		self.talent = Talent.objects.create(name='Evaluated Talent', category='other')
+		category = TalentCategory.objects.create(name='Other')
+		self.talent = Talent.objects.create(name='Evaluated Talent', category=category)
 		self.student_talent = StudentTalent.objects.create(student=self.student, talent=self.talent)
 		self.evaluator = User.objects.create_user(username='evaluator', password='test', role='sport_teacher', school=self.school)
 
@@ -103,9 +104,9 @@ class FoundationRulesTests(TestCase):
 
 	def test_student_cannot_have_more_than_five_talents(self):
 		for index in range(5):
-			talent = Talent.objects.create(name=f'Talent {index}', category='other')
+			talent = Talent.objects.create(name=f'Talent {index}', category=self.talent.category)
 			StudentTalent.objects.create(student=self.student, talent=talent)
-		sixth_talent = Talent.objects.create(name='Talent 6', category='other')
+		sixth_talent = Talent.objects.create(name='Talent 6', category=self.talent.category)
 
 		serializer = StudentTalentSerializer(data={
 			'student': self.student.id,
@@ -193,6 +194,45 @@ class FoundationRulesTests(TestCase):
 		self.assertEqual(user.student.last_name, 'Student')
 		self.assertEqual(user.student.school_id, self.school.id)
 		self.assertEqual(user.student_id, user.student.id)
+
+	def test_student_registration_reuses_unique_username_when_student_id_exists(self):
+		country = Country.objects.create(name='Registration Country', code='REG')
+		school = School.objects.create(
+			registry_number='REG-001',
+			name='Registration School',
+			ownership_type='Government',
+			is_approved=True,
+			country=country,
+			zone=self.school.zone,
+			region=self.school.region,
+			district=self.school.district,
+			ward=self.school.ward,
+		)
+		teacher = User.objects.create_user(username='registration-teacher', password='secret123', role='sport_teacher', school=school)
+		level = EducationLevel.objects.create(country=country, name='Form 1', code='F1', level_type='form', order=1, is_active=True)
+		country_club = CountryClub.objects.create(name='Registration Club', country=country)
+		club = SchoolClub.objects.create(school=school, country_club=country_club, is_active=True)
+		Student.objects.create(first_name='Taken', last_name='Student', gender='M', school=school, student_id='REG-001/0001/2026')
+		User.objects.create_user(username='REG-001/0002/2026', password='secret123', role='student', school=school)
+
+		client = Client()
+		client.force_login(teacher)
+		response = client.post('/api/students/register/', {
+			'first_name': 'New',
+			'last_name': 'Student',
+			'gender': 'M',
+			'date_of_birth': '2012-01-15',
+			'education_level_id': level.id,
+			'password': 'StrongPass123',
+			'club': club.id,
+			'talents': [],
+		}, content_type='application/json')
+
+		self.assertEqual(response.status_code, 201, response.content.decode())
+		student = Student.objects.get(first_name='New', last_name='Student')
+		linked_user = User.objects.get(student=student)
+		self.assertEqual(student.student_id, 'REG-001/0002/2026')
+		self.assertEqual(linked_user.username, 'REG-001/0002/2026-1')
 
 
 class UserScopeAdminTests(TestCase):

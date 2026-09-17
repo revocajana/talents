@@ -71,8 +71,14 @@ class StudentViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
 
         with transaction.atomic():
             student = student_serializer.save(school=school)
+            username = student.student_id
+            username_suffix = 1
+            while User.objects.filter(username=username).exists():
+                username = f'{student.student_id}-{username_suffix}'
+                username_suffix += 1
+
             account = User(
-                username=student.student_id,
+                username=username,
                 first_name=student.first_name,
                 last_name=student.last_name,
                 role='student',

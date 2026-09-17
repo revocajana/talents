@@ -620,10 +620,151 @@ export default function TalentAdminPage() {
   const floatingInput = (label, field, props = {}) => <label className="talent-admin-floating-field"><input placeholder=" " value={schoolForm[field] || ''} onChange={(event) => updateField(field, event.target.value)} {...props} /><span>{label}</span></label>;
   const floatingTextarea = (label, field, props = {}) => <label className="talent-admin-floating-field"><textarea placeholder=" " value={schoolForm[field] || ''} onChange={(event) => updateField(field, event.target.value)} {...props} /><span>{label}</span></label>;
 
+  const homeSummary = [
+    { label: 'Schools', value: schools.length, color: '#2563eb' },
+    { label: 'Users', value: users.length, color: '#0ea5e9' },
+    { label: 'Students', value: students.length, color: '#8b5cf6' },
+    { label: 'Talents', value: talents.length, color: '#22c55e' },
+    { label: 'Clubs', value: countryClubs.length, color: '#f59e0b' },
+  ];
+
+  const recentSchools = [...schools].sort((first, second) => Number(second.id || 0) - Number(first.id || 0)).slice(0, 4);
+  const recentUsers = [...users].sort((first, second) => Number(second.id || 0) - Number(first.id || 0)).slice(0, 4);
+  const geographicSummary = [
+    { label: 'Zones', value: zones.length },
+    { label: 'Regions', value: regions.length },
+    { label: 'Districts', value: districts.length },
+    { label: 'Wards', value: wards.length },
+  ];
+
+  const renderHomeView = () => (
+    <div className="district-home-grid">
+      <section className="district-home-card talent-card">
+        <div className="district-card-heading">
+          <div>
+            <h2>Talent administration overview</h2>
+            <p>System health across schools, users, and talent records</p>
+          </div>
+          <span className="district-card-kicker">{getCountryName(defaultCountryId) || 'System'}</span>
+        </div>
+        <div className="talent-chart-layout">
+          <div
+            className="talent-donut"
+            style={{
+              background: `conic-gradient(#0e1db6 0 ${Math.min(100, (schools.length / Math.max(1, homeSummary.reduce((total, item) => total + item.value, 0))) * 100)}%, #60a5fa 0 58%, #8b5cf6 0 82%, #22c55e 0 100%)`,
+            }}
+            aria-label="Talent admin overview chart"
+          >
+            <div />
+          </div>
+          <div className="talent-legend">
+            {homeSummary.map((item) => (
+              <div className="talent-legend-row" key={item.label}>
+                <span className="legend-dot" style={{ background: item.color }} />
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="district-home-card">
+        <div className="district-card-heading">
+          <div>
+            <h2>Geographic coverage</h2>
+            <p>Current hierarchy setup for the national program</p>
+          </div>
+          <span className="district-card-kicker">{zones.length + regions.length + districts.length + wards.length} nodes</span>
+        </div>
+        <div className="school-ranking">
+          {geographicSummary.map((item) => (
+            <div className="school-ranking-row" key={item.label}>
+              <span className="school-rank">{item.value}</span>
+              <div className="school-ranking-name">
+                <strong>{item.label}</strong>
+                <small>Registered in the current database</small>
+              </div>
+              <b>{item.value}</b>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="district-home-card">
+        <div className="district-card-heading">
+          <div>
+            <h2>Recent schools</h2>
+            <p>Newest institutions added to the system</p>
+          </div>
+          <button type="button" className="district-text-button" onClick={() => setActiveTab('schools')}>View all</button>
+        </div>
+        <div className="recent-announcements">
+          {recentSchools.length ? recentSchools.map((school) => (
+            <div className="recent-announcement-row" key={school.id}>
+              <div>
+                <strong>{school.name}</strong>
+                <small>{school.registry_number || 'No registry number'} · {getLocation(school)}</small>
+              </div>
+            </div>
+          )) : <p className="district-empty-state">No schools available.</p>}
+        </div>
+      </section>
+
+      <section className="district-home-card">
+        <div className="district-card-heading">
+          <div>
+            <h2>Recent users</h2>
+            <p>Latest accounts created across all roles</p>
+          </div>
+          <button type="button" className="district-text-button" onClick={() => setActiveTab('users')}>Manage users</button>
+        </div>
+        <div className="recent-announcements">
+          {recentUsers.length ? recentUsers.map((user) => (
+            <div className="recent-announcement-row" key={user.id}>
+              <div>
+                <strong>{getUserDisplayName(user)}</strong>
+                <small>{user.username} · {formatRoleLabel(user.role)}</small>
+              </div>
+            </div>
+          )) : <p className="district-empty-state">No users available.</p>}
+        </div>
+      </section>
+
+      <section className="district-home-card district-calendar-card">
+        <div className="district-card-heading">
+          <div>
+            <h2>Management quick view</h2>
+            <p>Core admin areas to monitor every day</p>
+          </div>
+          <span className="district-card-kicker">Focus</span>
+        </div>
+        <div className="realm-home-quicksets">
+          <div className="talent-admin-quick-link" onClick={() => setActiveTab('schools')} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActiveTab('schools'); } }}>
+            <strong>Schools</strong>
+            <span>{schools.length} registered</span>
+          </div>
+          <div className="talent-admin-quick-link" onClick={() => setActiveTab('users')} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActiveTab('users'); } }}>
+            <strong>Users</strong>
+            <span>{users.length} active accounts</span>
+          </div>
+          <div className="talent-admin-quick-link" onClick={() => setActiveTab('demography')} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActiveTab('demography'); } }}>
+            <strong>Demography</strong>
+            <span>{zones.length} zones mapped</span>
+          </div>
+          <div className="talent-admin-quick-link" onClick={() => setActiveTab('talents')} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActiveTab('talents'); } }}>
+            <strong>Talents & clubs</strong>
+            <span>{talents.length} talents · {countryClubs.length} clubs</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+
   return <div className="sport-teacher-page talent-admin-page">
     <header className="sport-teacher-app-bar"><div className="sport-teacher-brand"><img src={logo} alt="Talanta logo" /><span>Talanta Management System</span></div><button type="button" className="sport-teacher-navigation-toggle" onClick={() => setNavigationOpen((open) => !open)} aria-label="Open navigation menu" aria-expanded={navigationOpen}><span /><span /><span /></button></header>
     <aside className={`sport-teacher-navigation ${navigationOpen ? 'is-open' : ''}`}><div className="sport-teacher-navigation-heading">Talent Administration</div>{NAV_ITEMS.map(([key, label]) => <button type="button" key={key} className={activeTab === key ? 'active' : ''} onClick={() => { setActiveTab(key); setNavigationOpen(false); }}>{label}</button>)}<button type="button" className="sport-teacher-logout-button" onClick={logout}>Logout</button></aside>
-    <main className="sport-teacher-prototype-content talent-admin-content">{error && <div className="talent-admin-alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Dismiss error">&times;</button></div>}{loading ? <DashboardSkeleton label="Loading talent administration" /> : activeTab === 'schools' ? <section className="talent-admin-table-card"><div className="talent-admin-table-header"><div><h1>Schools</h1></div><button type="button" className="district-primary-button talent-admin-add-school-button" onClick={() => openSchoolEditor()}>Add school</button></div><div className="talent-admin-table-wrap"><table className="talent-admin-table"><thead><tr><th>Reg.No</th><th>School Name</th><th>Location</th><th>Phone</th><th>Physical address</th></tr></thead><tbody>{schools.map((school) => <tr key={school.id}><td><button type="button" className="talent-admin-link-button" onClick={() => openSchoolEditor(school)}>{school.registry_number}</button></td><td>{school.name}</td><td>{getLocation(school)}</td><td>{school.phone || '?'}</td><td>{school.physical_address || '?'}</td></tr>)}{!schools.length && <tr><td colSpan="5" className="talent-admin-empty">No schools found.</td></tr>}</tbody></table></div></section> : activeTab === 'users' ? (
+    <main className="sport-teacher-prototype-content talent-admin-content">{error && <div className="talent-admin-alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Dismiss error">&times;</button></div>}{loading ? <DashboardSkeleton label="Loading talent administration" /> : activeTab === 'home' ? renderHomeView() : activeTab === 'schools' ? <section className="talent-admin-table-card"><div className="talent-admin-table-header"><div><h1>Schools</h1></div><button type="button" className="district-primary-button talent-admin-add-school-button" onClick={() => openSchoolEditor()}>Add school</button></div><div className="talent-admin-table-wrap"><table className="talent-admin-table"><thead><tr><th>Reg.No</th><th>School Name</th><th>Location</th><th>Phone</th><th>Physical address</th></tr></thead><tbody>{schools.map((school) => <tr key={school.id}><td><button type="button" className="talent-admin-link-button" onClick={() => openSchoolEditor(school)}>{school.registry_number}</button></td><td>{school.name}</td><td>{getLocation(school)}</td><td>{school.phone || '?'}</td><td>{school.physical_address || '?'}</td></tr>)}{!schools.length && <tr><td colSpan="5" className="talent-admin-empty">No schools found.</td></tr>}</tbody></table></div></section> : activeTab === 'users' ? (
       <>
         <div className="talent-admin-user-tools">
           <div className="talent-admin-role-tabs-scroll">
@@ -917,7 +1058,7 @@ export default function TalentAdminPage() {
         {talentDrawerOpen && (
           <>
             <button type="button" className="sport-teacher-drawer-backdrop" aria-label="Close talent form" onClick={closeTalentEditor} />
-            <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer" aria-label="Talent editor">
+            <aside className="sport-teacher-search-drawer sport-teacher-registration-drawer talent-admin-school-drawer talent-admin-talent-drawer" aria-label="Talent editor">
               <div className="sport-teacher-search-drawer-header">
                 <h2>{editingTalentId ? 'Edit talent' : 'Add talent'}</h2>
                 <button type="button" onClick={closeTalentEditor} aria-label="Close talent form">&times;</button>
