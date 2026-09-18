@@ -17,6 +17,13 @@ from core.permissions import AuthenticatedReadOnly, StudentDataPermission, Scope
 from core.permissions import IsSportTeacher
 
 
+def remove_empty_result_chain(result, participation):
+    if result.details.exists():
+        return
+    result.delete()
+    participation.delete()
+
+
 def ensure_school_result_editable(result):
     """Prevent school results from changing after the school submits them."""
     if SchoolCompetitionSubmission.objects.filter(
@@ -162,8 +169,7 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                             target_participation.delete()
 
                 if source_detail:
-                    source_detail.promoted_to = ''
-                    source_detail.save(update_fields=['promoted_to'])
+                    ResultDetail.objects.filter(pk=source_detail.pk).update(promoted_to='')
                 promotion.delete()
 
         return Response({'draft': True, 'competition_id': int(competition_id)})
@@ -217,31 +223,46 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
 
         if request.user.role != 'district_manager' or not request.user.district_id:
             return Response({'error': 'Only a district manager can remove a district promotion.'}, status=status.HTTP_403_FORBIDDEN)
-        target_result_id = request.data.get('target_result_id')
-        target_detail_id = request.data.get('target_detail_id')
-        if not target_result_id or not target_detail_id:
-            return Response({'error': 'target_result_id and target_detail_id are required.'}, status=status.HTTP_400_BAD_REQUEST)
-        target_detail = ResultDetail.objects.select_related('result__participation__student').filter(
-            id=target_detail_id,
-            result_id=target_result_id,
+        target_detail_ids = request.data.get('result_detail_ids', [])
+        if not target_detail_ids:
+            target_detail_id = request.data.get('target_detail_id')
+            target_detail_ids = [target_detail_id] if target_detail_id else []
+        if not target_detail_ids:
+            return Response({'error': 'result_detail_ids are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        target_details = ResultDetail.objects.select_related(
+            'result__participation__student',
+        ).filter(
+            id__in=target_detail_ids,
             result__participation__competition__level='district',
             result__participation__student__school__district_id=request.user.district_id,
-        ).first()
-        if not target_detail:
-            return Response({'error': 'District talent result not found.'}, status=status.HTTP_404_NOT_FOUND)
-        promotion = ResultPromotion.objects.filter(
-            to_level='district',
-            result_detail__talent_id=target_detail.talent_id,
-            result_detail__result__participation__student_id=target_detail.result.participation.student_id,
-            result_detail__result__participation__student__school__district_id=request.user.district_id,
-        ).first()
+        )
+        if not target_details.exists():
+            return Response({'error': 'No district talent results were found for the selected records.'}, status=status.HTTP_404_NOT_FOUND)
+
+        demoted_ids = []
         with transaction.atomic():
-            if promotion:
-                promotion.result_detail.promoted_to = ''
-                promotion.result_detail.save(update_fields=['promoted_to'])
+            for target_detail in target_details:
+                promotion = ResultPromotion.objects.filter(
+                    to_level='district',
+                    result_detail__talent_id=target_detail.talent_id,
+                    result_detail__result__participation__student_id=target_detail.result.participation.student_id,
+                    result_detail__result__participation__student__school__district_id=request.user.district_id,
+                ).first()
+                if not promotion:
+                    continue
+                demoted_detail_id = int(target_detail.pk)
+                ResultDetail.objects.filter(pk=promotion.result_detail_id).update(promoted_to='')
                 promotion.delete()
-            target_detail.delete()
-        return Response({'demoted': True, 'target_detail_id': int(target_detail_id)})
+                target_result = target_detail.result
+                target_participation = target_result.participation
+                target_detail.delete()
+                if not target_result.details.exists():
+                    target_result.delete()
+                    if not Result.objects.filter(pk=target_result.pk).exists():
+                        target_participation.delete()
+                demoted_ids.append(demoted_detail_id)
+        return Response({'demoted': len(demoted_ids), 'result_detail_ids': demoted_ids})
 
     @action(detail=False, methods=['post'], permission_classes=[AuthenticatedReadOnly])
     def promote(self, request):
@@ -763,6 +784,58 @@ class SchoolCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelView
         submission = self.get_object()
         if request.user.role != 'district_manager' or submission.school.district_id != request.user.district_id:
             return Response({'detail': 'Only the assigned district manager can reopen this submission.'}, status=status.HTTP_403_FORBIDDEN)
-        submission.status = 'draft'
-        submission.save(update_fields=['status'])
-        return Response(self.get_serializer(submission).data)
+        district_promotions = ResultPromotion.objects.select_related(
+            'result_detail',
+            'result__participation__student',
+        ).filter(
+            result__participation__competition=submission.competition,
+            to_level='district',
+            result__participation__student__school_id=submission.school_id,
+        )
+
+        demoted_count = 0
+        with transaction.atomic():
+            for promotion in district_promotions:
+                source_detail = promotion.result_detail
+                if source_detail:
+                    ResultDetail.objects.filter(pk=source_detail.pk).update(promoted_to='')
+
+                student_id = promotion.result.participation.student_id
+                talent_id = source_detail.talent_id if source_detail else None
+                district_details = ResultDetail.objects.select_related('result__participation').filter(
+                    result__participation__student_id=student_id,
+                    result__participation__competition__level='district',
+                    talent_id=talent_id,
+                )
+                for district_detail in district_details:
+                    district_result = district_detail.result
+                    district_participation = district_result.participation
+                    downstream_promotions = ResultPromotion.objects.filter(
+                        result=district_result,
+                        to_level='zone',
+                    )
+                    for downstream_promotion in downstream_promotions:
+                        zone_details = ResultDetail.objects.select_related('result__participation').filter(
+                            result__participation__student_id=student_id,
+                            result__participation__competition__level='zone',
+                            talent_id=talent_id,
+                        )
+                        for zone_detail in zone_details:
+                            zone_result = zone_detail.result
+                            zone_participation = zone_result.participation
+                            zone_detail.delete()
+                            remove_empty_result_chain(zone_result, zone_participation)
+                        downstream_promotion.delete()
+
+                    district_detail.delete()
+                    remove_empty_result_chain(district_result, district_participation)
+
+                promotion.delete()
+                demoted_count += 1
+
+            submission.status = 'draft'
+            submission.save(update_fields=['status'])
+
+        data = self.get_serializer(submission).data
+        data['demoted'] = demoted_count
+        return Response(data)

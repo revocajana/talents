@@ -4,7 +4,7 @@ from rest_framework.test import APIRequestFactory
 
 from competitions.models import Competition, CompetitionParticipation
 from core.models import Country, District, Region, School, Talent, TalentCategory, User, Ward, Zone
-from results.models import Result, ResultDetail
+from results.models import Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
 from results.views import ResultPromotionViewSet, SchoolCompetitionSubmissionViewSet
 from students.models import Student
 
@@ -74,6 +74,58 @@ class ResultPromotionLockingTests(TestCase):
         with self.assertRaisesMessage(Exception, 'Promoted competition results are locked.'):
             detail.promoted_to = 'zone'
             detail.save()
+
+    def test_reopening_school_submission_reverses_district_and_zone_promotions(self):
+        district_manager = User.objects.create_user(
+            username='district-manager-reopen',
+            password='secret123',
+            role='district_manager',
+            country=self.country,
+            zone=self.zone,
+            region=self.region,
+            district=self.district,
+        )
+        school_competition = Competition.objects.create(name='School Trials', level='school', status='approved')
+        school_competition.schools.add(self.school)
+        district_competition = Competition.objects.create(name='District Trials', level='district', status='approved')
+        district_competition.content_type = ContentType.objects.get_for_model(District)
+        district_competition.object_id = self.district.pk
+        district_competition.schools.add(self.school)
+        district_competition.save(update_fields=['content_type', 'object_id'])
+        zone_competition = Competition.objects.create(name='Zone Trials', level='zone', status='approved')
+        zone_competition.content_type = ContentType.objects.get_for_model(Zone)
+        zone_competition.object_id = self.zone.pk
+        zone_competition.schools.add(self.school)
+        zone_competition.save(update_fields=['content_type', 'object_id'])
+        submission = SchoolCompetitionSubmission.objects.create(school=self.school, competition=school_competition, status='draft')
+
+        school_participation = CompetitionParticipation.objects.create(competition=school_competition, student=self.student, status='finished')
+        school_result = Result.objects.create(participation=school_participation, approval_status='pending')
+        school_detail = ResultDetail.objects.create(result=school_result, talent=self.student_talent, raw_score=80, percentage_score=80, promoted_to='district')
+        district_participation = CompetitionParticipation.objects.create(competition=district_competition, student=self.student, status='finished')
+        district_result = Result.objects.create(participation=district_participation, approval_status='pending')
+        district_detail = ResultDetail.objects.create(result=district_result, talent=self.student_talent, raw_score=0, percentage_score=None)
+        zone_participation = CompetitionParticipation.objects.create(competition=zone_competition, student=self.student, status='finished')
+        zone_result = Result.objects.create(participation=zone_participation, approval_status='pending')
+        ResultDetail.objects.create(result=zone_result, talent=self.student_talent, raw_score=0, percentage_score=None)
+        district_promotion = ResultPromotion.objects.create(result=school_result, result_detail=school_detail, from_level='school', to_level='district', promoted_by=district_manager)
+        ResultPromotion.objects.create(result=district_result, result_detail=district_detail, from_level='district', to_level='zone', promoted_by=district_manager)
+        submission.status = 'submitted'
+        submission.save(update_fields=['status'])
+
+        request = self.factory.post('/api/school-result-submissions/reopen/', {}, format='json')
+        request.user = district_manager
+        response = SchoolCompetitionSubmissionViewSet.as_view({'post': 'reopen'})(request, pk=submission.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], 'draft')
+        self.assertEqual(response.data['demoted'], 1)
+        school_detail.refresh_from_db()
+        self.assertEqual(school_detail.promoted_to, '')
+        self.assertFalse(ResultPromotion.objects.filter(pk=district_promotion.pk).exists())
+        self.assertFalse(ResultDetail.objects.filter(pk=district_detail.pk).exists())
+        self.assertFalse(CompetitionParticipation.objects.filter(pk=district_participation.pk).exists())
+        self.assertFalse(CompetitionParticipation.objects.filter(pk=zone_participation.pk).exists())
 
 
 class ZoneToCountryPromotionTests(TestCase):
@@ -248,6 +300,90 @@ class ZoneToCountryPromotionTests(TestCase):
                 student=self.student,
             ).exists(),
         )
+
+    def test_district_manager_can_demote_district_result(self):
+        district_manager = User.objects.create_user(
+            username='district-manager-demote',
+            password='secret123',
+            role='district_manager',
+            district=self.district,
+            zone=self.zone,
+            region=self.region,
+            country=self.country,
+        )
+        school_competition = Competition.objects.create(
+            name='School Trials',
+            level='school',
+            status='approved',
+        )
+        school_competition.content_type = ContentType.objects.get_for_model(School)
+        school_competition.object_id = self.school.pk
+        school_competition.schools.add(self.school)
+        school_competition.save(update_fields=['content_type', 'object_id'])
+        school_participation = CompetitionParticipation.objects.create(
+            competition=school_competition,
+            student=self.student,
+            score=78,
+            status='finished',
+        )
+        school_result = Result.objects.create(participation=school_participation, score=78)
+        source_detail = ResultDetail.objects.create(
+            result=school_result,
+            talent=self.student_talent,
+            raw_score=78,
+            percentage_score=78,
+            promoted_to='district',
+        )
+
+        district_competition = Competition.objects.create(
+            name='District Trials',
+            level='district',
+            status='approved',
+        )
+        district_competition.content_type = ContentType.objects.get_for_model(District)
+        district_competition.object_id = self.district.pk
+        district_competition.schools.add(self.school)
+        district_competition.save(update_fields=['content_type', 'object_id'])
+        district_participation = CompetitionParticipation.objects.create(
+            competition=district_competition,
+            student=self.student,
+            score=78,
+            status='finished',
+        )
+        district_result = Result.objects.create(participation=district_participation, score=78)
+        target_detail = ResultDetail.objects.create(
+            result=district_result,
+            talent=self.student_talent,
+            raw_score=78,
+            percentage_score=78,
+        )
+        promotion = ResultPromotion.objects.create(
+            result=school_result,
+            result_detail=source_detail,
+            from_level='school',
+            to_level='district',
+            promoted_by=district_manager,
+        )
+
+        request = self.factory.post(
+            '/api/result-promotions/demote/',
+            {'result_detail_ids': [target_detail.id]},
+            format='json',
+        )
+        request.user = district_manager
+
+        response = ResultPromotionViewSet.as_view({'post': 'demote'})(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['demoted'], 1)
+        self.assertEqual(response.data['result_detail_ids'], [target_detail.id])
+        source_detail.refresh_from_db()
+        self.assertEqual(source_detail.promoted_to, '')
+        self.assertTrue(ResultDetail.objects.filter(pk=source_detail.pk).exists())
+        self.assertFalse(ResultDetail.objects.filter(pk=target_detail.pk).exists())
+        self.assertFalse(Result.objects.filter(pk=district_result.pk).exists())
+        self.assertFalse(CompetitionParticipation.objects.filter(pk=district_participation.pk).exists())
+        self.assertFalse(ResultPromotion.objects.filter(pk=promotion.pk).exists())
 
     def test_district_manager_can_submit_district_results_to_zone_without_existing_zone_competition(self):
         district_manager = User.objects.create_user(

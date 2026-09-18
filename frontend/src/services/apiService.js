@@ -212,6 +212,7 @@ export const deleteParent = (id) => api.delete(`/parents/${id}/`);
 // ==================== COMPETITIONS ====================
 
 export const getCompetitions = (params = {}) => api.get('/competitions/', { params });
+export const getAllCompetitions = (params = {}) => getAllRecords('/competitions/', params);
 export const getCompetitionById = (id) => api.get(`/competitions/${id}/`);
 export const createCompetition = (data) => api.post('/competitions/', data);
 export const updateCompetition = (id, data) => api.put(`/competitions/${id}/`, data);
@@ -225,6 +226,8 @@ export const uploadBulkResults = (formData) => api.post('/competitions/bulk-uplo
 // ==================== COMPETITION PARTICIPATION ====================
 
 export const getParticipations = (params = {}) => api.get('/participations/', { params });
+export const getAllParticipations = (params = {}) => getAllRecords('/participations/', params);
+export const getAllSchoolResultSubmissions = (params = {}) => getAllRecords('/school-result-submissions/', params);
 export const createParticipation = (data) => api.post('/participations/', data);
 export const getParticipationById = (id) => api.get(`/participations/${id}/`);
 export const updateParticipation = (id, data) => api.patch(`/participations/${id}/`, data);
