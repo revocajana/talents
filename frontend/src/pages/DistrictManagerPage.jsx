@@ -48,6 +48,8 @@ export default function DistrictManagerPage() {
   const [announcementSubmitting, setAnnouncementSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedPromotionStudents, setSelectedPromotionStudents] = useState([]);
+  const [selectedSourceCompetitionId, setSelectedSourceCompetitionId] = useState('');
+  const [selectedDistrictCompetitionId, setSelectedDistrictCompetitionId] = useState('');
   const [activeMenu, setActiveMenu] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -474,9 +476,9 @@ export default function DistrictManagerPage() {
   };
 
   const handlePromoteStudents = async (sourceCompetitionId, detailIds = selectedPromotionStudents) => {
-    const targetCompetition = districtLevelCompetitions[0];
+    const targetCompetition = districtLevelCompetitions.find((competition) => Number(competition.id) === Number(selectedDistrictCompetitionId));
     if (!detailIds.length || !sourceCompetitionId || !targetCompetition) {
-      setError(targetCompetition ? 'Select at least one student to promote.' : 'Create a district competition before promoting students.');
+      setError(targetCompetition ? 'Select at least one student to promote.' : 'Select a district competition before promoting students.');
       return;
     }
     setSubmitting(true);
@@ -704,13 +706,30 @@ export default function DistrictManagerPage() {
         return { ...competition, entries };
       });
 
+    const selectedSourceCompetition = submittedSchoolCompetitions.find((competition) => Number(competition.id) === Number(selectedSourceCompetitionId));
+    const visibleSchoolCompetitions = selectedSourceCompetition ? [selectedSourceCompetition] : submittedSchoolCompetitions;
+
     if (activeMenu === 'school-results') {
       return (
         <div className="district-results-stack">
           <div className="district-results-heading">
             <div><h2>School-level results</h2><p>Submitted results from schools in your district. Select students to promote them to a district competition.</p></div>
+            <div className="district-result-selection-controls">
+              <label>Registered competition
+                <select value={selectedSourceCompetitionId} onChange={(event) => { setSelectedSourceCompetitionId(event.target.value); setSelectedPromotionStudents([]); }}>
+                  <option value="">Select competition</option>
+                  {submittedSchoolCompetitions.map((competition) => <option key={competition.id} value={competition.id}>{competition.name}</option>)}
+                </select>
+              </label>
+              <label>District competition
+                <select value={selectedDistrictCompetitionId || districtLevelCompetitions[0]?.id || ''} onChange={(event) => setSelectedDistrictCompetitionId(event.target.value)}>
+                  <option value="">Select competition</option>
+                  {districtLevelCompetitions.map((competition) => <option key={competition.id} value={competition.id}>{competition.name}</option>)}
+                </select>
+              </label>
+            </div>
           </div>
-          {submittedSchoolCompetitions.map((competition) => (
+          {visibleSchoolCompetitions.map((competition) => (
             <section className="district-result-card" key={competition.id}>
               <div className="district-result-card-header">
                 <div><h3>{competition.name}</h3><p>Submitted school-level results. Only scores of 50% or higher are shown.</p></div>
