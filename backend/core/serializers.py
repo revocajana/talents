@@ -70,7 +70,9 @@ class SchoolSerializer(serializers.ModelSerializer):
         read_only_fields = ['is_approved']
 
     def create(self, validated_data):
-        validated_data['is_approved'] = False
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        validated_data['is_approved'] = bool(user and getattr(user, 'role', None) == 'talent_admin')
         return super().create(validated_data)
 
     def validate(self, attrs):

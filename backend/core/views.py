@@ -101,6 +101,10 @@ class SchoolViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
             return School.objects.select_related('country', 'zone', 'region', 'district', 'ward').all()
         return qs
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        serializer.save(is_approved=(bool(user and getattr(user, 'is_authenticated', False) and getattr(user, 'role', None) == 'talent_admin')))
+
 
 class RegistrationLocationsView(APIView):
     permission_classes = [AllowAny]

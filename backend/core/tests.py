@@ -59,6 +59,33 @@ class FoundationRulesTests(TestCase):
 		self.assertFalse(school.is_approved)
 		self.assertFalse(School.objects.filter(is_approved=True, pk=school.pk).exists())
 
+	def test_talent_admin_school_creation_is_auto_approved(self):
+		admin_user = User.objects.create_user(
+			username='talent-admin',
+			password='test',
+			role='talent_admin',
+		)
+		serializer = SchoolSerializer(
+			data={
+				'registry_number': 'TEST-ADMIN-001',
+				'name': 'Approved by Talent Admin',
+				'ownership_type': 'government',
+				'country': self.school.country.id,
+				'zone': self.school.zone.id,
+				'region': self.school.region.id,
+				'district': self.school.district.id,
+				'ward': self.school.ward.id,
+				'phone': '+255712345678',
+				'physical_address': 'Approved address',
+				'email': 'approved@example.com',
+			},
+			context={'request': type('RequestStub', (), {'user': admin_user})()},
+		)
+
+		self.assertTrue(serializer.is_valid(), serializer.errors)
+		school = serializer.save()
+		self.assertTrue(school.is_approved)
+
 	def test_school_ownership_type_is_admin_managed(self):
 		ownership = SchoolOwnershipType.objects.create(name='Roman Catholic')
 		school = School.objects.create(
