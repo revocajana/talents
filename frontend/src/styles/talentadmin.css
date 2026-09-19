@@ -8,6 +8,18 @@
   z-index: 100;
 }
 
+.talent-admin-page .sport-teacher-app-bar {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.talent-admin-page .talent-admin-content {
+  padding-top: 104px;
+}
+
 .district-manager-content {
   width: calc(100% - 165px);
   margin-left: 165px;
