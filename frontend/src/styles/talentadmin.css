@@ -28,6 +28,13 @@
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
 }
 
+.talent-admin-user-form-error {
+  margin: 10px 0 0;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .talent-admin-placeholder h1 {
   margin: 0;
   color: #0f172a;

@@ -17,7 +17,7 @@ const DEMOGRAPHY_LEVELS = [
 ];
 
 const emptySchool = { registry_number: '', name: '', ownership_type: 'Government', country: '', zone: '', region: '', district: '', ward: '', phone: '', physical_address: '', email: '' };
-const emptyUser = { username: '', first_name: '', last_name: '', email: '', phone: '', role: 'sport_teacher', country: '', zone: '', region: '', district: '', ward: '', school: '', password: '' };
+const emptyUser = { username: '', first_name: '', last_name: '', email: '', phone: '', role: 'sport_teacher', country: '', zone: '', region: '', district: '', ward: '', school: '', password: '', confirmPassword: '' };
 const USER_ROLE_OPTIONS = [
   ['talent_admin', 'Talent Admin'],
   ['region_manager', 'Region Manager'],
@@ -85,6 +85,7 @@ export default function TalentAdminPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userEditorMode, setUserEditorMode] = useState('add');
   const [userForm, setUserForm] = useState(emptyUser);
+  const [userFormError, setUserFormError] = useState(null);
   const [userSubmitting, setUserSubmitting] = useState(false);
   const activeItem = NAV_ITEMS.find(([key]) => key === activeTab) || NAV_ITEMS[0];
 
@@ -228,6 +229,7 @@ export default function TalentAdminPage() {
       ward: user.ward ? String(user.ward) : '',
       school: user.school ? String(user.school) : '',
       password: '',
+      confirmPassword: '',
     };
   };
   const getUserGeographyLevels = (role) => USER_GEOGRAPHY_LEVELS[role] || ['country'];
@@ -525,6 +527,7 @@ export default function TalentAdminPage() {
     setSelectedUser(user);
     setUserEditorMode(user ? 'edit' : 'add');
     setUserForm(buildUserFormFromSelection(user));
+    setUserFormError(null);
     setUserDrawerOpen(true);
   };
   const closeUserEditor = () => {
@@ -532,9 +535,10 @@ export default function TalentAdminPage() {
     setSelectedUser(null);
     setUserEditorMode('add');
     setUserForm(buildEmptyUserForm());
+    setUserFormError(null);
   };
   const saveUser = async (event) => {
-    event.preventDefault(); setUserSubmitting(true); setError(null);
+    event.preventDefault(); setUserSubmitting(true); setError(null); setUserFormError(null);
     const selectedGeography = ['country', 'zone', 'region', 'district', 'ward', 'school'].reduce((result, field) => {
       if (userForm[field] !== '' && userForm[field] !== null && userForm[field] !== undefined) {
         result[field] = Number(userForm[field]);
@@ -559,6 +563,12 @@ export default function TalentAdminPage() {
 
     if (userEditorMode === 'add' && !userForm.password) {
       setError('Password is required when creating a user.');
+      setUserSubmitting(false);
+      return;
+    }
+
+    if (userForm.password && userForm.password !== userForm.confirmPassword) {
+      setUserFormError('Passwords do not match.');
       setUserSubmitting(false);
       return;
     }
@@ -850,7 +860,7 @@ export default function TalentAdminPage() {
 
           if (!rowFields.length) return null;
           return <div key={`location-row-${firstField}-${secondField}`} className="sport-teacher-registration-form-grid">{rowFields}</div>;
-        })}<div className="sport-teacher-registration-form-grid"><label data-label={userEditorMode === 'edit' ? 'Password' : 'Password *'}><input type="password" placeholder="Min 8 characters" required={userEditorMode !== 'edit'} value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} /></label><label data-label="Confirm password"><input type="password" placeholder="Re-enter password" value={userForm.confirmPassword || ''} onChange={(event) => setUserForm((current) => ({ ...current, confirmPassword: event.target.value }))} /></label></div><div className="sport-teacher-registration-form-grid">{userEditorMode === 'edit' ? <button type="button" className="talent-admin-delete-button" onClick={deleteUser} disabled={userSubmitting}>Delete user</button> : <button type="button" className="sport-teacher-secondary-button" onClick={closeUserEditor}>Cancel</button>}<button type="submit" className="district-primary-button" disabled={userSubmitting}>{userSubmitting ? 'Saving...' : userEditorMode === 'edit' ? 'Update user' : 'Create user'}</button></div></form></aside></>}</>
+        })}<div className="sport-teacher-registration-form-grid"><label data-label={userEditorMode === 'edit' ? 'Password' : 'Password *'}><input type="password" placeholder="Min 8 characters" required={userEditorMode !== 'edit'} value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} /></label><label data-label="Confirm password"><input type="password" placeholder="Re-enter password" required={Boolean(userForm.password)} value={userForm.confirmPassword || ''} onChange={(event) => { setUserFormError(null); setUserForm((current) => ({ ...current, confirmPassword: event.target.value })); }} /></label></div>{userFormError && <div className="talent-admin-user-form-error" role="alert">{userFormError}</div>}<div className="sport-teacher-registration-form-grid">{userEditorMode === 'edit' ? <button type="button" className="talent-admin-delete-button" onClick={deleteUser} disabled={userSubmitting}>Delete user</button> : <button type="button" className="sport-teacher-secondary-button" onClick={closeUserEditor}>Cancel</button>}<button type="submit" className="district-primary-button" disabled={userSubmitting}>{userSubmitting ? 'Saving...' : userEditorMode === 'edit' ? 'Update user' : 'Create user'}</button></div></form></aside></>}</>
     ) : activeTab === 'demography' ? (
       <>
         <div className="talent-admin-user-tools">
