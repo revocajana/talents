@@ -301,6 +301,62 @@ class ZoneToCountryPromotionTests(TestCase):
             ).exists(),
         )
 
+    def test_district_manager_can_submit_results_to_zone_when_competition_is_scoped_by_district_object(self):
+        district_manager = User.objects.create_user(
+            username='district-manager-object-scope',
+            password='secret123',
+            role='district_manager',
+            district=self.district,
+            zone=self.zone,
+            region=self.region,
+            country=self.country,
+        )
+        district_competition = Competition.objects.create(
+            name='District Object Scoped Trials',
+            level='district',
+            status='approved',
+        )
+        district_competition.content_type = ContentType.objects.get_for_model(District)
+        district_competition.object_id = self.district.pk
+        district_competition.save(update_fields=['content_type', 'object_id'])
+
+        district_participation = CompetitionParticipation.objects.create(
+            competition=district_competition,
+            student=self.student,
+            score=78,
+            status='finished',
+        )
+        district_result = Result.objects.create(participation=district_participation, score=78, approval_status='pending')
+        ResultDetail.objects.create(
+            result=district_result,
+            talent=self.student_talent,
+            raw_score=78,
+            percentage_score=78,
+        )
+
+        request = self.factory.post(
+            '/api/result-promotions/promote/',
+            {
+                'competition_id': district_competition.id,
+                'zone_competition_id': self.zone_competition.id,
+                'from_level': 'district',
+                'to_level': 'zone',
+            },
+            format='json',
+        )
+        request.user = district_manager
+
+        response = ResultPromotionViewSet.as_view({'post': 'promote'})(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['promoted'], 1)
+        self.assertTrue(
+            CompetitionParticipation.objects.filter(
+                competition=self.zone_competition,
+                student=self.student,
+            ).exists(),
+        )
+
     def test_district_manager_can_demote_district_result(self):
         district_manager = User.objects.create_user(
             username='district-manager-demote',
@@ -436,6 +492,78 @@ class ZoneToCountryPromotionTests(TestCase):
         self.assertEqual(response.data['promoted'], 1)
         self.assertTrue(
             Competition.objects.filter(level='zone', content_type=ContentType.objects.get_for_model(Zone), object_id=self.zone.pk).exists(),
+        )
+
+    def test_district_manager_can_submit_district_results_to_zone_when_multiple_zone_competitions_exist(self):
+        district_manager = User.objects.create_user(
+            username='district-manager-multiple-zone',
+            password='secret123',
+            role='district_manager',
+            district=self.district,
+            zone=self.zone,
+            region=self.region,
+            country=self.country,
+        )
+        zone_type = ContentType.objects.get_for_model(Zone)
+        duplicate_zone_competition = Competition.objects.create(
+            name='Duplicate Zone Competition 1',
+            level='zone',
+            status='approved',
+            content_type=zone_type,
+            object_id=self.zone.pk,
+        )
+        Competition.objects.create(
+            name='Duplicate Zone Competition 2',
+            level='zone',
+            status='approved',
+            content_type=zone_type,
+            object_id=self.zone.pk,
+        )
+
+        district_competition = Competition.objects.create(
+            name='District Trials',
+            level='district',
+            status='approved',
+        )
+        district_competition.content_type = ContentType.objects.get_for_model(District)
+        district_competition.object_id = self.district.pk
+        district_competition.schools.add(self.school)
+        district_competition.save(update_fields=['content_type', 'object_id'])
+
+        district_participation = CompetitionParticipation.objects.create(
+            competition=district_competition,
+            student=self.student,
+            score=78,
+            status='finished',
+        )
+        district_result = Result.objects.create(participation=district_participation, score=78, approval_status='pending')
+        ResultDetail.objects.create(
+            result=district_result,
+            talent=self.student_talent,
+            raw_score=78,
+            percentage_score=78,
+        )
+
+        request = self.factory.post(
+            '/api/result-promotions/promote/',
+            {
+                'competition_id': district_competition.id,
+                'from_level': 'district',
+                'to_level': 'zone',
+            },
+            format='json',
+        )
+        request.user = district_manager
+
+        response = ResultPromotionViewSet.as_view({'post': 'promote'})(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['promoted'], 1)
+        self.assertTrue(
+            CompetitionParticipation.objects.filter(
+                competition__in=Competition.objects.filter(level='zone', content_type=zone_type, object_id=self.zone.pk),
+                student=self.student,
+            ).exists(),
         )
 
     def test_district_manager_can_submit_school_submission_for_owned_school(self):

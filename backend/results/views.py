@@ -38,9 +38,9 @@ def ensure_school_result_editable(result):
 def ensure_result_detail_editable(result_detail):
     """Prevent promoted talents from being edited after they advance to a higher competition level."""
     if (
-        getattr(result_detail, 'promoted_to', '')
-        or ResultPromotion.objects.filter(result_detail_id=result_detail.id).exists()
-        or ResultPromotion.objects.filter(result_id=result_detail.result_id).exists()
+        getattr(result_detail, 'promoted_to', '') in {'district', 'zone', 'country'}
+        or ResultPromotion.objects.filter(result_detail_id=result_detail.id, to_level__in={'district', 'zone', 'country'}).exists()
+        or ResultPromotion.objects.filter(result_id=result_detail.result_id, to_level__in={'district', 'zone', 'country'}).exists()
     ):
         from rest_framework.exceptions import ValidationError
         raise ValidationError('Promoted competition results are locked.')
@@ -49,7 +49,7 @@ def ensure_result_detail_editable(result_detail):
 
 def ensure_result_editable(result):
     """Prevent a result from changing while any talent has advanced."""
-    if ResultPromotion.objects.filter(result=result).exists():
+    if ResultPromotion.objects.filter(result=result, to_level__in={'district', 'zone', 'country'}).exists():
         from rest_framework.exceptions import ValidationError
         raise ValidationError('Submitted competition results are locked until they are returned to draft.')
     ensure_school_result_editable(result)
@@ -384,23 +384,30 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                     if not target_competition:
                         return Response({'error': 'The selected zone competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)
                 else:
-                    target_competition, _ = Competition.objects.get_or_create(
+                    target_competition = Competition.objects.filter(
                         level='zone',
                         content_type=zone_type,
                         object_id=request.user.zone_id,
-                        defaults={
-                            'name': f'{request.user.zone.name} Zone Competition',
-                            'description': 'Auto-created for district result submission.',
-                            'status': 'approved',
-                            'organizer': request.user,
-                        },
-                    )
+                    ).order_by('-id').first()
+                    if target_competition is None:
+                        target_competition = Competition.objects.create(
+                            level='zone',
+                            content_type=zone_type,
+                            object_id=request.user.zone_id,
+                            name=f'{request.user.zone.name} Zone Competition',
+                            description='Auto-created for district result submission.',
+                            status='approved',
+                            organizer=request.user,
+                        )
                     target_competition.schools.set(School.objects.filter(zone_id=request.user.zone_id, is_approved=True))
 
+                district_type = ContentType.objects.get_for_model(District)
                 source_competition = Competition.objects.filter(
                     id=competition_id,
                     level='district',
-                    schools__district_id=request.user.district_id,
+                ).filter(
+                    Q(content_type=district_type, object_id=request.user.district_id)
+                    | Q(schools__district_id=request.user.district_id)
                 ).first()
                 if not source_competition:
                     return Response({'error': 'The selected district competition does not belong to your district.'}, status=status.HTTP_404_NOT_FOUND)
@@ -484,10 +491,13 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                 if not target_competition:
                     return Response({'error': 'The selected zone competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)
 
+                district_type = ContentType.objects.get_for_model(District)
                 source_competition = Competition.objects.filter(
                     id=competition_id,
                     level='district',
-                    schools__zone_id=request.user.zone_id,
+                ).filter(
+                    Q(content_type=district_type, object_id__in=District.objects.filter(region__zone_id=request.user.zone_id).values_list('id', flat=True))
+                    | Q(schools__zone_id=request.user.zone_id)
                 ).first()
                 if not source_competition:
                     return Response({'error': 'The selected district competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)

@@ -184,6 +184,10 @@ export default function ZoneManagerPage() {
 
   const visibleZoneId = selectedZone ? Number(selectedZone) : null;
 
+  const uniqueById = (items = []) => Array.from(new Map(
+    items.filter((item) => item && item.id !== undefined && item.id !== null).map((item) => [Number(item.id), item]),
+  ).values());
+
   const zoneDistricts = useMemo(() => {
     if (!visibleZoneId) return allDistricts;
     return allDistricts.filter((district) => Number(district.zone) === visibleZoneId);
@@ -218,29 +222,29 @@ export default function ZoneManagerPage() {
   }, [studentTalents, zoneStudents, visibleZoneId]);
 
   const zoneCompetitions = useMemo(() => {
-    if (!visibleZoneId) return competitions;
-    return competitions.filter((competition) => {
+    if (!visibleZoneId) return uniqueById(competitions);
+    return uniqueById(competitions.filter((competition) => {
       const locationId = competition.object_id ?? competition.zone ?? competition.zone_id ?? competition.district ?? competition.region ?? competition.country;
       const isZoneLocation = competition.level === 'zone' && Number(locationId) === visibleZoneId;
       const belongsToZoneSchool = Array.isArray(competition.schools)
         && competition.schools.some((schoolId) => zoneSchools.some((school) => Number(school.id) === Number(schoolId)));
       return isZoneLocation || belongsToZoneSchool || Number(locationId) === visibleZoneId;
-    });
+    }));
   }, [competitions, zoneSchools, visibleZoneId]);
 
-  const schoolCompetitions = useMemo(() => zoneCompetitions.filter((competition) => competition.level === 'school'), [zoneCompetitions]);
-  const districtLevelCompetitions = useMemo(() => zoneCompetitions.filter((competition) => competition.level === 'district'), [zoneCompetitions]);
-  const zoneLevelCompetitions = useMemo(() => zoneCompetitions.filter((competition) => competition.level === 'zone'), [zoneCompetitions]);
+  const schoolCompetitions = useMemo(() => uniqueById(zoneCompetitions.filter((competition) => competition.level === 'school')), [zoneCompetitions]);
+  const districtLevelCompetitions = useMemo(() => uniqueById(zoneCompetitions.filter((competition) => competition.level === 'district')), [zoneCompetitions]);
+  const zoneLevelCompetitions = useMemo(() => uniqueById(zoneCompetitions.filter((competition) => competition.level === 'zone')), [zoneCompetitions]);
   const countryLevelCompetitions = useMemo(() => {
     const countryId = currentUser?.country ?? allZones.find((zone) => Number(zone.id) === Number(visibleZoneId))?.country;
-    if (!countryId) return competitions.filter((competition) => competition.level === 'country');
-    return competitions.filter((competition) => {
+    if (!countryId) return uniqueById(competitions.filter((competition) => competition.level === 'country'));
+    return uniqueById(competitions.filter((competition) => {
       const locationId = competition.object_id ?? competition.country ?? competition.zone ?? competition.region ?? competition.district;
       const isCountryLocation = competition.level === 'country' && Number(locationId) === Number(countryId);
       const belongsToCountrySchool = Array.isArray(competition.schools)
         && competition.schools.some((schoolId) => zoneSchools.some((school) => Number(school.id) === Number(schoolId) && Number(school.country) === Number(countryId)));
       return isCountryLocation || belongsToCountrySchool;
-    });
+    }));
   }, [allZones, competitions, currentUser, visibleZoneId, zoneSchools]);
 
   const relevantAnnouncements = useMemo(() => announcements.filter((announcement) => {
@@ -565,6 +569,13 @@ export default function ZoneManagerPage() {
   };
 
   const handleSaveZoneScore = async (resultId, detailId, score) => {
+    const isLockedForEdit = detailId
+      ? promotions.some((promotion) => ['district', 'zone', 'country'].includes(promotion.to_level) && Number(promotion.result_detail) === Number(detailId))
+        || resultDetails.some((detail) => Number(detail.id) === Number(detailId) && ['district', 'zone', 'country'].includes(detail.promoted_to))
+      : promotions.some((promotion) => ['district', 'zone', 'country'].includes(promotion.to_level) && Number(promotion.result) === Number(resultId));
+
+    if (isLockedForEdit) return;
+
     try {
       if (detailId) {
         await apiService.updateResultDetail(detailId, {
@@ -860,31 +871,48 @@ export default function ZoneManagerPage() {
   );
 
   const renderResultsView = () => {
-    const submittedDistrictCompetitions = districtLevelCompetitions
-      .filter((competition) => competition.level === 'district')
-      .map((competition) => {
-        const entries = participations
+    const submittedDistrictCompetitions = (() => {
+      const grouped = new Map();
+      const zonePromotedDetailIds = new Set(
+        promotions
+          .filter((promotion) => promotion.to_level === 'zone' && promotion.result_detail)
+          .map((promotion) => Number(promotion.result_detail)),
+      );
+
+      districtLevelCompetitions.forEach((competition) => {
+        const competitionEntries = [];
+
+        participations
           .filter((participation) => Number(participation.competition) === Number(competition.id) && zoneStudents.some((student) => Number(student.id) === Number(participation.student)))
-          .flatMap((participation) => {
+          .forEach((participation) => {
             const result = results.find((item) => Number(item.participation) === Number(participation.id));
+            if (!result) return;
+
             const student = zoneStudents.find((item) => Number(item.id) === Number(participation.student));
             const school = zoneSchools.find((item) => Number(item.id) === Number(student?.school?.id ?? student?.school));
-            const details = result?.details || [];
-            const promotedDetailIds = new Set(promotions.filter((promotion) => promotion.to_level === 'zone' && promotion.result_detail).map((promotion) => Number(promotion.result_detail)));
-            return details
-              .filter((detail) => detail.percentage_score !== null && detail.percentage_score !== undefined && Number(detail.percentage_score) >= 50)
-              .map((detail) => ({
+
+            (result.details || []).forEach((detail) => {
+              const percentage = Number(detail.percentage_score ?? detail.raw_score ?? 0);
+              if (!Number.isFinite(percentage) || percentage < 50) return;
+
+              competitionEntries.push({
                 participation,
                 result,
                 detail,
                 student,
                 school,
-                isPromoted: promotedDetailIds.has(Number(detail.id)),
-                isEligibleForPromotion: !promotedDetailIds.has(Number(detail.id)) && Number(detail.percentage_score) >= 50,
-              }));
+                isPromoted: zonePromotedDetailIds.has(Number(detail.id)),
+                isEligibleForPromotion: !zonePromotedDetailIds.has(Number(detail.id)) && percentage >= 50,
+              });
+            });
           });
-        return { ...competition, entries };
+
+        if (!competitionEntries.length) return;
+        grouped.set(Number(competition.id), { ...competition, entries: competitionEntries });
       });
+
+      return [...grouped.values()];
+    })();
 
     if (activeMenu === 'district-results') {
       return (
@@ -1186,6 +1214,13 @@ export default function ZoneManagerPage() {
                           min="0"
                           max="100"
                           defaultValue={result.detail ? result.detail.percentage_score ?? '' : result.score ?? ''}
+                          disabled={Boolean(
+                            result.detail && (
+                              result.isPromotedToCountry
+                              || resultDetails.some((detail) => Number(detail.id) === Number(result.detail?.id) && ['district', 'zone', 'country'].includes(detail.promoted_to))
+                              || promotions.some((promotion) => Number(promotion.result_detail) === Number(result.detail?.id) && ['district', 'zone', 'country'].includes(promotion.to_level))
+                            )
+                          )}
                           onBlur={(event) => handleSaveZoneScore(result.id, result.detail?.id, event.target.value)}
                           aria-label={`Score for ${result.student_name || 'student'} ${result.detail?.talent_name || 'result'}`}
                         />

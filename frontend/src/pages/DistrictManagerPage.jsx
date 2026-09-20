@@ -534,6 +534,12 @@ export default function DistrictManagerPage() {
   };
 
   const handleSaveDistrictScore = async (resultId, detailId, score) => {
+    const isLocked = detailId
+      ? promotions.some((promotion) => ['district', 'zone', 'country'].includes(promotion.to_level) && Number(promotion.result_detail) === Number(detailId))
+      : promotions.some((promotion) => ['district', 'zone', 'country'].includes(promotion.to_level) && Number(promotion.result) === Number(resultId));
+
+    if (isLocked) return;
+
     try {
       if (detailId) {
         await apiService.updateResultDetail(detailId, {
@@ -778,8 +784,13 @@ export default function DistrictManagerPage() {
                 .map((promotion) => Number(promotion.result_detail)),
             );
             const qualifyingEntries = competition.entries.filter((result) => result.detail && Number(result.detail.percentage_score) >= 50);
-            const isSubmittedToZone = qualifyingEntries.length > 0
-              && qualifyingEntries.every((result) => zonePromotedDetailIds.has(Number(result.detail.id)));
+            const isSubmittedToZone = competition.entries.some((result) => result.detail && zonePromotedDetailIds.has(Number(result.detail.id)))
+              || qualifyingEntries.some((result) => zonePromotedDetailIds.has(Number(result.detail.id)));
+            const isLockedForDistrictEdit = (result) => Boolean(
+              (result.detail && (
+                ['district', 'zone', 'country'].includes(result.detail.promoted_to) || zonePromotedDetailIds.has(Number(result.detail.id))
+              ))
+            );
 
             return (
           <section className="district-result-card" key={`district-${competition.id}`}>
@@ -801,7 +812,7 @@ export default function DistrictManagerPage() {
             <div className="district-result-table-wrap">
                 <table className="data-table"><thead><tr><th>Select</th><th>Student</th><th>Talent</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
                 {competition.entries.map((result) => (
-                  <tr key={`${result.id}-${result.detail?.id || 'overall'}`}><td>{result.detail ? <input type="checkbox" checked={selectedDemotionDetails.includes(Number(result.detail.id))} onChange={(event) => setSelectedDemotionDetails((current) => event.target.checked ? [...new Set([...current, Number(result.detail.id)])] : current.filter((id) => id !== Number(result.detail.id)))} aria-label={`Select ${result.student?.first_name || 'student'} ${result.detail?.talent_name || 'result'} for de-promotion`} /> : null}</td><td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td><td>{result.detail?.talent_name || 'Overall result'}</td><td>{getStudentClassName(result.student)}</td><td>{districtSchools.find((school) => Number(school.id) === Number(result.student?.school?.id ?? result.student?.school))?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(result.student?.id) && membership.is_active)?.club_name || '—'}</td><td><input className="district-score-input" type="number" min="0" max="100" defaultValue={result.detail ? (result.detail.percentage_score ?? '') : (result.score ?? '')} disabled={isSubmittedToZone || Boolean(result.detail && zonePromotedDetailIds.has(Number(result.detail.id)))} onBlur={(event) => handleSaveDistrictScore(result.id, result.detail?.id, event.target.value)} aria-label={`Score for ${result.student_name || 'student'} ${result.detail?.talent_name || 'result'}`} /></td><td>{result.detail ? (result.detail.percentage_score === null || result.detail.percentage_score === undefined ? 'Not recorded' : result.detail.percentage_score >= 90 ? 'A+' : result.detail.percentage_score >= 75 ? 'A' : result.detail.percentage_score >= 60 ? 'B+' : result.detail.percentage_score >= 50 ? 'B' : result.detail.percentage_score >= 40 ? 'C' : result.detail.percentage_score >= 30 ? 'D' : result.detail.percentage_score >= 20 ? 'E' : 'F') : result.grade || 'Not recorded'}</td></tr>
+                  <tr key={`${result.id}-${result.detail?.id || 'overall'}`}><td>{result.detail ? <input type="checkbox" checked={selectedDemotionDetails.includes(Number(result.detail.id))} onChange={(event) => setSelectedDemotionDetails((current) => event.target.checked ? [...new Set([...current, Number(result.detail.id)])] : current.filter((id) => id !== Number(result.detail.id)))} aria-label={`Select ${result.student?.first_name || 'student'} ${result.detail?.talent_name || 'result'} for de-promotion`} disabled={isLockedForDistrictEdit(result)} /> : null}</td><td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td><td>{result.detail?.talent_name || 'Overall result'}</td><td>{getStudentClassName(result.student)}</td><td>{districtSchools.find((school) => Number(school.id) === Number(result.student?.school?.id ?? result.student?.school))?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(result.student?.id) && membership.is_active)?.club_name || '—'}</td><td><input className="district-score-input" type="number" min="0" max="100" defaultValue={result.detail ? (result.detail.percentage_score ?? '') : (result.score ?? '')} disabled={isLockedForDistrictEdit(result)} onBlur={(event) => handleSaveDistrictScore(result.id, result.detail?.id, event.target.value)} aria-label={`Score for ${result.student_name || 'student'} ${result.detail?.talent_name || 'result'}`} /></td><td>{result.detail ? (result.detail.percentage_score === null || result.detail.percentage_score === undefined ? 'Not recorded' : result.detail.percentage_score >= 90 ? 'A+' : result.detail.percentage_score >= 75 ? 'A' : result.detail.percentage_score >= 60 ? 'B+' : result.detail.percentage_score >= 50 ? 'B' : result.detail.percentage_score >= 40 ? 'C' : result.detail.percentage_score >= 30 ? 'D' : result.detail.percentage_score >= 20 ? 'E' : 'F') : result.grade || 'Not recorded'}</td></tr>
                 ))}
                 {!competition.entries.length && <tr><td colSpan="8" className="district-result-empty">No district results recorded yet.</td></tr>}
               </tbody></table>
