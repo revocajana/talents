@@ -47,6 +47,7 @@ export default function DistrictManagerPage() {
   const [announcementDrawerOpen, setAnnouncementDrawerOpen] = useState(false);
   const [announcementSubmitting, setAnnouncementSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingSchoolCompetitionId, setSubmittingSchoolCompetitionId] = useState(null);
   const [submittingDistrictCompetitionId, setSubmittingDistrictCompetitionId] = useState(null);
   const [selectedPromotionStudents, setSelectedPromotionStudents] = useState([]);
   const [selectedDemotionDetails, setSelectedDemotionDetails] = useState([]);
@@ -482,7 +483,7 @@ export default function DistrictManagerPage() {
       setError(targetCompetition ? 'Select at least one student to promote.' : 'Select a district competition before promoting students.');
       return;
     }
-    setSubmitting(true);
+    setSubmittingSchoolCompetitionId(Number(sourceCompetitionId));
     try {
       await apiService.promoteStudents({
         result_detail_ids: detailIds,
@@ -499,7 +500,7 @@ export default function DistrictManagerPage() {
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to promote students');
     } finally {
-      setSubmitting(false);
+      setSubmittingSchoolCompetitionId(null);
     }
   };
 
@@ -740,10 +741,10 @@ export default function DistrictManagerPage() {
             <div><h2>School-level results</h2><p>Submitted results from schools in your district. Select students to promote them to a district competition.</p></div>
           </div>
           {visibleSchoolCompetitions.map((competition) => (
-            <section className="district-result-card" key={competition.id}>
-              <div className="district-result-card-header">
-                <div><h3>{competition.name}</h3><p>Submitted school-level results. Only scores of 50% or higher are shown.</p></div>
-                <div className="district-result-header-actions"><label className="district-promotion-competition-field">Promote to<select value={selectedDistrictCompetitionId} onChange={(event) => setSelectedDistrictCompetitionId(event.target.value)} disabled={submitting} style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: 'white', color: '#111827', fontSize: '14px' }}><option value="">Select district competition</option>{districtLevelCompetitions.map((districtCompetition) => <option key={districtCompetition.id} value={districtCompetition.id}>{districtCompetition.name}</option>)}</select></label><button type="button" className="btn-primary" onClick={() => handlePromoteStudents(competition.id, selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))))} disabled={submitting || !selectedPromotionStudents.length || !selectedDistrictCompetitionId} style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#0E1DB6', color: 'white', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}>{submitting ? 'Processing...' : 'Promote'}</button>{schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id))?.status === 'submitted' && <button type="button" className="district-text-button" onClick={() => handleReopenSchoolSubmission(schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id)).id)} style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#d1d5db', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}>Set draft</button>}</div>
+              <section className="district-result-card" key={competition.id}>
+                <div className="district-result-card-header">
+                  <div><h3>{competition.name}</h3><p>Submitted school-level results. Only scores of 50% or higher are shown.</p></div>
+                  <div className="district-result-header-actions"><label className="district-promotion-competition-field">Promote to<select value={selectedDistrictCompetitionId} onChange={(event) => setSelectedDistrictCompetitionId(event.target.value)} disabled={submittingSchoolCompetitionId !== null}><option value="">Select district competition</option>{districtLevelCompetitions.map((districtCompetition) => <option key={districtCompetition.id} value={districtCompetition.id}>{districtCompetition.name}</option>)}</select></label><button type="button" className="btn-primary" onClick={() => handlePromoteStudents(competition.id, selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))))} disabled={submittingSchoolCompetitionId !== null || !selectedPromotionStudents.some((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId)))} style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#0E1DB6', color: 'white', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}>{submittingSchoolCompetitionId === Number(competition.id) ? 'Processing...' : 'Promote'}</button>{schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id))?.status === 'submitted' && <button type="button" className="district-text-button" onClick={() => handleReopenSchoolSubmission(schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id)).id)} style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#d1d5db', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}>Set draft</button>}</div>
               </div>
               <div className="district-result-table-wrap">
                 <table className="data-table"><thead><tr><th>Select</th><th>Student</th><th>Talent</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
