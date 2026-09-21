@@ -47,6 +47,7 @@ export default function DistrictManagerPage() {
   const [announcementDrawerOpen, setAnnouncementDrawerOpen] = useState(false);
   const [announcementSubmitting, setAnnouncementSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingDistrictCompetitionId, setSubmittingDistrictCompetitionId] = useState(null);
   const [selectedPromotionStudents, setSelectedPromotionStudents] = useState([]);
   const [selectedDemotionDetails, setSelectedDemotionDetails] = useState([]);
   const [selectedDistrictCompetitionId, setSelectedDistrictCompetitionId] = useState('');
@@ -508,7 +509,7 @@ export default function DistrictManagerPage() {
       setError('Select a district competition to submit.');
       return;
     }
-    setSubmitting(true);
+    setSubmittingDistrictCompetitionId(Number(sourceCompetitionId));
     try {
       const payload = {
         result_detail_ids: detailIds,
@@ -521,6 +522,7 @@ export default function DistrictManagerPage() {
       }
       await apiService.promoteStudents(payload);
       setSelectedPromotionStudents([]);
+      setSelectedDemotionDetails([]);
       const [resultsRes, participationsRes, promotionsRes] = await Promise.all([apiService.getResults(), apiService.getParticipations(), apiService.getResultPromotions()]);
       setResults(resultsRes.data.results || []);
       setParticipations(participationsRes.data.results || []);
@@ -529,7 +531,7 @@ export default function DistrictManagerPage() {
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to submit district results');
     } finally {
-      setSubmitting(false);
+      setSubmittingDistrictCompetitionId(null);
     }
   };
 
@@ -741,7 +743,7 @@ export default function DistrictManagerPage() {
             <section className="district-result-card" key={competition.id}>
               <div className="district-result-card-header">
                 <div><h3>{competition.name}</h3><p>Submitted school-level results. Only scores of 50% or higher are shown.</p></div>
-                <div className="district-result-header-actions"><label className="district-promotion-competition-field">Promote to<select value={selectedDistrictCompetitionId} onChange={(event) => setSelectedDistrictCompetitionId(event.target.value)} disabled={submitting}><option value="">Select district competition</option>{districtLevelCompetitions.map((districtCompetition) => <option key={districtCompetition.id} value={districtCompetition.id}>{districtCompetition.name}</option>)}</select></label><button type="button" className="btn-primary" onClick={() => handlePromoteStudents(competition.id, selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))))} disabled={submitting || !selectedPromotionStudents.length || !selectedDistrictCompetitionId}>{submitting ? 'Processing...' : `Promote selected (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}</button>{schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id))?.status === 'submitted' && <button type="button" className="district-text-button" onClick={() => handleReopenSchoolSubmission(schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id)).id)}>Set draft</button>}</div>
+                <div className="district-result-header-actions"><label className="district-promotion-competition-field">Promote to<select value={selectedDistrictCompetitionId} onChange={(event) => setSelectedDistrictCompetitionId(event.target.value)} disabled={submitting} style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: 'white', color: '#111827', fontSize: '14px' }}><option value="">Select district competition</option>{districtLevelCompetitions.map((districtCompetition) => <option key={districtCompetition.id} value={districtCompetition.id}>{districtCompetition.name}</option>)}</select></label><button type="button" className="btn-primary" onClick={() => handlePromoteStudents(competition.id, selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))))} disabled={submitting || !selectedPromotionStudents.length || !selectedDistrictCompetitionId} style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#0E1DB6', color: 'white', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}>{submitting ? 'Processing...' : 'Promote'}</button>{schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id))?.status === 'submitted' && <button type="button" className="district-text-button" onClick={() => handleReopenSchoolSubmission(schoolSubmissions.find((submission) => Number(submission.competition) === Number(competition.id)).id)}>Set draft</button>}</div>
               </div>
               <div className="district-result-table-wrap">
                 <table className="data-table"><thead><tr><th>Select</th><th>Student</th><th>Talent</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
@@ -787,7 +789,7 @@ export default function DistrictManagerPage() {
             const isSubmittedToZone = competition.entries.some((result) => result.detail && zonePromotedDetailIds.has(Number(result.detail.id)))
               || qualifyingEntries.some((result) => zonePromotedDetailIds.has(Number(result.detail.id)));
             const isLockedForDistrictEdit = (result) => Boolean(
-              (result.detail && (
+              isSubmittedToZone || (result.detail && (
                 ['district', 'zone', 'country'].includes(result.detail.promoted_to) || zonePromotedDetailIds.has(Number(result.detail.id))
               ))
             );
@@ -797,24 +799,25 @@ export default function DistrictManagerPage() {
             <div className="district-result-card-header">
               <div><h3>{competition.name}</h3><p>District-level results for promoted students.</p></div>
               <div className="district-result-header-actions">
-                <button type="button" className="district-demote-button" onClick={() => handleDemoteTalents(selectedDemotionDetails.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))))} disabled={submitting || !selectedDemotionDetails.some((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId)))}>De-promote selected</button>
-                <button
+                {!isSubmittedToZone && <button type="button" className="district-demote-button" onClick={() => handleDemoteTalents(selectedDemotionDetails.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))))} disabled={submitting || !selectedDemotionDetails.some((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId)))}>De-promote selected</button>}
+                {!isSubmittedToZone && <button
                   type="button"
-                  className="btn-primary"
+                  className="district-submit-zone-button"
                   onClick={() => handleSubmitDistrictResults(competition.id)}
-                  disabled={submitting || !competition.entries.length || isSubmittedToZone}
+                  disabled={submittingDistrictCompetitionId !== null || !competition.entries.length}
                   title="Submit all qualifying district results to the zone level"
+                  style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#0E1DB6', color: 'white', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}
                 >
-                  {submitting ? 'Submitting...' : isSubmittedToZone ? 'Submitted to zone level' : 'Submit to zone level'}
-                </button>
+                  {submittingDistrictCompetitionId === Number(competition.id) ? 'Submitting...' : 'Submit to zone'}
+                </button>}
               </div>
             </div>
             <div className="district-result-table-wrap">
-                <table className="data-table"><thead><tr><th>Select</th><th>Student</th><th>Talent</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
+                <table className="data-table"><thead><tr>{!isSubmittedToZone && <th>Select</th>}<th>Student</th><th>Talent</th><th>Class</th><th>School</th><th>Club</th><th>Score</th><th>Grade</th></tr></thead><tbody>
                 {competition.entries.map((result) => (
-                  <tr key={`${result.id}-${result.detail?.id || 'overall'}`}><td>{result.detail ? <input type="checkbox" checked={selectedDemotionDetails.includes(Number(result.detail.id))} onChange={(event) => setSelectedDemotionDetails((current) => event.target.checked ? [...new Set([...current, Number(result.detail.id)])] : current.filter((id) => id !== Number(result.detail.id)))} aria-label={`Select ${result.student?.first_name || 'student'} ${result.detail?.talent_name || 'result'} for de-promotion`} disabled={isLockedForDistrictEdit(result)} /> : null}</td><td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td><td>{result.detail?.talent_name || 'Overall result'}</td><td>{getStudentClassName(result.student)}</td><td>{districtSchools.find((school) => Number(school.id) === Number(result.student?.school?.id ?? result.student?.school))?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(result.student?.id) && membership.is_active)?.club_name || '—'}</td><td><input className="district-score-input" type="number" min="0" max="100" defaultValue={result.detail ? (result.detail.percentage_score ?? '') : (result.score ?? '')} disabled={isLockedForDistrictEdit(result)} onBlur={(event) => handleSaveDistrictScore(result.id, result.detail?.id, event.target.value)} aria-label={`Score for ${result.student_name || 'student'} ${result.detail?.talent_name || 'result'}`} /></td><td>{result.detail ? (result.detail.percentage_score === null || result.detail.percentage_score === undefined ? 'Not recorded' : result.detail.percentage_score >= 90 ? 'A+' : result.detail.percentage_score >= 75 ? 'A' : result.detail.percentage_score >= 60 ? 'B+' : result.detail.percentage_score >= 50 ? 'B' : result.detail.percentage_score >= 40 ? 'C' : result.detail.percentage_score >= 30 ? 'D' : result.detail.percentage_score >= 20 ? 'E' : 'F') : result.grade || 'Not recorded'}</td></tr>
+                  <tr key={`${result.id}-${result.detail?.id || 'overall'}`}>{!isSubmittedToZone && <td>{result.detail ? <input type="checkbox" checked={selectedDemotionDetails.includes(Number(result.detail.id))} onChange={(event) => setSelectedDemotionDetails((current) => event.target.checked ? [...new Set([...current, Number(result.detail.id)])] : current.filter((id) => id !== Number(result.detail.id)))} aria-label={`Select ${result.student?.first_name || 'student'} ${result.detail?.talent_name || 'result'} for de-promotion`} disabled={isLockedForDistrictEdit(result)} /> : null}</td>}<td>{result.student ? `${result.student.first_name} ${result.student.last_name}` : 'Student'}</td><td>{result.detail?.talent_name || 'Overall result'}</td><td>{getStudentClassName(result.student)}</td><td>{districtSchools.find((school) => Number(school.id) === Number(result.student?.school?.id ?? result.student?.school))?.name || 'School'}</td><td>{clubMemberships.find((membership) => Number(membership.student) === Number(result.student?.id) && membership.is_active)?.club_name || '—'}</td><td><input className="district-score-input" type="number" min="0" max="100" defaultValue={result.detail ? (result.detail.percentage_score ?? '') : (result.score ?? '')} disabled={isLockedForDistrictEdit(result)} onBlur={(event) => handleSaveDistrictScore(result.id, result.detail?.id, event.target.value)} aria-label={`Score for ${result.student_name || 'student'} ${result.detail?.talent_name || 'result'}`} /></td><td>{result.detail ? (result.detail.percentage_score === null || result.detail.percentage_score === undefined ? 'Not recorded' : result.detail.percentage_score >= 90 ? 'A+' : result.detail.percentage_score >= 75 ? 'A' : result.detail.percentage_score >= 60 ? 'B+' : result.detail.percentage_score >= 50 ? 'B' : result.detail.percentage_score >= 40 ? 'C' : result.detail.percentage_score >= 30 ? 'D' : result.detail.percentage_score >= 20 ? 'E' : 'F') : result.grade || 'Not recorded'}</td></tr>
                 ))}
-                {!competition.entries.length && <tr><td colSpan="8" className="district-result-empty">No district results recorded yet.</td></tr>}
+                {!competition.entries.length && <tr><td colSpan={isSubmittedToZone ? 7 : 8} className="district-result-empty">No district results recorded yet.</td></tr>}
               </tbody></table>
             </div>
           </section>
