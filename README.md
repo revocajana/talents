@@ -25,6 +25,41 @@ git clone https://github.com/your-username/talents.git
 cd talents
 ```
 
+## Database configuration before migration
+
+Before running migrations, configure the database connection in the Django settings file.
+
+Open:
+
+- backend/config/settings.py
+
+Update the DATABASES section so it uses your MySQL connection settings. Example:
+
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'talents_db',
+        'USER': 'root',
+        'PASSWORD': 'your_mysql_password',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        },
+    }
+}
+```
+
+Make sure:
+
+- the MySQL server is running
+- the database name exists
+- the user has permission to create tables and run migrations
+- the password and host values match your local MySQL setup
+
+If you are using a different database engine, change the ENGINE value accordingly, but make sure the database is ready before migration.
+
 ## Run the backend
 
 ```bash
