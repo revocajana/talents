@@ -5,7 +5,7 @@ from rest_framework.test import APIRequestFactory
 from competitions.models import Competition, CompetitionParticipation
 from core.models import Country, District, Region, School, Talent, TalentCategory, User, Ward, Zone
 from results.models import DistrictCompetitionSubmission, Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
-from results.views import ResultPromotionViewSet, SchoolCompetitionSubmissionViewSet
+from results.views import DistrictCompetitionSubmissionViewSet, ResultPromotionViewSet, SchoolCompetitionSubmissionViewSet
 from students.models import Student
 
 
@@ -448,6 +448,41 @@ class ZoneToCountryPromotionTests(TestCase):
         self.assertFalse(Result.objects.filter(pk=district_result.pk).exists())
         self.assertFalse(CompetitionParticipation.objects.filter(pk=district_participation.pk).exists())
         self.assertFalse(ResultPromotion.objects.filter(pk=promotion.pk).exists())
+
+    def test_zone_manager_can_list_district_submissions_for_zone_scope(self):
+        district_manager = User.objects.create_user(
+            username='district-manager-zone-scope',
+            password='secret123',
+            role='district_manager',
+            district=self.district,
+            zone=self.zone,
+            region=self.region,
+            country=self.country,
+        )
+        district_competition = Competition.objects.create(
+            name='District Zone Scope Trials',
+            level='district',
+            status='approved',
+        )
+        district_competition.content_type = ContentType.objects.get_for_model(District)
+        district_competition.object_id = self.district.pk
+        district_competition.schools.add(self.school)
+        district_competition.save(update_fields=['content_type', 'object_id'])
+
+        DistrictCompetitionSubmission.objects.create(
+            district=self.district,
+            competition=district_competition,
+            status='submitted',
+            submitted_by=district_manager,
+        )
+
+        request = self.factory.get('/api/district-result-submissions/')
+        request.user = self.zone_manager
+
+        response = DistrictCompetitionSubmissionViewSet.as_view({'get': 'list'})(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
 
     def test_district_manager_submits_without_existing_zone_competition(self):
         district_manager = User.objects.create_user(

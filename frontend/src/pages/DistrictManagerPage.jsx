@@ -760,6 +760,12 @@ export default function DistrictManagerPage() {
       );
     }
     const districtResultsByCompetition = districtLevelCompetitions.map((competition) => {
+      const zonePromotedDetailIds = new Set(
+        promotions
+          .filter((promotion) => promotion.to_level === 'zone' && promotion.result_detail)
+          .map((promotion) => Number(promotion.result_detail)),
+      );
+
       const entries = results.filter((result) => {
         const participation = participations.find((item) => Number(item.id) === Number(result.participation));
         return Number(participation?.competition) === Number(competition.id);
@@ -767,8 +773,17 @@ export default function DistrictManagerPage() {
         const participation = participations.find((item) => Number(item.id) === Number(result.participation));
         const student = districtStudents.find((item) => Number(item.id) === Number(participation?.student));
         const details = result.details || [];
-        return details.length ? details.map((detail) => ({ ...result, detail, student })) : [{ ...result, detail: null, student }];
+
+        return details.length
+          ? details.map((detail) => ({
+              ...result,
+              detail,
+              student,
+              isZonePromoted: zonePromotedDetailIds.has(Number(detail.id)) || detail.promoted_to === 'zone',
+            }))
+          : [{ ...result, detail: null, student, isZonePromoted: false }];
       });
+
       return { ...competition, entries };
     });
 
@@ -781,13 +796,13 @@ export default function DistrictManagerPage() {
         {districtResultsByCompetition.map((competition) => (
           (() => {
             const zonePromotedDetailIds = new Set(
-              promotions
-                .filter((promotion) => promotion.to_level === 'zone' && promotion.result_detail)
-                .map((promotion) => Number(promotion.result_detail)),
+              competition.entries
+                .filter((result) => result.detail && (result.isZonePromoted || result.detail.promoted_to === 'zone'))
+                .map((result) => Number(result.detail.id)),
             );
             const qualifyingEntries = competition.entries.filter((result) => result.detail && Number(result.detail.percentage_score) >= 50);
             const districtSubmission = districtSubmissions.find((submission) => Number(submission.competition) === Number(competition.id));
-            const isSubmittedToZone = districtSubmission?.status === 'submitted'
+            const isSubmittedToZone = Boolean(districtSubmission?.status === 'submitted')
               || competition.entries.some((result) => result.detail && zonePromotedDetailIds.has(Number(result.detail.id)))
               || qualifyingEntries.some((result) => zonePromotedDetailIds.has(Number(result.detail.id)));
             const isLockedForDistrictEdit = (result) => Boolean(

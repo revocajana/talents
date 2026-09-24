@@ -132,7 +132,7 @@ class DistrictCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelVi
     permission_classes = [AuthenticatedReadOnly]
     scope_paths = {
         'district': 'district_id',
-        'zone': 'district__zone_id',
+        'zone': 'district__region__zone_id',
     }
 
     def perform_create(self, serializer):
