@@ -59,6 +59,7 @@ export default function ZoneManagerPage() {
   const [competitionSubmitting, setCompetitionSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittingCompetitionId, setSubmittingCompetitionId] = useState(null);
+  const [selectedZoneCompetitionId, setSelectedZoneCompetitionId] = useState('');
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [announcementDrawerOpen, setAnnouncementDrawerOpen] = useState(false);
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', expires_at: '' });
@@ -487,7 +488,7 @@ export default function ZoneManagerPage() {
   };
 
   const handlePromoteStudents = async (sourceCompetitionId, detailIds = selectedPromotionStudents) => {
-    const targetCompetition = zoneLevelCompetitions[0];
+    const targetCompetition = zoneLevelCompetitions.find((competition) => Number(competition.id) === Number(selectedZoneCompetitionId));
     if (!detailIds.length || !sourceCompetitionId || !targetCompetition) {
       setError(targetCompetition ? 'Select at least one student to promote.' : 'Create a zone competition before promoting students.');
       return;
@@ -941,6 +942,19 @@ export default function ZoneManagerPage() {
                   <p>Submitted district-level results. Only scores of 50% or higher are shown.</p>
                 </div>
                 <div className="district-result-header-actions">
+                  <label className="district-promotion-competition-field">
+                    Promote to
+                    <select
+                      value={selectedZoneCompetitionId}
+                      onChange={(event) => setSelectedZoneCompetitionId(event.target.value)}
+                      disabled={submitting}
+                    >
+                      <option value="">Select zone competition</option>
+                      {zoneLevelCompetitions.map((zoneCompetition) => (
+                        <option key={zoneCompetition.id} value={zoneCompetition.id}>{zoneCompetition.name}</option>
+                      ))}
+                    </select>
+                  </label>
                   <button
                     type="button"
                     className="district-text-button"
@@ -958,7 +972,7 @@ export default function ZoneManagerPage() {
                         selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))),
                       )
                     }
-                    disabled={submitting || !selectedPromotionStudents.length}
+                    disabled={submitting || !selectedPromotionStudents.some((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId)))}
                   >
                     {submitting && submittingCompetitionId === competition.id ? 'Processing...' : `Promote selected (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}
                   </button>
