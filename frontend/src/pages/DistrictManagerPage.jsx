@@ -56,6 +56,7 @@ export default function DistrictManagerPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [schoolSubmissions, setSchoolSubmissions] = useState([]);
+  const [districtSubmissions, setDistrictSubmissions] = useState([]);
   const [selectedCompetition, setSelectedCompetition] = useState(null);
   const [competitionDrawerOpen, setCompetitionDrawerOpen] = useState(false);
   const [competitionDrawerWidth, setCompetitionDrawerWidth] = useState(420);
@@ -102,7 +103,7 @@ export default function DistrictManagerPage() {
         setLoading(true);
         setError(null);
 
-        const [userRes, districtsRes, schoolsRes, wardsRes, competitionsRes, studentsRes, talentsRes, clubMembershipsRes, educationLevelsRes, announcementsRes, resultsRes, participationsRes, promotionsRes, resultDetailsRes, submissionsRes] = await Promise.all([
+        const [userRes, districtsRes, schoolsRes, wardsRes, competitionsRes, studentsRes, talentsRes, clubMembershipsRes, educationLevelsRes, announcementsRes, resultsRes, participationsRes, promotionsRes, resultDetailsRes, submissionsRes, districtSubmissionsRes] = await Promise.all([
           apiService.getCurrentUser(),
           apiService.getDistricts(),
           apiService.getSchools(),
@@ -118,6 +119,7 @@ export default function DistrictManagerPage() {
           apiService.getAllResultPromotions(),
           apiService.getAllResultDetails(),
           apiService.getAllSchoolResultSubmissions(),
+          apiService.getAllDistrictResultSubmissions(),
         ]);
 
         const districtList = districtsRes.data.results || [];
@@ -143,6 +145,7 @@ export default function DistrictManagerPage() {
         setPromotions(promotionsRes.data.results || []);
         setResultDetails(resultDetailsRes.data.results || []);
         setSchoolSubmissions(submissionsRes.data.results || []);
+        setDistrictSubmissions(districtSubmissionsRes.data.results || []);
 
         const defaultDistrict = userRes.data?.district || districtList[0]?.id || '';
         setSelectedDistrict(String(defaultDistrict));
@@ -505,26 +508,22 @@ export default function DistrictManagerPage() {
   };
 
   const handleSubmitDistrictResults = async (sourceCompetitionId, detailIds = []) => {
-    const targetCompetition = competitions.find((competition) => competition.level === 'zone' && Number(competition.zone) === Number(currentUser?.zone));
     if (!sourceCompetitionId) {
       setError('Select a district competition to submit.');
       return;
     }
     setSubmittingDistrictCompetitionId(Number(sourceCompetitionId));
     try {
-      const payload = {
-        result_detail_ids: detailIds,
-        competition_id: sourceCompetitionId,
-        from_level: 'district',
-        to_level: 'zone',
-      };
-      if (targetCompetition) {
-        payload.zone_competition_id = targetCompetition.id;
-      }
-      await apiService.promoteStudents(payload);
+      const existingSubmission = districtSubmissions.find((submission) => Number(submission.competition) === Number(sourceCompetitionId));
+      const submission = existingSubmission || (await apiService.createDistrictResultSubmission({ competition: sourceCompetitionId })).data;
+      const submittedSubmission = await apiService.submitDistrictResultSubmission(submission.id);
       setSelectedPromotionStudents([]);
       setSelectedDemotionDetails([]);
-      const [resultsRes, participationsRes, promotionsRes] = await Promise.all([apiService.getResults(), apiService.getParticipations(), apiService.getResultPromotions()]);
+      setDistrictSubmissions((current) => [
+        ...current.filter((item) => Number(item.competition) !== Number(sourceCompetitionId)),
+        submittedSubmission.data,
+      ]);
+      const [resultsRes, participationsRes, promotionsRes] = await Promise.all([apiService.getAllResults(), apiService.getAllParticipations(), apiService.getAllResultPromotions()]);
       setResults(resultsRes.data.results || []);
       setParticipations(participationsRes.data.results || []);
       setPromotions(promotionsRes.data.results || []);
@@ -787,7 +786,9 @@ export default function DistrictManagerPage() {
                 .map((promotion) => Number(promotion.result_detail)),
             );
             const qualifyingEntries = competition.entries.filter((result) => result.detail && Number(result.detail.percentage_score) >= 50);
-            const isSubmittedToZone = competition.entries.some((result) => result.detail && zonePromotedDetailIds.has(Number(result.detail.id)))
+            const districtSubmission = districtSubmissions.find((submission) => Number(submission.competition) === Number(competition.id));
+            const isSubmittedToZone = districtSubmission?.status === 'submitted'
+              || competition.entries.some((result) => result.detail && zonePromotedDetailIds.has(Number(result.detail.id)))
               || qualifyingEntries.some((result) => zonePromotedDetailIds.has(Number(result.detail.id)));
             const isLockedForDistrictEdit = (result) => Boolean(
               isSubmittedToZone || (result.detail && (

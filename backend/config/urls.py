@@ -50,7 +50,7 @@ from core.views import (
 )
 from students.views import EducationLevelViewSet, StudentViewSet, ParentViewSet
 from competitions.views import CompetitionViewSet, CompetitionParticipationViewSet, CompetitionJudgeViewSet
-from results.views import ResultViewSet, ResultDetailViewSet, ResultPromotionViewSet, SchoolCompetitionSubmissionViewSet
+from results.views import DistrictCompetitionSubmissionViewSet, ResultViewSet, ResultDetailViewSet, ResultPromotionViewSet, SchoolCompetitionSubmissionViewSet
 
 router = DefaultRouter()
 router.register('countries', CountryViewSet)
@@ -75,6 +75,7 @@ router.register('results', ResultViewSet)
 router.register('result-details', ResultDetailViewSet)
 router.register('result-promotions', ResultPromotionViewSet)
 router.register('school-result-submissions', SchoolCompetitionSubmissionViewSet)
+router.register('district-result-submissions', DistrictCompetitionSubmissionViewSet)
 router.register('country-clubs', CountryClubViewSet)
 router.register('clubs', SchoolClubViewSet)
 router.register('club-teachers', ClubTeacherViewSet)

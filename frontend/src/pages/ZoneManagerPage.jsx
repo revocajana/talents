@@ -76,6 +76,7 @@ export default function ZoneManagerPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('home');
   const [schoolSubmissions, setSchoolSubmissions] = useState([]);
+  const [districtSubmissions, setDistrictSubmissions] = useState([]);
   const [calendarDate, setCalendarDate] = useState(() => new Date());
   const [selectedPromotionStudents, setSelectedPromotionStudents] = useState([]);
 
@@ -122,6 +123,7 @@ export default function ZoneManagerPage() {
           promotionsRes,
           resultDetailsRes,
           submissionsRes,
+          districtSubmissionsRes,
         ] = await Promise.all([
           apiService.getCurrentUser(),
           apiService.getZones(),
@@ -140,6 +142,7 @@ export default function ZoneManagerPage() {
           apiService.getResultPromotions(),
           apiService.getAllResultDetails(),
           apiService.getSchoolResultSubmissions(),
+          apiService.getAllDistrictResultSubmissions(),
         ]);
 
         const zoneList = zonesRes.data.results || [];
@@ -169,6 +172,7 @@ export default function ZoneManagerPage() {
         setPromotions(promotionsRes.data.results || []);
         setResultDetails(resultDetailsRes.data.results || []);
         setSchoolSubmissions(submissionsRes.data.results || []);
+        setDistrictSubmissions(districtSubmissionsRes.data.results || []);
 
         const defaultZone = userRes.data?.zone || zoneList[0]?.id || '';
         setSelectedZone(String(defaultZone));
@@ -610,10 +614,12 @@ export default function ZoneManagerPage() {
     setSubmittingCompetitionId(competitionId);
     setSubmitting(true);
     try {
-      await apiService.returnDistrictResultsToDraft({
-        competition_id: competitionId,
-        zone_competition_id: zoneLevelCompetitions[0]?.id,
-      });
+      const submission = districtSubmissions.find((item) => Number(item.competition) === Number(competitionId));
+      if (!submission) {
+        setError('No district submission was found for this competition.');
+        return;
+      }
+      const response = await apiService.reopenDistrictResultSubmission(submission.id);
       const [resultsRes, participationsRes, promotionsRes] = await Promise.all([
         apiService.getResults(),
         apiService.getParticipations(),
@@ -622,6 +628,7 @@ export default function ZoneManagerPage() {
       setResults(resultsRes.data.results || []);
       setParticipations(participationsRes.data.results || []);
       setPromotions(promotionsRes.data.results || []);
+      setDistrictSubmissions((items) => items.map((item) => item.id === submission.id ? response.data : item));
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to return district results to draft');
     } finally {
@@ -881,6 +888,8 @@ export default function ZoneManagerPage() {
       );
 
       districtLevelCompetitions.forEach((competition) => {
+        const districtSubmission = districtSubmissions.find((submission) => Number(submission.competition) === Number(competition.id));
+        if (districtSubmission?.status !== 'submitted') return;
         const competitionEntries = [];
 
         participations
@@ -902,8 +911,8 @@ export default function ZoneManagerPage() {
                 detail,
                 student,
                 school,
-                isPromoted: zonePromotedDetailIds.has(Number(detail.id)),
-                isEligibleForPromotion: !zonePromotedDetailIds.has(Number(detail.id)) && percentage >= 50,
+                isPromoted: detail.promoted_to === 'zone' || zonePromotedDetailIds.has(Number(detail.id)),
+                isEligibleForPromotion: !(detail.promoted_to === 'zone' || zonePromotedDetailIds.has(Number(detail.id))) && percentage >= 50,
               });
             });
           });

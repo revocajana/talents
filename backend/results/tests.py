@@ -4,7 +4,7 @@ from rest_framework.test import APIRequestFactory
 
 from competitions.models import Competition, CompetitionParticipation
 from core.models import Country, District, Region, School, Talent, TalentCategory, User, Ward, Zone
-from results.models import Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
+from results.models import DistrictCompetitionSubmission, Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
 from results.views import ResultPromotionViewSet, SchoolCompetitionSubmissionViewSet
 from students.models import Student
 
@@ -244,7 +244,7 @@ class ZoneToCountryPromotionTests(TestCase):
             ).exists(),
         )
 
-    def test_district_manager_can_submit_district_results_to_zone(self):
+    def test_district_manager_submits_district_results_without_promoting_to_zone(self):
         district_manager = User.objects.create_user(
             username='district-manager',
             password='secret123',
@@ -293,15 +293,23 @@ class ZoneToCountryPromotionTests(TestCase):
         response = ResultPromotionViewSet.as_view({'post': 'promote'})(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['promoted'], 1)
+        self.assertTrue(response.data['submitted'])
+        self.assertEqual(response.data['promoted'], 0)
         self.assertTrue(
+            DistrictCompetitionSubmission.objects.filter(
+                district=self.district,
+                competition=district_competition,
+                status='submitted',
+            ).exists(),
+        )
+        self.assertEqual(
             CompetitionParticipation.objects.filter(
                 competition=self.zone_competition,
                 student=self.student,
-            ).exists(),
-        )
+            ).count(),
+        1)
 
-    def test_district_manager_can_submit_results_to_zone_when_competition_is_scoped_by_district_object(self):
+    def test_district_manager_submission_works_when_competition_is_scoped_by_district_object(self):
         district_manager = User.objects.create_user(
             username='district-manager-object-scope',
             password='secret123',
@@ -349,13 +357,13 @@ class ZoneToCountryPromotionTests(TestCase):
         response = ResultPromotionViewSet.as_view({'post': 'promote'})(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['promoted'], 1)
-        self.assertTrue(
+        self.assertTrue(response.data['submitted'])
+        self.assertEqual(
             CompetitionParticipation.objects.filter(
                 competition=self.zone_competition,
                 student=self.student,
-            ).exists(),
-        )
+            ).count(),
+        1)
 
     def test_district_manager_can_demote_district_result(self):
         district_manager = User.objects.create_user(
@@ -441,7 +449,7 @@ class ZoneToCountryPromotionTests(TestCase):
         self.assertFalse(CompetitionParticipation.objects.filter(pk=district_participation.pk).exists())
         self.assertFalse(ResultPromotion.objects.filter(pk=promotion.pk).exists())
 
-    def test_district_manager_can_submit_district_results_to_zone_without_existing_zone_competition(self):
+    def test_district_manager_submits_without_existing_zone_competition(self):
         district_manager = User.objects.create_user(
             username='district-manager-no-zone',
             password='secret123',
@@ -489,12 +497,13 @@ class ZoneToCountryPromotionTests(TestCase):
         response = ResultPromotionViewSet.as_view({'post': 'promote'})(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['promoted'], 1)
+        self.assertTrue(response.data['submitted'])
+        self.assertEqual(response.data['promoted'], 0)
         self.assertTrue(
-            Competition.objects.filter(level='zone', content_type=ContentType.objects.get_for_model(Zone), object_id=self.zone.pk).exists(),
+            DistrictCompetitionSubmission.objects.filter(competition=district_competition, status='submitted').exists(),
         )
 
-    def test_district_manager_can_submit_district_results_to_zone_when_multiple_zone_competitions_exist(self):
+    def test_district_manager_submits_when_multiple_zone_competitions_exist(self):
         district_manager = User.objects.create_user(
             username='district-manager-multiple-zone',
             password='secret123',
@@ -558,12 +567,10 @@ class ZoneToCountryPromotionTests(TestCase):
         response = ResultPromotionViewSet.as_view({'post': 'promote'})(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['promoted'], 1)
+        self.assertTrue(response.data['submitted'])
+        self.assertEqual(response.data['promoted'], 0)
         self.assertTrue(
-            CompetitionParticipation.objects.filter(
-                competition__in=Competition.objects.filter(level='zone', content_type=zone_type, object_id=self.zone.pk),
-                student=self.student,
-            ).exists(),
+            DistrictCompetitionSubmission.objects.filter(competition=district_competition, status='submitted').exists(),
         )
 
     def test_district_manager_can_submit_school_submission_for_owned_school(self):

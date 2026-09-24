@@ -30,6 +30,24 @@ class SchoolCompetitionSubmission(models.Model):
         ]
 
 
+class DistrictCompetitionSubmission(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+    ]
+
+    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name='competition_submissions')
+    competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name='district_submissions')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='submitted_district_results')
+    submitted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['district', 'competition'], name='unique_district_competition_submission'),
+        ]
+
+
 class Result(models.Model):
     """Result/Outcome of a competition at a specific level."""
     GRADE_CHOICES = [

@@ -4,6 +4,8 @@ from django.http import JsonResponse, Http404
 from django.urls import path
 from django.contrib.auth.forms import UserChangeForm
 from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 import json
 
 from .models import (
@@ -26,7 +28,8 @@ from .models import (
     StudentClubMembership,
     Message,
 )
-from results.models import SchoolCompetitionSubmission
+from results.models import DistrictCompetitionSubmission, SchoolCompetitionSubmission
+from competitions.models import Competition
 from students.models import EducationLevel, Student
 
 
@@ -849,6 +852,58 @@ class SchoolCompetitionSubmissionAdmin(admin.ModelAdmin):
     list_filter = ('status', 'competition', 'school__country')
     search_fields = ('school__name', 'competition__name')
     readonly_fields = ('submitted_at', 'approved_at')
+
+
+@admin.register(DistrictCompetitionSubmission)
+class DistrictCompetitionSubmissionAdmin(admin.ModelAdmin):
+    class DistrictCompetitionSubmissionForm(forms.ModelForm):
+        class Meta:
+            model = DistrictCompetitionSubmission
+            fields = '__all__'
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            district_id = self.data.get('district') or self.initial.get('district') or self.instance.district_id
+            self.fields['competition'].queryset = self.get_competitions(district_id)
+
+        @staticmethod
+        def get_competitions(district_id):
+            if not district_id:
+                return Competition.objects.none()
+            district_type = ContentType.objects.get_for_model(District)
+            return Competition.objects.filter(level='district').filter(
+                Q(content_type=district_type, object_id=district_id)
+                | Q(schools__district_id=district_id)
+            ).distinct().order_by('name')
+
+        def clean(self):
+            cleaned_data = super().clean()
+            district = cleaned_data.get('district')
+            competition = cleaned_data.get('competition')
+            if district and competition and not self.get_competitions(district.pk).filter(pk=competition.pk).exists():
+                self.add_error('competition', 'Select a district-level competition belonging to the selected district.')
+            return cleaned_data
+
+    form = DistrictCompetitionSubmissionForm
+    list_display = ('district', 'competition', 'status', 'submitted_by', 'submitted_at')
+    list_filter = ('status', 'competition', 'district__region__zone', 'district__region')
+    search_fields = ('district__name', 'competition__name', 'submitted_by__username')
+    readonly_fields = ('submitted_at',)
+
+    class Media:
+        js = ('core/admin_district_competitions.js',)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('district-competitions/', self.admin_site.admin_view(self.district_competitions), name='district_competitions'),
+        ]
+        return custom_urls + urls
+
+    def district_competitions(self, request):
+        district_id = request.GET.get('district_id')
+        competitions = self.form.get_competitions(district_id)
+        return JsonResponse({'results': [{'id': competition.id, 'name': competition.name} for competition in competitions]})
 
 
 @admin.register(TalentCategory)

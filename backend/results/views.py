@@ -10,8 +10,8 @@ from django.contrib.contenttypes.models import ContentType
 from core.models import Country, District, School, Zone
 from students.models import Student
 
-from .models import Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
-from .serializers import ResultSerializer, ResultDetailSerializer, ResultPromotionSerializer, SchoolCompetitionSubmissionSerializer
+from .models import DistrictCompetitionSubmission, Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
+from .serializers import DistrictCompetitionSubmissionSerializer, ResultSerializer, ResultDetailSerializer, ResultPromotionSerializer, SchoolCompetitionSubmissionSerializer
 from core.permissions import AuthenticatedReadOnly, StudentDataPermission, ScopedQuerysetMixin
 
 from core.permissions import IsSportTeacher
@@ -44,6 +44,13 @@ def ensure_result_detail_editable(result_detail):
     ):
         from rest_framework.exceptions import ValidationError
         raise ValidationError('Promoted competition results are locked.')
+    if DistrictCompetitionSubmission.objects.filter(
+        district_id=result_detail.result.participation.student.school.district_id,
+        competition_id=result_detail.result.participation.competition_id,
+        status='submitted',
+    ).exists():
+        from rest_framework.exceptions import ValidationError
+        raise ValidationError('Submitted district results are locked.')
     ensure_school_result_editable(result_detail.result)
 
 
@@ -52,6 +59,13 @@ def ensure_result_editable(result):
     if ResultPromotion.objects.filter(result=result, to_level__in={'district', 'zone', 'country'}).exists():
         from rest_framework.exceptions import ValidationError
         raise ValidationError('Submitted competition results are locked until they are returned to draft.')
+    if DistrictCompetitionSubmission.objects.filter(
+        district_id=result.participation.student.school.district_id,
+        competition_id=result.participation.competition_id,
+        status='submitted',
+    ).exists():
+        from rest_framework.exceptions import ValidationError
+        raise ValidationError('Submitted district results are locked.')
     ensure_school_result_editable(result)
 
 class ResultViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -110,6 +124,56 @@ class ResultDetailViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         ensure_result_detail_editable(self.get_object())
         serializer.save()
+
+
+class DistrictCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = DistrictCompetitionSubmission.objects.select_related('district', 'competition').all()
+    serializer_class = DistrictCompetitionSubmissionSerializer
+    permission_classes = [AuthenticatedReadOnly]
+    scope_paths = {
+        'district': 'district_id',
+        'zone': 'district__zone_id',
+    }
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role != 'district_manager' or not user.district_id:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only an assigned district manager can create this submission.')
+        competition = serializer.validated_data['competition']
+        if competition.level != 'district':
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'competition': 'Only district competitions can be submitted.'})
+        if not Competition.objects.filter(
+            pk=competition.pk,
+            level='district',
+        ).filter(
+            Q(content_type=ContentType.objects.get_for_model(District), object_id=user.district_id)
+            | Q(schools__district_id=user.district_id)
+        ).exists():
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'competition': 'This competition does not belong to your district.'})
+        serializer.save(district_id=user.district_id)
+
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        submission = self.get_object()
+        if request.user.role != 'district_manager' or submission.district_id != request.user.district_id:
+            return Response({'detail': 'Only the assigned district manager can submit these results.'}, status=status.HTTP_403_FORBIDDEN)
+        submission.status = 'submitted'
+        submission.submitted_by = request.user
+        submission.submitted_at = timezone.now()
+        submission.save(update_fields=['status', 'submitted_by', 'submitted_at'])
+        return Response(self.get_serializer(submission).data)
+
+    @action(detail=True, methods=['post'])
+    def reopen(self, request, pk=None):
+        submission = self.get_object()
+        if request.user.role != 'zone_manager' or submission.district.zone_id != request.user.zone_id:
+            return Response({'detail': 'Only the assigned zone manager can return these results to draft.'}, status=status.HTTP_403_FORBIDDEN)
+        submission.status = 'draft'
+        submission.save(update_fields=['status'])
+        return Response(self.get_serializer(submission).data)
 
 
 class ResultPromotionViewSet(viewsets.ModelViewSet):
@@ -369,6 +433,27 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
             if to_level == 'zone':
                 if not request.user.zone_id:
                     return Response({'error': 'District managers must be assigned to a zone.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                district_type = ContentType.objects.get_for_model(District)
+                source_competition = Competition.objects.filter(
+                    id=competition_id,
+                    level='district',
+                ).filter(
+                    Q(content_type=district_type, object_id=request.user.district_id)
+                    | Q(schools__district_id=request.user.district_id)
+                ).first()
+                if not source_competition:
+                    return Response({'error': 'The selected district competition does not belong to your district.'}, status=status.HTTP_404_NOT_FOUND)
+
+                submission, _ = DistrictCompetitionSubmission.objects.get_or_create(
+                    district_id=request.user.district_id,
+                    competition=source_competition,
+                )
+                submission.status = 'submitted'
+                submission.submitted_by = request.user
+                submission.submitted_at = timezone.now()
+                submission.save(update_fields=['status', 'submitted_by', 'submitted_at'])
+                return Response({'submitted': True, 'promoted': 0, 'competition_id': source_competition.id})
 
                 target_competition_id = request.data.get('zone_competition_id')
                 zone_type = ContentType.objects.get_for_model(Zone)
