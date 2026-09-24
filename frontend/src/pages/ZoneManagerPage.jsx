@@ -948,6 +948,7 @@ export default function ZoneManagerPage() {
                       value={selectedZoneCompetitionId}
                       onChange={(event) => setSelectedZoneCompetitionId(event.target.value)}
                       disabled={submitting}
+                      style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: 'white', color: '#111827', fontSize: '14px' }}
                     >
                       <option value="">Select zone competition</option>
                       {zoneLevelCompetitions.map((zoneCompetition) => (
@@ -960,8 +961,9 @@ export default function ZoneManagerPage() {
                     className="district-text-button"
                     onClick={() => handleReturnDistrictResultsToDraft(competition.id)}
                     disabled={submitting || !competition.entries.some((entry) => entry.isPromoted)}
+                    style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#d1d5db', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}
                   >
-                    Return to draft
+                    Set draft
                   </button>
                   <button
                     type="button"
@@ -973,8 +975,9 @@ export default function ZoneManagerPage() {
                       )
                     }
                     disabled={submitting || !selectedPromotionStudents.some((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId)))}
+                    style={{ width: '140px', height: '36px', boxSizing: 'border-box', padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#0E1DB6', color: 'white', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s' }}
                   >
-                    {submitting && submittingCompetitionId === competition.id ? 'Processing...' : `Promote selected (${selectedPromotionStudents.filter((detailId) => competition.entries.some((entry) => Number(entry.detail?.id) === Number(detailId))).length})`}
+                    {submitting && submittingCompetitionId === competition.id ? 'Processing...' : 'Promote'}
                   </button>
                 </div>
               </div>
