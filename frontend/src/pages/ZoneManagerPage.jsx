@@ -131,15 +131,15 @@ export default function ZoneManagerPage() {
           apiService.getRegions(),
           apiService.getSchools(),
           apiService.getWards(),
-          apiService.getCompetitions(),
-          apiService.getStudents(),
+          apiService.getAllCompetitions(),
+          apiService.getAllStudents(),
           apiService.getStudentTalents(),
           apiService.getClubMemberships(),
           apiService.getEducationLevels({ is_active: true }),
           apiService.getAnnouncements({ is_active: true }),
-          apiService.getResults(),
-          apiService.getParticipations(),
-          apiService.getResultPromotions(),
+          apiService.getAllResults(),
+          apiService.getAllParticipations(),
+          apiService.getAllResultPromotions(),
           apiService.getAllResultDetails(),
           apiService.getSchoolResultSubmissions(),
           apiService.getAllDistrictResultSubmissions(),
@@ -887,39 +887,47 @@ export default function ZoneManagerPage() {
           .map((promotion) => Number(promotion.result_detail)),
       );
 
-      districtLevelCompetitions.forEach((competition) => {
-        const districtSubmission = districtSubmissions.find((submission) => Number(submission.competition) === Number(competition.id));
-        if (districtSubmission?.status !== 'submitted') return;
-        const competitionEntries = [];
+      districtSubmissions
+        .filter((submission) => submission.status === 'submitted')
+        .forEach((submission) => {
+          const competition = competitions.find((item) => Number(item.id) === Number(submission.competition));
+          if (!competition || competition.level !== 'district') return;
 
-        participations
-          .filter((participation) => Number(participation.competition) === Number(competition.id) && zoneStudents.some((student) => Number(student.id) === Number(participation.student)))
-          .forEach((participation) => {
-            const result = results.find((item) => Number(item.participation) === Number(participation.id));
-            if (!result) return;
+          const competitionEntries = [];
 
-            const student = zoneStudents.find((item) => Number(item.id) === Number(participation.student));
-            const school = zoneSchools.find((item) => Number(item.id) === Number(student?.school?.id ?? student?.school));
+          participations
+            .filter((participation) => Number(participation.competition) === Number(competition.id) && zoneStudents.some((student) => Number(student.id) === Number(participation.student)))
+            .forEach((participation) => {
+              const result = results.find((item) => Number(item.participation) === Number(participation.id));
+              if (!result) return;
 
-            (result.details || []).forEach((detail) => {
-              const percentage = Number(detail.percentage_score ?? detail.raw_score ?? 0);
-              if (!Number.isFinite(percentage) || percentage < 50) return;
+              const student = zoneStudents.find((item) => Number(item.id) === Number(participation.student));
+              const school = zoneSchools.find((item) => Number(item.id) === Number(student?.school?.id ?? student?.school));
 
-              competitionEntries.push({
-                participation,
-                result,
-                detail,
-                student,
-                school,
-                isPromoted: detail.promoted_to === 'zone' || zonePromotedDetailIds.has(Number(detail.id)),
-                isEligibleForPromotion: !(detail.promoted_to === 'zone' || zonePromotedDetailIds.has(Number(detail.id))) && percentage >= 50,
+              (result.details || []).forEach((detail) => {
+                const percentage = Number(detail.percentage_score ?? detail.raw_score ?? 0);
+                if (!Number.isFinite(percentage) || percentage < 50) return;
+
+                competitionEntries.push({
+                  participation,
+                  result,
+                  detail,
+                  student,
+                  school,
+                  isPromoted: detail.promoted_to === 'zone' || zonePromotedDetailIds.has(Number(detail.id)),
+                  isEligibleForPromotion: !(detail.promoted_to === 'zone' || zonePromotedDetailIds.has(Number(detail.id))) && percentage >= 50,
+                });
               });
             });
-          });
 
-        if (!competitionEntries.length) return;
-        grouped.set(Number(competition.id), { ...competition, entries: competitionEntries });
-      });
+          if (!competitionEntries.length) return;
+          grouped.set(Number(competition.id), {
+            ...competition,
+            submissionId: submission.id,
+            districtSubmission: submission,
+            entries: competitionEntries,
+          });
+        });
 
       return [...grouped.values()];
     })();

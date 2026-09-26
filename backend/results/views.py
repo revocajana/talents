@@ -169,11 +169,46 @@ class DistrictCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelVi
     @action(detail=True, methods=['post'])
     def reopen(self, request, pk=None):
         submission = self.get_object()
-        if request.user.role != 'zone_manager' or submission.district.zone_id != request.user.zone_id:
+        if request.user.role != 'zone_manager' or submission.district.region.zone_id != request.user.zone_id:
             return Response({'detail': 'Only the assigned zone manager can return these results to draft.'}, status=status.HTTP_403_FORBIDDEN)
-        submission.status = 'draft'
-        submission.save(update_fields=['status'])
-        return Response(self.get_serializer(submission).data)
+
+        demoted_count = 0
+        with transaction.atomic():
+            promotions = ResultPromotion.objects.select_related(
+                'result_detail',
+                'result__participation__student',
+            ).filter(
+                result__participation__competition=submission.competition,
+                to_level='zone',
+                result__participation__student__school__district_id=submission.district_id,
+            )
+            for promotion in promotions:
+                source_detail = promotion.result_detail
+                if source_detail:
+                    ResultDetail.objects.filter(pk=source_detail.pk).update(promoted_to='')
+
+                student_id = promotion.result.participation.student_id
+                talent_id = source_detail.talent_id if source_detail else None
+                zone_details = ResultDetail.objects.select_related('result__participation').filter(
+                    result__participation__student_id=student_id,
+                    result__participation__competition__level='zone',
+                    talent_id=talent_id,
+                )
+                for zone_detail in zone_details:
+                    zone_result = zone_detail.result
+                    zone_participation = zone_result.participation
+                    zone_detail.delete()
+                    remove_empty_result_chain(zone_result, zone_participation)
+
+                promotion.delete()
+                demoted_count += 1
+
+            submission.status = 'draft'
+            submission.save(update_fields=['status'])
+
+        data = self.get_serializer(submission).data
+        data['demoted'] = demoted_count
+        return Response(data)
 
 
 class ResultPromotionViewSet(viewsets.ModelViewSet):

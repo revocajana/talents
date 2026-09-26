@@ -127,6 +127,83 @@ class ResultPromotionLockingTests(TestCase):
         self.assertFalse(CompetitionParticipation.objects.filter(pk=district_participation.pk).exists())
         self.assertFalse(CompetitionParticipation.objects.filter(pk=zone_participation.pk).exists())
 
+    def test_zone_manager_can_return_district_submission_to_draft(self):
+        zone_manager = User.objects.create_user(
+            username='zone-manager-reopen-district',
+            password='secret123',
+            role='zone_manager',
+            country=self.country,
+            zone=self.zone,
+        )
+        district_competition = Competition.objects.create(name='District Trials', level='district', status='approved')
+        district_competition.content_type = ContentType.objects.get_for_model(District)
+        district_competition.object_id = self.district.pk
+        district_competition.schools.add(self.school)
+        district_competition.save(update_fields=['content_type', 'object_id'])
+
+        zone_competition = Competition.objects.create(name='Zone Trials', level='zone', status='approved')
+        zone_competition.content_type = ContentType.objects.get_for_model(Zone)
+        zone_competition.object_id = self.zone.pk
+        zone_competition.schools.add(self.school)
+        zone_competition.save(update_fields=['content_type', 'object_id'])
+
+        district_participation = CompetitionParticipation.objects.create(
+            competition=district_competition,
+            student=self.student,
+            score=78,
+            status='finished',
+        )
+        district_result = Result.objects.create(participation=district_participation, score=78, approval_status='pending')
+        district_detail = ResultDetail.objects.create(
+            result=district_result,
+            talent=self.student_talent,
+            raw_score=78,
+            percentage_score=78,
+            promoted_to='zone',
+        )
+
+        zone_participation = CompetitionParticipation.objects.create(
+            competition=zone_competition,
+            student=self.student,
+            score=78,
+            status='finished',
+        )
+        zone_result = Result.objects.create(participation=zone_participation, score=78, approval_status='pending')
+        zone_detail = ResultDetail.objects.create(
+            result=zone_result,
+            talent=self.student_talent,
+            raw_score=78,
+            percentage_score=78,
+        )
+
+        ResultPromotion.objects.create(
+            result=district_result,
+            result_detail=district_detail,
+            from_level='district',
+            to_level='zone',
+            promoted_by=zone_manager,
+        )
+
+        submission = DistrictCompetitionSubmission.objects.create(
+            district=self.district,
+            competition=district_competition,
+            status='submitted',
+            submitted_by=zone_manager,
+        )
+
+        request = self.factory.post('/api/district-result-submissions/1/reopen/', {}, format='json')
+        request.user = zone_manager
+        response = DistrictCompetitionSubmissionViewSet.as_view({'post': 'reopen'})(request, pk=submission.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], 'draft')
+        self.assertEqual(response.data['demoted'], 1)
+        district_detail.refresh_from_db()
+        self.assertEqual(district_detail.promoted_to, '')
+        self.assertFalse(ResultPromotion.objects.filter(pk__in=[p.pk for p in ResultPromotion.objects.filter(result=district_result)]).exists())
+        self.assertFalse(ResultDetail.objects.filter(pk=zone_detail.pk).exists())
+        self.assertFalse(CompetitionParticipation.objects.filter(pk=zone_participation.pk).exists())
+
 
 class ZoneToCountryPromotionTests(TestCase):
     def setUp(self):
