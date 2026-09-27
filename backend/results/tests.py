@@ -4,7 +4,7 @@ from rest_framework.test import APIRequestFactory
 
 from competitions.models import Competition, CompetitionParticipation
 from core.models import Country, District, Region, School, Talent, TalentCategory, User, Ward, Zone
-from results.models import DistrictCompetitionSubmission, Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
+from results.models import DistrictCompetitionSubmission, Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission, ZoneCompetitionSubmission
 from results.views import DistrictCompetitionSubmissionViewSet, ResultPromotionViewSet, SchoolCompetitionSubmissionViewSet
 from students.models import Student
 
@@ -203,6 +203,88 @@ class ResultPromotionLockingTests(TestCase):
         self.assertFalse(ResultPromotion.objects.filter(pk__in=[p.pk for p in ResultPromotion.objects.filter(result=district_result)]).exists())
         self.assertFalse(ResultDetail.objects.filter(pk=zone_detail.pk).exists())
         self.assertFalse(CompetitionParticipation.objects.filter(pk=zone_participation.pk).exists())
+
+
+class ZoneSubmissionFlowTests(TestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.country = Country.objects.create(name='Test Country', code='TST')
+        self.zone = Zone.objects.create(country=self.country, name='Test Zone')
+        self.region = Region.objects.create(zone=self.zone, name='Test Region')
+        self.district = District.objects.create(region=self.region, name='Test District')
+        self.ward = Ward.objects.create(district=self.district, name='Test Ward')
+        self.school = School.objects.create(
+            registry_number='TZ-001',
+            name='Test School',
+            ownership_type='Government',
+            country=self.country,
+            zone=self.zone,
+            region=self.region,
+            district=self.district,
+            ward=self.ward,
+        )
+        self.student = Student.objects.create(first_name='Jane', last_name='Student', gender='F', school=self.school)
+        self.talent_category = TalentCategory.objects.create(name='Sports')
+        self.talent = Talent.objects.create(name='Swimming', category=self.talent_category)
+        self.student_talent = self.student.talents.create(talent=self.talent, proficiency_level=3)
+        self.zone_manager = User.objects.create_user(
+            username='zone-manager-submission',
+            password='secret123',
+            role='zone_manager',
+            country=self.country,
+            zone=self.zone,
+        )
+        self.zone_competition = Competition.objects.create(name='Zone Trials', level='zone', status='approved')
+        self.zone_competition.content_type = ContentType.objects.get_for_model(Zone)
+        self.zone_competition.object_id = self.zone.pk
+        self.zone_competition.schools.add(self.school)
+        self.zone_competition.save(update_fields=['content_type', 'object_id'])
+
+        self.country_competition = Competition.objects.create(name='Country Trials', level='country', status='approved')
+        self.country_competition.content_type = ContentType.objects.get_for_model(Country)
+        self.country_competition.object_id = self.country.pk
+        self.country_competition.schools.add(self.school)
+        self.country_competition.save(update_fields=['content_type', 'object_id'])
+
+    def test_zone_manager_submission_is_created_before_country_promotion(self):
+        participation = CompetitionParticipation.objects.create(
+            competition=self.zone_competition,
+            student=self.student,
+            score=78,
+            status='finished',
+        )
+        result = Result.objects.create(participation=participation, score=78, approval_status='pending')
+        result_detail = ResultDetail.objects.create(
+            result=result,
+            talent=self.student_talent,
+            raw_score=78,
+            percentage_score=78,
+        )
+
+        request = self.factory.post(
+            '/api/result-promotions/promote/',
+            {
+                'result_detail_ids': [result_detail.id],
+                'competition_id': self.zone_competition.id,
+                'country_competition_id': self.country_competition.id,
+                'from_level': 'zone',
+                'to_level': 'country',
+            },
+            format='json',
+        )
+        request.user = self.zone_manager
+
+        response = ResultPromotionViewSet.as_view({'post': 'promote'})(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['promoted'], 1)
+        self.assertTrue(
+            ZoneCompetitionSubmission.objects.filter(
+                zone=self.zone,
+                competition=self.zone_competition,
+                status='submitted',
+            ).exists(),
+        )
 
 
 class ZoneToCountryPromotionTests(TestCase):

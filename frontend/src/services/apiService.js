@@ -233,6 +233,11 @@ export const getAllDistrictResultSubmissions = (params = {}) => getAllRecords('/
 export const createDistrictResultSubmission = (data) => api.post('/district-result-submissions/', data);
 export const submitDistrictResultSubmission = (id) => api.post(`/district-result-submissions/${id}/submit/`);
 export const reopenDistrictResultSubmission = (id) => api.post(`/district-result-submissions/${id}/reopen/`);
+export const getZoneResultSubmissions = (params = {}) => api.get('/zone-result-submissions/', { params });
+export const getAllZoneResultSubmissions = (params = {}) => getAllRecords('/zone-result-submissions/', params);
+export const createZoneResultSubmission = (data) => api.post('/zone-result-submissions/', data);
+export const submitZoneResultSubmission = (id) => api.post(`/zone-result-submissions/${id}/submit/`);
+export const reopenZoneResultSubmission = (id) => api.post(`/zone-result-submissions/${id}/reopen/`);
 export const createParticipation = (data) => api.post('/participations/', data);
 export const getParticipationById = (id) => api.get(`/participations/${id}/`);
 export const updateParticipation = (id, data) => api.patch(`/participations/${id}/`, data);

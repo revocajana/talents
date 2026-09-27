@@ -28,7 +28,7 @@ from .models import (
     StudentClubMembership,
     Message,
 )
-from results.models import DistrictCompetitionSubmission, SchoolCompetitionSubmission
+from results.models import DistrictCompetitionSubmission, SchoolCompetitionSubmission, ZoneCompetitionSubmission
 from competitions.models import Competition
 from students.models import EducationLevel, Student
 
@@ -852,6 +852,14 @@ class SchoolCompetitionSubmissionAdmin(admin.ModelAdmin):
     list_filter = ('status', 'competition', 'school__country')
     search_fields = ('school__name', 'competition__name')
     readonly_fields = ('submitted_at', 'approved_at')
+
+
+@admin.register(ZoneCompetitionSubmission)
+class ZoneCompetitionSubmissionAdmin(admin.ModelAdmin):
+    list_display = ('zone', 'competition', 'status', 'submitted_by', 'submitted_at')
+    list_filter = ('status', 'competition', 'zone__country', 'zone')
+    search_fields = ('zone__name', 'competition__name', 'submitted_by__username')
+    readonly_fields = ('submitted_at',)
 
 
 @admin.register(DistrictCompetitionSubmission)

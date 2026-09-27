@@ -10,8 +10,8 @@ from django.contrib.contenttypes.models import ContentType
 from core.models import Country, District, School, Zone
 from students.models import Student
 
-from .models import DistrictCompetitionSubmission, Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission
-from .serializers import DistrictCompetitionSubmissionSerializer, ResultSerializer, ResultDetailSerializer, ResultPromotionSerializer, SchoolCompetitionSubmissionSerializer
+from .models import DistrictCompetitionSubmission, Result, ResultDetail, ResultPromotion, SchoolCompetitionSubmission, ZoneCompetitionSubmission
+from .serializers import DistrictCompetitionSubmissionSerializer, ResultSerializer, ResultDetailSerializer, ResultPromotionSerializer, SchoolCompetitionSubmissionSerializer, ZoneCompetitionSubmissionSerializer
 from core.permissions import AuthenticatedReadOnly, StudentDataPermission, ScopedQuerysetMixin
 
 from core.permissions import IsSportTeacher
@@ -199,6 +199,91 @@ class DistrictCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelVi
                     zone_participation = zone_result.participation
                     zone_detail.delete()
                     remove_empty_result_chain(zone_result, zone_participation)
+
+                promotion.delete()
+                demoted_count += 1
+
+            submission.status = 'draft'
+            submission.save(update_fields=['status'])
+
+        data = self.get_serializer(submission).data
+        data['demoted'] = demoted_count
+        return Response(data)
+
+
+class ZoneCompetitionSubmissionViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = ZoneCompetitionSubmission.objects.select_related('zone', 'competition').all()
+    serializer_class = ZoneCompetitionSubmissionSerializer
+    permission_classes = [AuthenticatedReadOnly]
+    scope_paths = {
+        'zone': 'zone_id',
+        'country': 'zone__country_id',
+    }
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role != 'zone_manager' or not user.zone_id:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only an assigned zone manager can create this submission.')
+        competition = serializer.validated_data['competition']
+        if competition.level != 'zone':
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'competition': 'Only zone competitions can be submitted.'})
+        if not Competition.objects.filter(
+            pk=competition.pk,
+            level='zone',
+        ).filter(
+            Q(content_type=ContentType.objects.get_for_model(Zone), object_id=user.zone_id)
+            | Q(schools__zone_id=user.zone_id)
+        ).exists():
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'competition': 'This competition does not belong to your zone.'})
+        serializer.save(zone_id=user.zone_id)
+
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        submission = self.get_object()
+        if request.user.role != 'zone_manager' or submission.zone_id != request.user.zone_id:
+            return Response({'detail': 'Only the assigned zone manager can submit these results.'}, status=status.HTTP_403_FORBIDDEN)
+        submission.status = 'submitted'
+        submission.submitted_by = request.user
+        submission.submitted_at = timezone.now()
+        submission.save(update_fields=['status', 'submitted_by', 'submitted_at'])
+        return Response(self.get_serializer(submission).data)
+
+    @action(detail=True, methods=['post'])
+    def reopen(self, request, pk=None):
+        submission = self.get_object()
+        if request.user.role != 'zone_manager' or submission.zone_id != request.user.zone_id:
+            return Response({'detail': 'Only the assigned zone manager can return these results to draft.'}, status=status.HTTP_403_FORBIDDEN)
+
+        demoted_count = 0
+        with transaction.atomic():
+            promotions = ResultPromotion.objects.select_related(
+                'result_detail',
+                'result__participation__student',
+            ).filter(
+                result__participation__competition=submission.competition,
+                to_level='country',
+                result__participation__student__school__zone_id=submission.zone_id,
+            )
+            for promotion in promotions:
+                source_detail = promotion.result_detail
+                if source_detail:
+                    ResultDetail.objects.filter(pk=source_detail.pk).update(promoted_to='')
+
+                student_id = promotion.result.participation.student_id
+                talent_id = source_detail.talent_id if source_detail else None
+                country_details = ResultDetail.objects.select_related('result__participation').filter(
+                    result__participation__student_id=student_id,
+                    result__participation__competition__level='country',
+                    talent_id=talent_id,
+                )
+                for country_detail in country_details:
+                    country_result = country_detail.result
+                    country_participation = country_result.participation
+                    country_detail.delete()
+                    remove_empty_result_chain(country_result, country_participation)
 
                 promotion.delete()
                 demoted_count += 1
@@ -708,6 +793,15 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
             if not source_competition:
                 return Response({'error': 'The selected zone competition does not belong to your zone.'}, status=status.HTTP_404_NOT_FOUND)
 
+            submission, _ = ZoneCompetitionSubmission.objects.get_or_create(
+                zone_id=request.user.zone_id,
+                competition=source_competition,
+            )
+            submission.status = 'submitted'
+            submission.submitted_by = request.user
+            submission.submitted_at = timezone.now()
+            submission.save(update_fields=['status', 'submitted_by', 'submitted_at'])
+
             if not detail_ids:
                 source_details = ResultDetail.objects.select_related('result__participation__student').filter(
                     result__participation__competition=source_competition,
@@ -764,7 +858,7 @@ class ResultPromotionViewSet(viewsets.ModelViewSet):
                     source_detail.promoted_to = 'country'
                     promoted.append({'student_id': int(source_participation.student_id), 'result_id': target_result.id, 'result_detail_id': target_detail.id, 'competition_id': target_competition.id, 'promotion_id': promotion.id})
 
-            return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted})
+            return Response({'promoted': len(promoted), 'errors': errors, 'data': promoted, 'submission': ZoneCompetitionSubmissionSerializer(submission).data})
 
         # Verify competition exists and belongs to school
         competition = Competition.objects.filter(
